@@ -1,0 +1,88 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  w.cur=0;w.paint();await wait(200);
+  w.figEdit(w.S.slides[0],'fig-marks');await wait(1300);
+  const idoc=d.getElementById('fefr').contentDocument, svg=idoc.querySelector('svg');
+  const kids=()=>[...svg.children].filter(x=>!/fe-mark|fe-band/.test(x.getAttribute('class')||''));
+  const rect=el=>w.feRect(el);
+
+  // ---------- the lasso must enclose, not graze ----------
+  const texts=[...svg.querySelectorAll(':scope > text')];
+  const a=texts[0], ra=rect(a);
+  // a band that only clips the right edge of the first label
+  const drag=(x0,y0,x1,y1,alt)=>{
+    // drawing coords -> the iframe's own viewport, letterboxing included
+    const m=svg.getScreenCTM();
+    const S=(x,y)=>({x:m.a*x+m.c*y+m.e,y:m.b*x+m.d*y+m.f});
+    const p0=S(x0,y0), p1=S(x1,y1);
+    w.feMarquee({target:svg,clientX:p0.x,clientY:p0.y,altKey:!!alt,
+                 shiftKey:false,ctrlKey:false,metaKey:false,preventDefault(){},stopPropagation(){}},false);
+    idoc.dispatchEvent(new W.MouseEvent('mousemove',{clientX:p1.x,clientY:p1.y,bubbles:true}));
+    idoc.dispatchEvent(new W.MouseEvent('mouseup',{clientX:p1.x,clientY:p1.y,bubbles:true,altKey:!!alt}));
+  };
+  drag(ra.x+ra.width-8, ra.y-4, ra.x+ra.width+120, ra.y+ra.height+4);
+  await wait(80);
+  ok('grazing no longer picks it up',!w.FE.sels.includes(a),w.FE.sels.length+' selected');
+  // a band that fully contains it
+  drag(ra.x-8, ra.y-8, ra.x+ra.width+8, ra.y+ra.height+8);
+  await wait(80);
+  ok('enclosing does pick it up',w.FE.sels.includes(a),w.FE.sels.length+' selected');
+  // alt goes back to touch
+  drag(ra.x+ra.width-8, ra.y-4, ra.x+ra.width+120, ra.y+ra.height+4, true);
+  await wait(80);
+  ok('Alt still selects what it touches',w.FE.sels.includes(a),w.FE.sels.length+' selected');
+
+  // ---------- take something out of a group ----------
+  const g=[...svg.children].filter(x=>x.tagName.toLowerCase()==='g')[1];
+  const inner=[...g.children].find(x=>x.tagName.toLowerCase()!=='defs');
+  ok('found something inside the group',!!inner,inner&&inner.tagName);
+  const posBefore=rect(inner), n0=kids().length;
+  w.feSelect([inner]); await wait(120);
+  const outBtn=d.getElementById('feOut');
+  ok('panel offers taking it out',!!outBtn);
+  outBtn.click(); await wait(150);
+  ok('it left the group',inner.parentElement===svg,inner.parentElement.tagName);
+  ok('top level gained one',kids().length===n0+1,kids().length+' vs '+n0);
+  const posAfter=rect(inner);
+  ok('it did not move',Math.abs(posAfter.x-posBefore.x)<1&&Math.abs(posAfter.y-posBefore.y)<1,
+     `${posBefore.x.toFixed(1)},${posBefore.y.toFixed(1)} → ${posAfter.x.toFixed(1)},${posAfter.y.toFixed(1)}`);
+  ok('it kept its size',Math.abs(posAfter.width-posBefore.width)<1,
+     posBefore.width.toFixed(1)+' → '+posAfter.width.toFixed(1));
+  w.feUndo(); await wait(900);
+
+  // ---------- shift-click removes one from a selection ----------
+  const svg2=d.getElementById('fefr').contentDocument.querySelector('svg');
+  const ts=[...svg2.querySelectorAll(':scope > text')];
+  w.feSelect(ts); await wait(80);
+  const n=w.FE.sels.length;
+  w.feDown({target:ts[0],shiftKey:true,ctrlKey:false,metaKey:false,
+            clientX:0,clientY:0,preventDefault(){},stopPropagation(){}});
+  await wait(80);
+  ok('shift-click drops one',w.FE.sels.length===n-1&&!w.FE.sels.includes(ts[0]),
+     n+' → '+w.FE.sels.length);
+  w.feDown({target:ts[0],shiftKey:true,ctrlKey:false,metaKey:false,
+            clientX:0,clientY:0,preventDefault(){},stopPropagation(){}});
+  await wait(80);
+  ok('and puts it back',w.FE.sels.length===n);
+
+  // ---------- keyboard reaches the editor from the panel ----------
+  d.getElementById('fepanel').focus?.();
+  const before=w.FE.hist.length;
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'d',ctrlKey:true,bubbles:true}));
+  await wait(120);
+  ok('Ctrl-D works with the panel focused',w.FE.hist.length>before,
+     before+' → '+w.FE.hist.length);
+  const deckUndo=w.UNDO.length;
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'z',ctrlKey:true,bubbles:true}));
+  await wait(600);
+  ok('Ctrl-Z did not also undo the deck',w.UNDO.length===deckUndo,
+     deckUndo+' vs '+w.UNDO.length);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

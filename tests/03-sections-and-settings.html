@@ -1,0 +1,75 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  ok('deck loaded',w.S.slides.length===34);
+  ok('subsections in the bundle',
+     new Set(w.S.slides.map(x=>x.sub).filter(Boolean)).size===5,
+     new Set(w.S.slides.map(x=>x.sub).filter(Boolean)).size+' distinct');
+  ok('meta in the bundle',w.S.meta&&w.S.meta.event==='Suite',JSON.stringify(w.S.meta||{}).slice(0,40));
+  ok('style in the bundle',w.S.style&&w.S.style.titleSize===38);
+
+  // --- nav shows two levels ---
+  ok('nav renders subsection headers',d.querySelectorAll('#nav .sub').length===5,
+     d.querySelectorAll('#nav .sub').length+' sub headers');
+  ok('nav still renders acts',d.querySelectorAll('#nav .grp').length===4,
+     d.querySelectorAll('#nav .grp').length+' sections');
+
+  // --- header carries the path ---
+  w.cur=w.S.slides.findIndex(x=>x.sub==='Room 1 — Alpha');w.paint();await wait(150);
+  const h=d.querySelector('#sheet .stage .hdr').textContent.replace(/\s+/g,' ').trim();
+  ok('header shows section › subsection',/First Section/.test(h)&&/Room 1/.test(h),h);
+
+  // --- renaming a subsection renames it everywhere ---
+  const n0=w.S.slides.filter(x=>x.sub==='Room 1 — Alpha').length;
+  // renaming happens in the list now, not in a field on the right
+  ok('no subsection field in the panel',!d.getElementById('fSub'));
+  ok('no tag control either',!d.getElementById('segTag'));
+  ok('no config button in the panel',!d.getElementById('bCfg'));
+  const hdr=[...d.querySelectorAll('#nav .sub')].find(x=>/Room 1/.test(x.textContent));
+  ok('subsection header is in the list',!!hdr,hdr&&hdr.textContent);
+  hdr.dispatchEvent(new W.MouseEvent('dblclick',{bubbles:true}));
+  await wait(80);
+  ok('double-click makes it editable',hdr.contentEditable==='true'&&hdr.classList.contains('editing'));
+  hdr.textContent='Room One';
+  hdr.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+  await wait(150);
+  ok('renaming there hits every slide in it',w.S.slides.filter(x=>x.sub==='Room One').length===n0,
+     w.S.slides.filter(x=>x.sub==='Room One').length+' of '+n0);
+  w.undo();await wait(120);
+  ok('undo restores the old name',w.S.slides.filter(x=>x.sub==='Room 1 — Alpha').length===n0);
+  // escape abandons the edit
+  const h2=[...d.querySelectorAll('#nav .grp')][1];
+  const was=h2.textContent;
+  h2.dispatchEvent(new W.MouseEvent('dblclick',{bubbles:true}));await wait(60);
+  h2.textContent='Nope';
+  h2.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await wait(100);
+  ok('Escape abandons a rename',h2.textContent===was&&!w.S.slides.some(x=>x.group==='Nope'),h2.textContent);
+
+  // --- style applies live ---
+  w.S.style.titleSize=50;w.applyStyle();await wait(60);
+  const fs=parseFloat(getComputedStyle(d.querySelector('#sheet .stage h2')).fontSize);
+  ok('title size drives the board',Math.abs(fs-50)<1.5,fs.toFixed(1)+'px');
+  w.S.style.paper='#F0EAD6';w.applyStyle();await wait(60);
+  ok('paper colour drives the slide',
+     getComputedStyle(d.querySelector('#sheet .stage')).backgroundColor==='rgb(240, 234, 214)');
+  w.S.style={};w.applyStyle();await wait(60);
+  ok('reset returns to defaults',
+     Math.abs(parseFloat(getComputedStyle(d.querySelector('#sheet .stage h2')).fontSize)-38)<1.5);
+
+  // --- header mode ---
+  w.S.style.header='none';w.paint();await wait(120);
+  ok('header can be turned off',d.querySelector('#sheet .stage .hdr').textContent.trim()==='');
+  w.S.style={};w.paint();await wait(120);
+
+  // --- markdown round trip keeps ## ---
+  const md=w.slideMd(w.S.slides[8]);
+  const back=w.importMarkdown('t.md','# Act I\n\n## Room 1 — Alpha\n\n'+md);
+  ok('reimport recovers the subsection',back[0].sub==='Room 1 — Alpha',back[0].sub);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

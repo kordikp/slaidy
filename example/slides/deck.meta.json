@@ -1,0 +1,18 @@
+{
+  "title": "Slide Studio",
+  "meta": {
+    "author": "",
+    "affiliation": "",
+    "event": "",
+    "venue": "",
+    "date": ""
+  },
+  "style": {
+    "accent": "#7C3AED",
+    "ink": "#1E1B4B",
+    "paper": "#FFFFFF",
+    "titleSize": 38,
+    "bodySize": 19,
+    "header": "position"
+  }
+}

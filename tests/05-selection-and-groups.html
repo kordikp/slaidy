@@ -1,0 +1,92 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  w.cur=0;w.paint();await wait(200);
+  w.figEdit(w.S.slides[0],'fig-marks');await wait(1300);
+  const id=d.getElementById('fefr').contentDocument, svg=id.querySelector('svg');
+  ok('editor open on the affiliation',!!svg);
+
+  // the second mark lives in one <g> — find a leaf deep inside it
+  const gs=[...svg.children].filter(x=>x.tagName.toLowerCase()==='g');
+  ok('two logo groups at top level',gs.length===2,gs.length+' groups');
+  const rec=gs[1];
+  // a leaf that actually paints — not one buried in a <mask> or <defs>
+  const leaf=[...rec.querySelectorAll('path,polygon,use')].find(x=>
+    !x.closest('defs')&&!x.closest('mask')&&x.getBoundingClientRect().width>1);
+  ok('found a painted leaf inside the mark',!!leaf&&rec.contains(leaf),leaf&&leaf.tagName);
+
+  // --- a click takes the whole object, not the leaf ---
+  ok('click resolves to the group',w.feResolve(leaf)===rec,w.feResolve(leaf).tagName);
+  w.feSelect([w.feResolve(leaf)]);
+  ok('one thing selected',w.FE.sels.length===1&&w.FE.sels[0]===rec);
+  // double-click behaviour: once inside, clicks stay precise
+  w.feSelect([leaf]);
+  ok('after stepping inside, clicks stay precise',w.feResolve(leaf)===leaf,w.feResolve(leaf).tagName);
+
+  // --- moving the group moves everything in it ---
+  w.feSelect([rec]);
+  const before=rec.getBoundingClientRect(), kid=leaf.getBoundingClientRect();
+  w.feTranslate(rec,rec.getAttribute('transform')||'',0,0);
+  const t0=rec.getAttribute('transform');
+  w.feTranslate(rec,t0,40,0);await wait(60);
+  ok('group moved',Math.abs(rec.getBoundingClientRect().left-before.left)>10);
+  ok('its contents came along',Math.abs(leaf.getBoundingClientRect().left-kid.left)>10);
+  w.feTranslate(rec,rec.getAttribute('transform'),-40,0);
+
+  // --- multi-select ---
+  const kids=()=>[...svg.children].filter(x=>!x.classList.contains('fe-mark'));
+  const texts=[...svg.querySelectorAll(':scope > text')];
+  ok('three labels at top level',texts.length===3,texts.length+'');
+  w.feSelect(texts);await wait(80);
+  ok('multi-selection held',w.FE.sels.length===3);
+  ok('a marker per selection',id.querySelectorAll('.fe-mark:not(.fe-h)').length===3,
+     id.querySelectorAll('.fe-mark:not(.fe-h)').length+' markers, '+
+     id.querySelectorAll('.fe-h').length+' handles');
+  ok('panel switched to multi mode',/3 elements/.test(d.getElementById('fepanel').textContent));
+
+  // move them together
+  const pos=texts.map(t=>t.getBoundingClientRect().top);
+  texts.forEach(t=>w.feTranslate(t,t.getAttribute('transform')||'',0,12));await wait(60);
+  ok('all of them moved together',texts.every((t,i)=>Math.abs(t.getBoundingClientRect().top-pos[i])>4));
+  texts.forEach(t=>w.feTranslate(t,t.getAttribute('transform'),0,-12));
+
+  // --- group / ungroup ---
+  const n0=kids().length;
+  w.feSelect(texts);w.feGroup();await wait(80);
+  ok('grouped into one <g>',w.FE.sels.length===1&&w.FE.sels[0].tagName.toLowerCase()==='g',
+     w.FE.sels[0].tagName);
+  ok('it holds all three',w.FE.sels[0].children.length===3);
+  ok('top level shrank by two',kids().length===n0-2,kids().length+' vs '+n0);
+  const g=w.FE.sels[0];
+  g.setAttribute('transform','translate(5,7)');
+  w.feUngroup();await wait(80);
+  ok('ungrouped back to three',w.FE.sels.length===3);
+  ok('the wrapper transform was pushed down',
+     /translate\(5,7\)/.test(w.FE.sels[0].getAttribute('transform')||''),
+     w.FE.sels[0].getAttribute('transform'));
+
+  // --- markers never reach the saved file ---
+  w.feSelect(texts);await wait(60);
+  const html=w.feHtml();
+  ok('saved svg has no markers',!/fe-mark/.test(html)&&!/fe-hot/.test(html));
+  ok('saved svg is still valid',!!new W.DOMParser().parseFromString(html,'image/svg+xml')
+     .querySelector('svg')&&!new W.DOMParser().parseFromString(html,'image/svg+xml').querySelector('parsererror'));
+
+  // --- delete several at once, then undo ---
+  const c0=kids().length;
+  w.feSelect(texts.slice(0,2));w.feDel();await wait(60);
+  ok('deleted both at once',kids().length===c0-2,kids().length+' vs '+c0);
+  w.feUndo();await wait(900);
+  const svg2=d.getElementById('fefr').contentDocument.querySelector('svg');
+  ok('undo brought them back',svg2.querySelectorAll(':scope > text').length===3,
+     svg2.querySelectorAll(':scope > text').length+'');
+  ok('markers never survive a round trip',
+     !svg2.querySelector('.fe-mark')||[...svg2.querySelectorAll('.fe-mark')].length===0);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

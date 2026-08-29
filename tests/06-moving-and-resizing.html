@@ -1,0 +1,98 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  w.cur=0;w.paint();await wait(200);
+  w.figEdit(w.S.slides[0],'fig-marks');await wait(1300);
+  const id=d.getElementById('fefr').contentDocument, svg=id.querySelector('svg');
+  const kids=()=>[...svg.children].filter(x=>!/fe-mark|fe-band/.test(x.getAttribute('class')||''));
+
+  // ---------- the drag-speed bug ----------
+  const rec=[...svg.children].filter(x=>x.tagName.toLowerCase()==='g')[1];
+  const inner=[...rec.querySelectorAll('path,polygon')].find(x=>
+    !x.closest('defs')&&!x.closest('mask')&&x.getBoundingClientRect().width>1);
+  const ps=w.feParentScale(inner), z=w.feZoom();
+  ok('parent scale is not the element scale',ps.x<0.3&&ps.x>0.05,'parent '+ps.x.toFixed(4));
+  // a 100px pointer move must move the thing ~100px on screen, whatever it sits inside
+  const r0=inner.getBoundingClientRect();
+  const dX=100/z.x;
+  w.feTranslate(inner,inner.getAttribute('transform')||'',dX/ps.x,0);
+  await wait(40);
+  const moved=inner.getBoundingClientRect().left-r0.left;
+  ok('a nested element tracks the pointer 1:1',Math.abs(moved-100)<3,moved.toFixed(1)+'px for 100px of pointer');
+  // and the same for a top-level element
+  const top=[...svg.querySelectorAll(':scope > text')][0];
+  const ps2=w.feParentScale(top), t0=top.getBoundingClientRect().left;
+  w.feTranslate(top,top.getAttribute('transform')||'',(100/z.x)/ps2.x,0);await wait(40);
+  ok('a top-level element tracks it too',Math.abs(top.getBoundingClientRect().left-t0-100)<3,
+     (top.getBoundingClientRect().left-t0).toFixed(1)+'px');
+
+  // ---------- resize ----------
+  w.feSelect([rec]);await wait(80);
+  const hs=[...id.querySelectorAll('.fe-h')];
+  ok('eight handles drawn',hs.length===8,hs.length+'');
+  ok('handles carry a direction',hs.map(h=>h.getAttribute('data-h')).sort().join(',')==='e,n,ne,nw,s,se,sw,w');
+  const B=w.feBounds(), before=rec.getBoundingClientRect();
+  // drag the se handle out by 60 drawing units
+  const fake=(x,y)=>({clientX:x,clientY:y,shiftKey:false,preventDefault(){},stopPropagation(){}});
+  const box=d.getElementById('fefr').getBoundingClientRect();
+  w.feResize(fake(0,0),'se');
+  id.dispatchEvent(new W.MouseEvent('mousemove',{clientX:60*z.x,clientY:60*z.y,bubbles:true}));
+  await wait(50);
+  const after=rec.getBoundingClientRect();
+  const k=after.width/before.width;
+  ok('resize grew it',k>1.05,before.width.toFixed(0)+' → '+after.width.toFixed(0)+'  ('+k.toFixed(3)+'x)');
+  ok('a 60-unit diagonal drag is a modest change, not a leap',k<1.6,k.toFixed(3)+'x');
+  ok('corner kept the proportions',
+     Math.abs(after.width/after.height-before.width/before.height)<0.05,
+     (before.width/before.height).toFixed(3)+' → '+(after.width/after.height).toFixed(3));
+  id.dispatchEvent(new W.MouseEvent('mouseup',{bubbles:true}));
+  await wait(40);
+  ok('handles follow the new size',
+     Math.abs(w.feBounds().w-B.w)>10,B.w.toFixed(0)+' → '+w.feBounds().w.toFixed(0));
+  w.feUndo();await wait(900);
+
+  // ---------- duplicate ----------
+  const svg2=d.getElementById('fefr').contentDocument.querySelector('svg');
+  const kids2=()=>[...svg2.children].filter(x=>!/fe-mark|fe-band/.test(x.getAttribute('class')||''));
+  const g2=[...svg2.children].filter(x=>x.tagName.toLowerCase()==='g')[1];
+  const n0=kids2().length, ids0=svg2.querySelectorAll('[id]').length;
+  w.feSelect([g2]);w.feDup();await wait(80);
+  ok('duplicate added one',kids2().length===n0+1,kids2().length+' vs '+n0);
+  ok('the copy is selected',w.FE.sels.length===1&&w.FE.sels[0]!==g2);
+  ok('the copy is offset, not on top',/translate/.test(w.FE.sels[0].getAttribute('transform')||''));
+  const allIds=[...svg2.querySelectorAll('[id]')].map(x=>x.id);
+  ok('no duplicate ids',new Set(allIds).size===allIds.length,
+     allIds.length+' ids, '+new Set(allIds).size+' unique');
+  ok('the copy is clickable',w.FE.sels[0].classList.contains('fe-hot'));
+  w.feUndo();await wait(900);
+
+  // ---------- adding shapes ----------
+  const svg3=d.getElementById('fefr').contentDocument.querySelector('svg');
+  const kids3=()=>[...svg3.children].filter(x=>!/fe-mark|fe-band/.test(x.getAttribute('class')||''));
+  for(const [k,tag] of [['rect','rect'],['circle','circle'],['line','line'],['text','text'],['arrow','g'],['box','g']]){
+    const n=kids3().length;
+    w.feAdd(k);await wait(60);
+    const el=w.FE.sels[0];
+    ok('add '+k,kids3().length===n+1&&el.tagName.toLowerCase()===tag&&el.classList.contains('fe-hot'),
+       el&&el.tagName);
+  }
+  ok('added text has content',[...svg3.querySelectorAll(':scope > text')].some(t=>/New label/.test(t.textContent)));
+  ok('arrow is a line plus a head',w.FE.sels[0]&&true);
+  const arrow=[...svg3.children].reverse().find(x=>x.tagName.toLowerCase()==='g'&&x.querySelector('polygon'));
+  ok('arrow has both parts',!!arrow&&!!arrow.querySelector('line')&&!!arrow.querySelector('polygon'));
+
+  // ---------- nothing of ours leaks into the file ----------
+  const html=w.feHtml();
+  ok('saved file is clean',!/fe-mark|fe-hot|fe-h"|fe-band/.test(html));
+  const doc=new W.DOMParser().parseFromString(html,'image/svg+xml');
+  ok('saved file parses',!doc.querySelector('parsererror'));
+  ok('added shapes survived the save',doc.querySelectorAll('circle').length>=1&&
+     [...doc.querySelectorAll('text')].some(t=>/New label/.test(t.textContent)));
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

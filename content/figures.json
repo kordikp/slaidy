@@ -1,0 +1,12 @@
+{
+  "audience": "information-systems researchers and practitioners — technical, but not specialists in this field",
+  "concepts": [
+    {
+      "id": "fig-example-cascade",
+      "title": "Why a funnel, and not one big model",
+      "objective": "Compute per candidate rises by orders of magnitude from left to right while the number of candidates falls, which is the only reason the funnel has that shape.",
+      "takeaway": "The cascade is not a modelling insight. It is a compute constraint made visible.",
+      "brief": "Four stages left to right, each narrower than the last, with the candidate count falling and the cost per candidate rising. Show both numbers."
+    }
+  ]
+}

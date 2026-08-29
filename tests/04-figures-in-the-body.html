@@ -1,0 +1,59 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  // --- a figure with its own defs, ids and <use> ---
+  const af=w.S.figs['fig-marks']||'';
+  ok('the figure is bundled',!!af);
+  ok('it carries defs and a reference',/<defs>/.test(af)&&/href="#a"/.test(af));
+  ok('and two independent marks',/#0065BD/.test(af)&&/#0FA5A5/.test(af)&&/#FFC021/.test(af));
+
+  // --- it renders where the body places it ---
+  const inlineAt=w.S.slides.findIndex(x=>/!\[\[fig-marks\]\]/.test(x.body||''));
+  ok('a slide places it inline',inlineAt>=0,'slide '+(inlineAt+1));
+  w.cur=inlineAt;w.paint();await wait(250);
+  const sv=d.querySelector('#bd .inlinefig svg');
+  ok('the inline figure renders',!!sv);
+  const r=sv.getBoundingClientRect();
+  ok('and has real size',r.width>200&&r.height>20,Math.round(r.width)+'×'+Math.round(r.height));
+  const paths=sv.querySelectorAll('path,polygon,use,circle').length;
+  ok('both marks drew their shapes',paths>=4,paths+' shapes');
+
+  // --- inline figure is editable like any element ---
+  const bi=w.blocks(w.S.slides[inlineAt].body).findIndex(b=>b.kind==='fig');
+  ok('body has a figure block',bi>=0,'index '+bi);
+  const btn=[...d.querySelectorAll('#bd .bk')][bi]?.querySelector('[data-m="fed"]');
+  ok('inline figure has an Edit button',!!btn);
+  btn.click(); await wait(1300);
+  ok('editor opened on the inline figure',!!d.getElementById('fefr')&&w.FE.id==='fig-marks',
+     w.FE&&w.FE.id);
+  ok('editor knows how to rename it back',typeof w.FE.onRename==='function');
+  const isvg=d.getElementById('fefr').contentDocument.querySelector('svg');
+  ok('it renders in the editor',!!isvg&&isvg.getBoundingClientRect().width>200);
+  // save as a copy must rewrite the marker in the body, not s.fig
+  const before=w.S.slides[inlineAt].fig;
+  w.feCommit(true); await wait(200);
+  const b2=w.S.slides[inlineAt].body;
+  ok('copy rewrote the inline marker',/!\[\[fig-marks-v\d+\]\]/.test(b2),
+     (b2.match(/!\[\[[^\]]+\]\]/)||[''])[0]);
+  ok('and left s.fig alone',w.S.slides[inlineAt].fig===before,String(w.S.slides[inlineAt].fig));
+  w.undo(); await wait(150);
+  ok('undo puts the original marker back',/!\[\[fig-marks\]\]/.test(w.S.slides[inlineAt].body));
+
+  // --- icons ---
+  const ins=d.querySelectorAll('#plus button');
+  ok('insert bar has 7 buttons',ins.length===7,ins.length+'');
+  ok('they are icons now',[...ins].every(b=>b.querySelector('svg')&&!b.textContent.trim()));
+  ok('each keeps a readable label',[...ins].every(b=>b.title&&b.getAttribute('aria-label')),
+     [...ins].map(b=>b.title).join(', '));
+  w.insertMenu(ins[0],1); await wait(80);
+  const pop=d.querySelector('.inspop');
+  ok('popup pairs icon with text',!!pop&&pop.querySelectorAll('button svg').length===8&&
+     /Divider/.test(pop.textContent));
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

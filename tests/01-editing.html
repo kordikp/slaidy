@@ -1,0 +1,122 @@
+<!doctype html><meta charset=utf-8><style>html,body{margin:0}iframe{width:1440px;height:900px;border:0}</style>
+<iframe id=f src="/index.html"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument;
+ await wait(3500);
+ const w=W.__api;
+ try{
+  ok('deck loaded',w.S.slides.length===34,w.S.slides.length+' slides');
+  ok('figures loaded',Object.keys(w.S.figs).length===6,Object.keys(w.S.figs).length+'');
+
+  // --- reorder by drag ---
+  const t0=w.S.slides[5].title, g0=w.S.slides[5].group;
+  w.cur=5; w.moveSlide(3);
+  ok('moveSlide moves it',w.S.slides[8].title===t0,'landed at '+w.S.slides.findIndex(s=>s.title===t0));
+  ok('numbering renormalised',w.S.slides[8].n===9,'n='+w.S.slides[8].n);
+  ok('adopts the section it lands in',w.S.slides[8].group===w.S.slides[7].group,w.S.slides[8].group);
+  w.cur=8; w.moveSlide(-3);
+  ok('moves back',w.S.slides[5].title===t0);
+  w.S.slides[5].group=g0;
+
+  // --- 16:9 frame + overflow detection ---
+  const sl=d.querySelector('#sheet .stagewrap'), r=sl.getBoundingClientRect();
+  ok('slide is 16:9',Math.abs(r.width/r.height-16/9)<0.02,(r.width/r.height).toFixed(3));
+  ok('the stage itself is 1280x720',d.querySelector('#sheet .stage').offsetWidth===1280);
+  ok('overflow flag exists',!!d.getElementById('overflag'));
+
+  // --- figure editor ---
+  const s=w.S.slides.find(x=>x.fig&&w.S.figs[x.fig]);
+  w.cur=w.S.slides.indexOf(s); w.paint(); await wait(150);
+  w.figEdit(s); await wait(1200);
+  const fr=d.getElementById('fefr');
+  ok('editor opened',!!fr);
+  const id=fr.contentDocument, svg=id.querySelector('svg');
+  ok('svg live in the iframe',!!svg,svg&&svg.getAttribute('viewBox'));
+
+  const rect=svg.getBoundingClientRect();
+  ok('svg actually renders',rect.width>200&&rect.height>100,Math.round(rect.width)+'×'+Math.round(rect.height));
+  const dlg=d.querySelector('.dlg.wide').getBoundingClientRect();
+  ok('editor dialog is tall',dlg.height>500,Math.round(dlg.height)+'px tall');
+  ok('canvas fills the dialog',d.getElementById('fecanvas').getBoundingClientRect().height>400);
+  ok('editor css did not leak',getComputedStyle(d.querySelector('#bar .logo')).position==='static');
+
+  // select something and move it
+  const el=[...svg.querySelectorAll('rect,circle,path,text')].find(x=>!x.closest('defs'));
+  w.feSelect(el); await wait(60);
+  const mk=id.querySelector('.fe-mark');
+  ok('marker drawn inside the svg',!!mk);
+  const mr=mk.getBoundingClientRect(),er=el.getBoundingClientRect();
+  ok('marker sits on the element',Math.abs(mr.left-er.left)<14&&Math.abs(mr.top-er.top)<14,
+     `marker ${Math.round(mr.left)},${Math.round(mr.top)} vs element ${Math.round(er.left)},${Math.round(er.top)}`);
+  const before=el.getAttribute('transform')||'';
+  w.feTranslate(el,before,12,-7);
+  ok('drag writes a translate',/translate\(12(\.0)?,-7(\.0)?\)/.test(el.getAttribute('transform')),el.getAttribute('transform'));
+  w.feTranslate(el,el.getAttribute('transform'),3,3);
+  ok('translates merge, not stack',(el.getAttribute('transform').match(/translate/g)||[]).length===1,el.getAttribute('transform'));
+
+  // text edit
+  const tx=[...svg.querySelectorAll('text')].find(x=>x.textContent.trim());
+  if(tx){const o=tx.textContent;w.feSelect(tx);await wait(60);
+   const ta=d.getElementById('feTxt');
+   ok('text panel appears',!!ta,ta?JSON.stringify(ta.value.slice(0,24)):'');
+   if(ta){ta.value='EDITED';ta.dispatchEvent(new W.Event('input'));await wait(30);
+     ok('text edit reaches the svg',svg.contains(tx)&&/EDITED/.test(tx.textContent),tx.textContent.slice(0,20));}}
+
+  // undo history + save
+  const nfig=Object.keys(w.S.figs).length;
+  w.fePush(); ok('history records',w.FE.hist.length>0,w.FE.hist.length+' steps');
+  w.feCommit(true); await wait(120);
+  ok('save as copy adds a figure',Object.keys(w.S.figs).length===nfig+1);
+  const saved=w.S.figs[w.S.slides[w.cur].fig];
+  ok('copy has no editor artefacts',!/fe-hot/.test(saved)&&!/fe-marker/.test(saved));
+  ok('undo history is clean too',!w.FE.hist.some(h=>/fe-marker|fe-hot/.test(h)));
+
+  // --- inspector sections ---
+  w.figEdit&&0; d.getElementById('veil').classList.remove('on');
+  w.paint(); await wait(200);
+  const secs=d.querySelectorAll('#side .sec');
+  ok('inspector is sectioned',secs.length===4,secs.length+' sections');
+  ok('inspector has padding',parseFloat(getComputedStyle(secs[0]).paddingLeft)>8);
+
+  // --- undo ---
+  w.cur=3;const t3=w.S.slides[3].title;
+  w.snap('test');w.S.slides[3].title='ZZZ';w.paint();await wait(50);
+  ok('undo restores a title',(w.undo(),w.S.slides[3].title)===t3,w.S.slides[3].title);
+  const n0=w.S.slides.length;
+  w.snap('test2');w.S.slides.splice(3,1);
+  w.undo(); ok('undo restores a deleted slide',w.S.slides.length===n0,w.S.slides.length+' vs '+n0);
+  const fid=w.S.slides.find(x=>x.fig&&w.S.figs[x.fig]).fig, f0=w.S.figs[fid];
+  w.snap('test3',{[fid]:f0}); w.S.figs[fid]='<svg viewBox="0 0 800 450"/>';
+  w.undo(); ok('undo restores a figure',w.S.figs[fid]===f0);
+  while(w.UNDO.length)w.undo();
+  ok('undo stops cleanly when empty',(w.undo(),true));
+
+  // --- editor mirrors what is projected ---
+  const fs=w.S.slides.findIndex(x=>x.layout==='figure'&&x.fig&&w.S.figs[x.fig]);
+  w.cur=fs;w.paint();await wait(120);
+  ok('figure slide keeps its body on the slide',!!d.querySelector('#sheet .stage .tx.under')&&
+     !d.querySelector('.offstage:not(.notes)'));
+  const fsvg=d.querySelector('#sheet .stage .hero svg'),fr2=d.querySelector('#sheet .stage').getBoundingClientRect();
+  ok('figure scaled inside the frame',fsvg.getBoundingClientRect().bottom<=fr2.bottom+1,
+     Math.round(fsvg.getBoundingClientRect().bottom)+' vs frame '+Math.round(fr2.bottom));
+  const ts=w.S.slides.findIndex(x=>x.layout==='text');
+  w.cur=ts;w.paint();await wait(120);
+  ok('text slide keeps its text on the slide',
+     !!d.querySelector('#sheet .stage .tx')&&!d.querySelector('.offstage:not(.notes)'));
+  ok('speaker notes sit below the slide, always',!!d.querySelector('.offstage.notes textarea'));
+  ok('and not in the right panel',!d.querySelector('#side #fNote'));
+
+  // --- present mode ---
+  await w.present(true); await wait(300);
+  ok('present mode on',d.getElementById('show').classList.contains('on'));
+  ok('deck rendered',!!d.querySelector('#deck h2'));
+  await w.present(false); await wait(100);
+  ok('back to editing',!d.getElementById('show').classList.contains('on'));
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.title=L.filter(x=>x.startsWith('FAIL')||x.startsWith('ERROR')).length+' problems';
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

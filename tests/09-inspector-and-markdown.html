@@ -1,0 +1,86 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:920px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  w.cur=w.S.slides.findIndex(x=>x.fig&&x.body.trim());w.paint();await wait(200);
+
+  // ---------- the panel is what was asked for ----------
+  ok('summary field is at the top',!!d.getElementById('fSum'));
+  ok('figure section is gone',!d.getElementById('bGal')&&!d.querySelector('#side .thumb'));
+  ok('no word-count block',!d.querySelector('#side .glance')&&!d.querySelector('#side .flags'));
+  const chips=[...d.querySelectorAll('#side .chips button')];
+  ok('AI actions are chips',chips.length===6,chips.length+'');
+  ok('their hints are tooltips, not text',chips.every(b=>b.title&&b.title.length>10&&!b.querySelector('span')),
+     chips[0]&&chips[0].title);
+  ok('timing is one quiet line',!!d.querySelector('#side .foot'),
+     d.querySelector('#side .foot')?.textContent.trim());
+
+  // ---------- the summary round-trips ----------
+  const at=w.cur, s=w.S.slides[at];
+  const sum=d.getElementById('fSum');
+  sum.value='Both kinds of feedback fail, in opposite ways.';
+  sum.dispatchEvent(new W.Event('input'));await wait(80);
+  ok('typing stores it',s.summary==='Both kinds of feedback fail, in opposite ways.');
+  const md=w.slideMd(s);
+  ok('markdown carries it',/^\*Summary:\* Both kinds/m.test(md),
+     (md.match(/^\*Summary:\*.*$/m)||[''])[0].slice(0,52));
+  const back=w.importMarkdown('x.md','# A\n\n'+md);
+  ok('reading it back recovers it',back[0].summary===s.summary,back[0].summary);
+  ok('and it is not left in the body',!/Summary:/.test(back[0].body));
+
+  // ---------- markdown editor ----------
+  w.editMarkdown();await wait(250);
+  const src=d.getElementById('mdSrc'),pv=d.getElementById('mdPv');
+  ok('editor opened',!!src&&!!pv);
+  ok('preview sits on the left of the source',
+     pv.getBoundingClientRect().left<src.getBoundingClientRect().left);
+  ok('preview drew the slide',!!pv.querySelector('.stage h2'),
+     pv.querySelector('.stage h2')?.textContent.slice(0,32));
+  ok('preview is a 16:9 frame',
+     Math.abs(pv.querySelector('.pvwrap').getBoundingClientRect().width/
+              pv.querySelector('.pvwrap').getBoundingClientRect().height-16/9)<0.03);
+  ok('preview uses the very same stage as the board',
+     pv.querySelector('.stage').offsetWidth===1280);
+  ok('the figure is in the preview',!!pv.querySelector('.stage svg'));
+  ok('the summary shows under it',/Both kinds of feedback/.test(pv.textContent));
+
+  // live update
+  src.value=src.value.replace(w.S.slides[w.cur].title,'A brand new title');
+  src.dispatchEvent(new W.Event('input'));await wait(400);
+  ok('preview follows as you type',/A brand new title/.test(pv.textContent));
+
+  // splitting
+  const two=src.value+'\n\n---\n\n### 99. `[S]` Second one\n\nMore body.\n';
+  src.value=two;src.dispatchEvent(new W.Event('input'));await wait(400);
+  ok('two headings render two frames',pv.querySelectorAll('.pvwrap').length===2,
+     pv.querySelectorAll('.pvwrap').length+'');
+  ok('and it says so',/Splits into 2/.test(d.getElementById('mdMsg').textContent),
+     d.getElementById('mdMsg').textContent.trim());
+
+  // broken input
+  src.value='no heading here at all';src.dispatchEvent(new W.Event('input'));await wait(400);
+  ok('bad markdown says why, does not crash',!!pv.querySelector('.pvbad'));
+  // a bare ### is enough — numbering and tag get filled in
+  src.value='### Just a title\n\nAnd a line of body.';
+  src.dispatchEvent(new W.Event('input'));await wait(400);
+  ok('a bare ### heading is accepted',!!pv.querySelector('.stage h2')&&
+     /Just a title/.test(pv.textContent),pv.querySelector('.stage h2')?.textContent);
+  ok('Apply is not blocked by it',!d.getElementById('mdOk').disabled);
+
+  // apply the split
+  src.value=two;src.dispatchEvent(new W.Event('input'));await wait(300);
+  const n0=w.S.slides.length;
+  d.getElementById('mdOk').click();await wait(300);
+  ok('applying the split adds a slide',w.S.slides.length===n0+1,w.S.slides.length+' vs '+n0);
+  ok('the new one keeps the section',w.S.slides[at+1].group===w.S.slides[at].group&&
+     w.S.slides[at+1].sub===w.S.slides[at].sub,String(w.S.slides[at+1].sub));
+  ok('numbering was fixed',w.S.slides[at+1].n===at+2,String(w.S.slides[at+1].n));
+  w.undo();await wait(200);
+  ok('undo puts it back',w.S.slides.length===n0);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

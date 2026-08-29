@@ -1,0 +1,76 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  w.cur=0;w.paint();await wait(200);
+  w.figEdit(w.S.slides[0],'fig-marks');await wait(1300);
+  const idoc=d.getElementById('fefr').contentDocument, svg=idoc.querySelector('svg');
+  const kids=()=>[...svg.children].filter(x=>!/fe-mark|fe-band/.test(x.getAttribute('class')||''));
+
+  // ---------- clicking the Delete button ----------
+  const t1=[...svg.querySelectorAll(':scope > text')][0];
+  w.feSelect([t1]); await wait(120);
+  const btn=d.getElementById('feDel');
+  ok('Delete button is in the panel',!!btn);
+  const n0=kids().length;
+  btn.click(); await wait(150);
+  ok('clicking Delete removes it',kids().length===n0-1&&!svg.contains(t1),
+     kids().length+' vs '+n0);
+
+  // multi
+  const ts=[...svg.querySelectorAll(':scope > text')];
+  w.feSelect(ts); await wait(150);
+  const btnM=d.getElementById('feDelM');
+  ok('multi Delete button is there',!!btnM);
+  const n1=kids().length;
+  btnM.click(); await wait(150);
+  ok('multi Delete removes them all',kids().length===n1-ts.length,kids().length+' vs '+n1);
+  w.feUndo();await wait(900);w.feUndo();await wait(900);
+
+  // ---------- a real resize drag, event by event ----------
+  const svg2=d.getElementById('fefr').contentDocument.querySelector('svg');
+  const idoc2=d.getElementById('fefr').contentDocument;
+  const g=[...svg2.children].filter(x=>x.tagName.toLowerCase()==='g')[1];
+  w.feSelect([g]); await wait(120);
+  const se=idoc2.querySelector('.fe-h[data-h="se"]');
+  ok('se handle exists',!!se);
+  const hr=se.getBoundingClientRect();
+  const cx=hr.left+hr.width/2, cy=hr.top+hr.height/2;
+  const before=g.getBoundingClientRect();
+  se.dispatchEvent(new W.MouseEvent('mousedown',{clientX:cx,clientY:cy,bubbles:true}));
+  await wait(30);
+  ok('the handle survives the drag starting',!!idoc2.querySelector('.fe-h[data-h="se"]'));
+  ok('it is the same element, not a replacement',idoc2.querySelector('.fe-h[data-h="se"]')===se);
+  // three incremental moves, as a real mouse would
+  let last=before.width;
+  for(const step of [20,40,60]){
+    idoc2.dispatchEvent(new W.MouseEvent('mousemove',{clientX:cx+step,clientY:cy+step*0.12,bubbles:true}));
+    await wait(30);
+    const now=g.getBoundingClientRect().width;
+    ok('step '+step+' grows monotonically',now>last,last.toFixed(0)+' → '+now.toFixed(0));
+    last=now;
+  }
+  ok('handle still alive after the drag',idoc2.querySelector('.fe-h[data-h="se"]')===se);
+  const hr2=se.getBoundingClientRect();
+  ok('handle moved with the corner',Math.abs(hr2.left-hr.left)>10,
+     hr.left.toFixed(0)+' → '+hr2.left.toFixed(0));
+  ok('handle sits on the corner it belongs to',
+     Math.abs((hr2.left+hr2.width/2)-g.getBoundingClientRect().right)<6,
+     'handle '+(hr2.left+hr2.width/2).toFixed(0)+' vs corner '+g.getBoundingClientRect().right.toFixed(0));
+  idoc2.dispatchEvent(new W.MouseEvent('mouseup',{bubbles:true}));
+  await wait(60);
+  ok('one undo step for the whole drag',w.FE.hist.length>=1);
+  const grew=g.getBoundingClientRect().width/before.width;
+  ok('total growth is proportional to the drag',grew>1.05&&grew<2,grew.toFixed(3)+'x');
+
+  // ---------- panel rebuild ----------
+  w.feSelect([]);await wait(80);
+  ok('handles vanish with the selection',idoc2.querySelectorAll('.fe-h').length===0,
+     idoc2.querySelectorAll('.fe-h').length+'');
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

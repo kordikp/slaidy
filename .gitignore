@@ -1,0 +1,12 @@
+# built bundles, except the example the README tells you to open
+decks/*.json
+!decks/example.json
+
+# test artefacts
+tests/fixture.json
+
+# local
+.venv/
+__pycache__/
+*.pyc
+.DS_Store

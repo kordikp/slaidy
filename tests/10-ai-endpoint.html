@@ -1,0 +1,32 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  // this test page is served by a plain file server — exactly the failing case
+  let msg='';
+  try{ await w.llm('s','u',10); }catch(e){ msg=e.message; }
+  ok('a plain file server no longer looks like a JSON bug',
+     !/Unexpected token|not valid JSON/.test(msg),msg.slice(0,58)+'…');
+  ok('and it says what to do instead',/studio\.sh/.test(msg)&&/AI endpoint/.test(msg));
+
+  // the panel shows that message, not a stack trace
+  w.cur=11;w.paint();await wait(150);
+  d.querySelector('#side .chips button').click();
+  await wait(600);
+  const out=d.getElementById('aiout').textContent;
+  ok('the panel repeats it plainly',/Failed:/.test(out)&&/studio\.sh/.test(out),out.slice(0,58)+'…');
+  ok('no JSON noise in the panel',!/Unexpected token/.test(out));
+
+  // a configured but broken endpoint reports the server's own words
+  W.localStorage.setItem('studio:cfg',JSON.stringify({url:'/nope',key:'',model:'m'}));
+  let m2='';
+  try{ await w.llm('s','u',10); }catch(e){ m2=e.message; }
+  ok('a wrong endpoint names itself',/\/nope/.test(m2)&&/404|not JSON/.test(m2),m2.slice(0,58)+'…');
+  W.localStorage.removeItem('studio:cfg');
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

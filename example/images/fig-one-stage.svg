@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,sans-serif">
+  <style>
+    @keyframes pulse { 0%,100%{opacity:.25} 50%{opacity:1} }
+    .beam { animation: pulse 6s ease-in-out infinite; }
+    .beam2 { animation: pulse 6s ease-in-out infinite; animation-delay: -2s; }
+    .beam3 { animation: pulse 6s ease-in-out infinite; animation-delay: -4s; }
+  </style>
+  <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
+  <text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">One stage, three surfaces</text>
+
+  <rect x="310" y="72" width="180" height="102" rx="10" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+  <text x="400" y="112" text-anchor="middle" font-size="14" font-weight="700" fill="#4C1D95">1280 × 720</text>
+  <text x="400" y="134" text-anchor="middle" font-size="12" fill="#6B7280">one markup, one stylesheet</text>
+  <text x="400" y="154" text-anchor="middle" font-size="12" fill="#6B7280">scaled, never re-laid-out</text>
+
+  <path class="beam"  d="M355 174 L165 250" stroke="#7C3AED" stroke-width="2" fill="none"/>
+  <path class="beam2" d="M400 174 L400 250" stroke="#7C3AED" stroke-width="2" fill="none"/>
+  <path class="beam3" d="M445 174 L635 250" stroke="#7C3AED" stroke-width="2" fill="none"/>
+
+  <rect x="60" y="252" width="210" height="96" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+  <text x="165" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#1E1B4B">Editor</text>
+  <text x="165" y="306" text-anchor="middle" font-size="11.5" fill="#6B7280">scale 0.73</text>
+  <text x="165" y="326" text-anchor="middle" font-size="11.5" fill="#6B7280">plus editing handles</text>
+
+  <rect x="295" y="252" width="210" height="96" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+  <text x="400" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#1E1B4B">Projector</text>
+  <text x="400" y="306" text-anchor="middle" font-size="11.5" fill="#6B7280">scale to fit the screen</text>
+  <text x="400" y="326" text-anchor="middle" font-size="11.5" fill="#6B7280">full screen, no chrome</text>
+
+  <rect x="530" y="252" width="210" height="96" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+  <text x="635" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#1E1B4B">PDF</text>
+  <text x="635" y="306" text-anchor="middle" font-size="11.5" fill="#6B7280">scale 0.877</text>
+  <text x="635" y="326" text-anchor="middle" font-size="11.5" fill="#6B7280">297 × 167 mm, one page</text>
+
+  <rect x="60" y="366" width="680" height="38" rx="8" fill="#D1FAE5" stroke="#10B981" stroke-width="1.5"/>
+  <text x="400" y="390" text-anchor="middle" font-size="13" font-weight="700" fill="#065F46">What you arrange is what the room sees</text>
+  <text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">Three renderers drift apart. One renderer, scaled three ways, cannot.</text>
+</svg>

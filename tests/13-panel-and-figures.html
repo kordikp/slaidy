@@ -84,6 +84,44 @@ addEventListener('load',async()=>{
   ok('clicking the text opens the editor',!d.getElementById('fNote').classList.contains('hidden'));
   d.getElementById('fNote').blur();await wait(120);
   ok('and blurring renders it again',!!d.getElementById('noteView').querySelector('a'));
+
+  // ---------- type size: per slide, and for the whole deck ----------
+  const ti=w.S.slides.findIndex(x=>(x.body||'').trim());
+  w.cur=ti;w.paint();await wait(200);
+  const tz=d.getElementById('tSize');
+  ok('the panel can set the text size for this slide',!!tz,
+     'it was only ever reachable through the markdown or Tidy');
+  ok('it starts at what the slide holds',+tz.value===(w.S.slides[ti].textScale||100),
+     tz.value+' vs '+w.S.slides[ti].textScale);
+  const stage=d.getElementById('stage');
+  const px=()=>parseFloat(W.getComputedStyle(stage.querySelector('.tx')).fontSize);
+  const was=px();
+  tz.value='70';tz.dispatchEvent(new W.Event('input'));await wait(120);
+  ok('dragging it changes the slide as you drag',px()<was*0.8,
+     Math.round(was)+'px → '+Math.round(px())+'px');
+  tz.dispatchEvent(new W.Event('change'));await wait(250);
+  ok('letting go keeps it on the slide',w.S.slides[ti].textScale===70,
+     String(w.S.slides[ti].textScale));
+  ok('and the markdown carries it',/^\*Text:\* 70%/m.test(w.slideMd(w.S.slides[ti])));
+  w.undo();await wait(200);
+  ok('one undo puts it back',w.S.slides[ti].textScale===(was===px()?100:w.S.slides[ti].textScale),
+     String(w.S.slides[ti].textScale));
+
+  // the deck-wide sizes live in Deck settings
+  w.deckSettings();await wait(200);
+  const body=d.querySelector('.dlg [data-s="bodySize"]'),
+        title=d.querySelector('.dlg [data-s="titleSize"]');
+  ok('the deck has one body size for everything',!!body,body&&body.value+'px');
+  ok('and one title size',!!title,title&&title.value+'px');
+  const before=parseFloat(W.getComputedStyle(d.documentElement).getPropertyValue('--d-body'));
+  body.value=String(Math.min(26,before+4));body.dispatchEvent(new W.Event('input'));await wait(200);
+  const after=parseFloat(W.getComputedStyle(d.documentElement).getPropertyValue('--d-body'));
+  ok('changing it moves every slide at once',after>before,before+'px → '+after+'px');
+  ok('and it is kept on the deck, not in the browser',w.S.style.bodySize===after,
+     String(w.S.style.bodySize));
+  body.value=String(before);body.dispatchEvent(new W.Event('input'));await wait(150);
+  d.getElementById('dsOk').click();await wait(150);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

@@ -127,6 +127,12 @@ want; swapping it is a separate button. Adding one asks which you meant: pick fr
 library, or describe what it should show and have it drawn to the same rules as the rest.
 Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
 
+**Type size.** For the whole deck, `⋯ → Deck settings` has a title size and a body size; they move
+every slide at once, apply as you drag, and are kept on the deck so an export and a rebuild keep
+them. For one slide, the panel's **Text size** slider is a percentage of that body size — it has
+always been in the file as `*Text:* 82%` and Tidy has always set it, but until now there was no way
+to reach it by hand.
+
 **Figures never take more room than the slide has.** A figure among text is contained on both
 axes, the way the hero figure always was. It used to be width only, and that is how a figure ate a
 slide: asked for at 85% of a 1168-wide column it took 993 × 558 in a column 540 tall — taller than

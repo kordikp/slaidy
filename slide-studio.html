@@ -2277,6 +2277,10 @@ function paintSide(){
     ${has?`<div class="fld" style="margin-top:10px"><label>Figure size
         <span class="pos" id="fsLab">${s.figScale||100} %</span></label>
       <input id="fSize" type="range" min="40" max="100" step="5" value="${s.figScale||100}"></div>`:''}
+    <div class="fld" style="margin-top:10px"><label>Text size
+        <span class="pos" id="tsLab">${s.textScale||100} %</span></label>
+      <input id="tSize" type="range" min="60" max="130" step="2" value="${s.textScale||100}"
+        title="This slide only, as a percentage of the deck's body size (⋯ → Deck settings)"></div>
   </div>
 
   ${empty?'':`<div class="sec"><div class="sect">Changes to make</div>
@@ -2312,6 +2316,17 @@ function paintSide(){
   if(de0){
     de0.onfocus=()=>snap('summary');
     de0.oninput=()=>{s.summary=de0.value;touch();};
+  }
+  /* Per slide, as a percentage of the deck's own body size. It has always been
+     in the file as *Text: N%* and Tidy has always set it; there was simply no
+     way to reach it by hand. */
+  const tz=el.querySelector('#tSize');
+  if(tz){
+    tz.oninput=()=>{document.getElementById('tsLab').textContent=tz.value+' %';
+      s.textScale=+tz.value;
+      const tx=document.querySelector('#sheet .tx');
+      if(tx)tx.style.fontSize=+tz.value===100?'':`calc(var(--d-body)*${+tz.value/100})`;};
+    tz.onchange=()=>{snap('text size');touch();paint();};
   }
   const fz=el.querySelector('#fSize');
   if(fz){

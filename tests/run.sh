@@ -32,12 +32,12 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   present,paint,moveSlide,checkFit,shortcuts,snap,undo,insertBlock,insertMenu,blocks,where,slideMd,
   importMarkdown,deckSettings,applyStyle,style,hdrHtml,paintNav,paintBody,paintSide,editMarkdown,stats,
   mdParse,mdPreview,mdNormalise,llm,stageHtml,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
-  fig,toggleSkip,liveIdx,liveStats,planTrim,scoreSlide,trimDialog,clock,
+  fig,measureStage,toggleSkip,liveIdx,liveStats,planTrim,scoreSlide,trimDialog,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},
   pickFigure,figRef,figMark,notesHtml,tidyAllDialog,askSummary,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
-  srcHtml,srcSync,feId,edgePoint,get feDraw(){return feDraw},set feDraw(v){feDraw=v}};"""
+  srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v}};"""
 open(p, "w", encoding="utf-8").write(s[:i] + hook + s[i:])
 PY
 

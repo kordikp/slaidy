@@ -101,7 +101,7 @@ button{cursor:pointer;background:none;border:none}
 .stage .stack.col{flex-direction:column}
 .stage .stack.rev{flex-direction:row-reverse}
 .stage .fg{flex:1;display:flex;align-items:safe center;justify-content:center;min-height:0;overflow:hidden;
- --fs:100%}
+ --fs:100%;--fsn:1;container-type:size}
 /* side by side, both columns start at the top: whatever the two heights are, they
    never look adrift from each other. Slack under a short text is a job for Tidy. */
 .stage .stack:not(.col)>.fg,.stage .stack:not(.col)>.fg .hero{align-items:flex-start}
@@ -114,11 +114,19 @@ button{cursor:pointer;background:none;border:none}
 .stage .stack.mid.col{justify-content:safe center}
 /* height:auto lets the viewBox set the box, so the element is the drawing rather
    than a column the drawing floats in the middle of */
-.stage .fg svg{width:var(--fs);height:auto;max-height:var(--fs);display:block}
+/* fit inside the column on both axes, at the size asked for */
+.stage .fg .figbox{width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
+ aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
+.stage .fg svg{width:100%;height:100%;display:block}
 /* safe center: centred when it fits, top-aligned when it would otherwise be cut */
 .stage .tx{align-self:stretch}
 .stage .tx{flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C;
  display:flex;flex-direction:column}
+/* In the editor you can scroll to whatever spilled past the frame — otherwise the
+   thing you need to fix is the one thing you cannot reach. No visible scrollbar,
+   so the geometry stays identical to what is projected. */
+#sheet .stage .tx{overflow:auto;scrollbar-width:none}
+#sheet .stage .tx::-webkit-scrollbar{width:0;height:0}
 .stage .txin{min-height:0}
 .stage .tx.under{flex:none;max-height:46%;margin-top:20px}
 .stage.bgfig .bgl{position:absolute;inset:0;opacity:.12;display:flex;align-items:center;justify-content:center}
@@ -139,20 +147,38 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx a{color:var(--e);text-decoration:none}
 .stage .tx .gap{height:34px}
 .stage .tx .rule{border:0;border-top:1px solid var(--line);margin:20px 0}
-.stage .tx .inlinefig{margin:12px 0;text-align:center;--fs:100%}
-.stage .tx .inlinefig svg{width:var(--fs);max-width:100%;height:auto;display:inline-block}
+.stage .tx .inlinefig{margin:12px 0;--fs:100%;--fsn:1;display:flex;justify-content:center}
+.stage .tx .inlinefig .figbox{width:calc(100%*var(--fsn));aspect-ratio:var(--arw)/var(--arh);
+ position:relative}
+.stage .tx .inlinefig svg{width:100%;height:100%;display:block}
 
 /* editing affordances live on the same stage, so nothing shifts when you present */
-.stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;justify-content:center}
+.stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;
+ justify-content:center;container-type:size}
+.stage .hero .figbox{width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
+ aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
 .stage .hero:hover{outline:1px dashed #CFD3DA;border-radius:6px}
-.stage .hero svg{width:var(--fs);height:auto;max-height:var(--fs);display:block}
+.stage .hero svg{width:100%;height:100%;display:block}
 .stage .hero .empty{color:var(--faint);font-size:16px;padding:28px;border:1px dashed var(--line);
  border-radius:10px;text-align:center}
-.figtools{position:absolute;top:6px;right:6px;display:none;gap:5px;z-index:2}
-.stage .hero:hover .figtools{display:flex}
-.figtools button{background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:14px;
- box-shadow:0 1px 3px rgba(15,18,26,.08)}
-.figtools button:hover{border-color:var(--acc);color:var(--acc)}
+.stage .fx{position:relative}
+.stage .fx>svg{display:block}
+.stage .fx:hover{outline:1px dashed #CFD3DA;outline-offset:2px;border-radius:4px}
+.figbar{position:absolute;top:5px;right:5px;display:none;gap:4px;z-index:3}
+.stage .fx:hover .figbar{display:flex}
+.figbar button{background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 9px;
+ font-size:15px;line-height:1.3;box-shadow:0 1px 3px rgba(15,18,26,.1)}
+.figbar button:hover{border-color:var(--acc);color:var(--acc)}
+.figgrip{position:absolute;right:-6px;bottom:-6px;width:18px;height:18px;border-radius:5px;
+ background:#fff;border:1.5px solid var(--acc);cursor:nwse-resize;display:none;z-index:3;
+ box-shadow:0 1px 4px rgba(15,18,26,.16)}
+.stage .fx:hover .figgrip,.stage .fx.sizing .figgrip{display:block}
+.figgrip::after{content:'';position:absolute;inset:4px;border-right:2px solid var(--acc);
+ border-bottom:2px solid var(--acc);border-radius:1px;opacity:.75}
+.figpct{position:absolute;right:22px;bottom:0;background:var(--ink);color:#fff;font:600 11px system-ui;
+ padding:2px 7px;border-radius:20px;white-space:nowrap;display:none}
+.stage .fx.sizing .figpct{display:block}
+.stage .fx.sizing{outline:1px solid var(--acc);outline-offset:2px}
 .bk{position:relative;border-radius:5px;padding:0 6px;margin:0 -6px}
 .bk:hover{background:#F6F7F9;cursor:text}
 .bkt{position:absolute;left:-34px;top:1px;display:none;flex-direction:column;gap:2px;z-index:3}
@@ -175,8 +201,12 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .inspop button:hover .mi{color:var(--acc)}
 
 #overflag{align-self:center;margin-top:10px;font-size:11.5px;color:#B4232A;background:#FDF0F0;
- border:1px solid #F0B4B7;border-radius:20px;padding:3px 12px;display:none}
-#overflag.on{display:block}
+ border:1px solid #F0B4B7;border-radius:20px;padding:3px 5px 3px 13px;display:none;
+ align-items:center;gap:5px}
+#overflag.on{display:flex}
+#overflag button{font-size:11px;color:#B4232A;background:#fff;border:1px solid #F0B4B7;
+ border-radius:20px;padding:2px 9px;transition:.12s}
+#overflag button:hover{background:#B4232A;color:#fff;border-color:#B4232A}
 .stagewrap.over{border-color:#F0B4B7}
 .offstage{width:100%;margin-top:12px;border:1px dashed var(--line);border-radius:var(--r10);
  padding:12px 17px 14px}
@@ -627,7 +657,24 @@ function scopeCss(css,uid){
   }
   return out;
 }
+/* Every inlined copy gets its own ids. Two copies of the same figure on the page
+   — the visible one and the hidden stage Tidy measures in — put two #rc-b masks
+   in one document, url(#rc-b) resolved to whichever came first, and the Recombee
+   mark lost its rounded corners while presenting. */
+function freshIds(svg,uid){
+  const ids=[...new Set([...svg.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]))];
+  if(!ids.length)return svg;
+  ids.forEach(id=>{
+    const q=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), n=`${id}-${uid}`;
+    svg=svg.replace(new RegExp(`\\bid="${q}"`,'g'),`id="${n}"`)
+           .replace(new RegExp(`((?:xlink:)?href)="#${q}"`,'g'),`$1="#${n}"`)
+           .replace(new RegExp(`url\\(#${q}\\)`,'g'),`url(#${n})`)
+           .replace(new RegExp(`begin="${q}\\.`,'g'),`begin="${n}.`);
+  });
+  return svg;
+}
 function scopeSvg(svg,uid){
+  svg=freshIds(svg,uid);
   if(!svg) return '';
   svg=svg.replace(/<\?xml[^>]*\?>/,'').trim();
   svg=svg.replace(/<svg\b/,`<svg id="${uid}"`);
@@ -643,7 +690,13 @@ function scopeSvg(svg,uid){
 let uidN=0;
 function fig(id){
   const svg=S.figs[id];
-  return svg?scopeSvg(svg,'f'+(++uidN)):'';
+  if(!svg)return '';
+  /* The drawing gets a box of its own size. Left to fill its column the element
+     is wider than the picture inside it, so an outline or a grip on its corner
+     lands in empty space rather than on the thing you are pointing at. */
+  const m=svg.match(/viewBox="\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
+  const ar=m?`--arw:${m[1]};--arh:${m[2]}`:'--arw:16;--arh:9';
+  return `<div class="figbox" style="${ar}">${scopeSvg(svg,'f'+(++uidN))}</div>`;
 }
 
 /* ---------- markdown ---------- */
@@ -696,7 +749,7 @@ function block(b){
   const L=b.src.split('\n');
   if(b.kind==='fig'){
     const{id,size}=figRef(b.src);
-    return `<div class="inlinefig"${size!==100?` style="--fs:${size}%"`:''}>${
+    return `<div class="inlinefig"${size!==100?` style="--fsn:${size/100}"`:''}>${
       fig(id)||'<span style="color:var(--faint)">missing figure '+esc(id)+'</span>'}</div>`;}
   if(b.kind==='table'){
     const r=L.map(l=>l.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
@@ -936,7 +989,7 @@ function stageHtml(s,edit){
   const has=s.fig&&S.figs[s.fig];
   const beside=s.layout==='split-l'||s.layout==='split-r';
   const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig):'');
-  const fsz=s.figScale&&s.figScale!==100?` style="--fs:${s.figScale}%"`:'';
+  const fsz=s.figScale&&s.figScale!==100?` style="--fsn:${s.figScale/100}"`:'';
   const tsz=s.textScale&&s.textScale!==100
     ? ` style="font-size:calc(var(--d-body)*${s.textScale/100})"` : '';
   const bodyHtml='<div class="txin">'+(edit?'<div id="bd"></div>':body2html(s.body))+'</div>';
@@ -969,7 +1022,10 @@ function paintBoard(){
       <div class="${stageClass(s)}" id="stage">${stageHtml(s,true)}</div></div>
     <div class="ins" id="plus">${['para','list','quote','gap','rule','table','fig'].map(k=>
       `<button data-k="${k}" title="${SNIP[k].l}" aria-label="${SNIP[k].l}">${ico(k)}</button>`).join('')}</div>
-    <div id="overflag">the text runs past the slide — cut it, or move some into the notes</div>
+    <div id="overflag"><span>past the edge of the slide</span>
+      <button data-fix="tidy">Fit it</button>
+      <button data-fix="small">Smaller picture</button>
+      <button data-fix="notes">Move the tail to the notes</button></div>
     <div class="offstage notes"><div class="lbl">Speaker notes · not projected</div>
       <div class="noteview" id="noteView">${(s.notes||'').trim()
         ? notesHtml(s.notes)
@@ -998,6 +1054,41 @@ function paintBoard(){
     nv.innerHTML=(s.notes||'').trim()?notesHtml(s.notes)
       :'<span class="ph">What to say, what to emphasise, what to skip when time is short.</span>';
   };
+  document.getElementById('overflag').onclick=e=>{
+    const f=e.target.dataset?.fix;if(!f)return;
+    if(f==='tidy'){snap('tidy');tidyDeck([cur]);touch();paint();
+      setTimeout(()=>{
+        const still=document.getElementById('overflag')?.classList.contains('on');
+        toast(still
+          ? 'Rearranged, but there is still too much for one slide — move some to the notes'
+          : `Fitted — ${LAYNAME[S.slides[cur].layout]}, figure ${S.slides[cur].figScale} %`);
+      },40);
+      return;}
+    if(f==='small'){snap('figure size');
+      const bs=blocks(s.body),last=[...bs].reverse().find(b=>b.kind==='fig');
+      if(last){const{id,size}=figRef(last.src);
+        bs[bs.indexOf(last)]={kind:'fig',src:figMark(id,Math.max(30,size-15))};
+        s.body=bs.map(x=>x.src).join('\n\n');}
+      else s.figScale=Math.max(30,(s.figScale||100)-15);
+      touch();paint();return;}
+    if(f==='notes'){                       /* the blocks that do not fit become spoken */
+      snap('move to notes');
+      const tx=document.querySelector('#sheet .stage .tx');
+      const lim=tx.getBoundingClientRect().bottom;
+      const bs=blocks(s.body),keep=[],drop=[];
+      /* anything not wholly inside the frame goes — a block half over the edge is
+         still cut, and moving only the fully-outside ones left it overflowing */
+      [...tx.querySelectorAll('#bd > .bk')].forEach((el,i)=>{
+        (el.getBoundingClientRect().bottom>lim+1?drop:keep).push(bs[i]);
+      });
+      if(!drop.length){toast('Nothing is over the edge');return;}
+      if(!keep.length){keep.push(drop.shift());}
+      const said=drop.filter(b=>b&&b.kind!=='fig')
+        .map(b=>b.src.replace(/^\s*[-*>]\s+/gm,'').replace(/\s*\n\s*/g,' ').trim()).join(' ');
+      s.notes=[(s.notes||'').trim(),said].filter(Boolean).join(' ');
+      s.body=keep.filter(Boolean).map(b=>b.src).join('\n\n');
+      touch();paint();toast(`${drop.length} moved into the notes`);return;}
+  };
   document.getElementById('plus').onclick=e=>{
     const k=e.target.closest('button')?.dataset?.k;if(k)insertBlock(k,blocks(s.body).length);
   };
@@ -1018,26 +1109,67 @@ function checkFit(){
   f.classList.toggle('on',over);
   document.querySelector('#sheet .stagewrap')?.classList.toggle('over',over);
 }
+/* One set of controls for every picture on a slide, hero or inline, sitting on
+   the picture itself: what to do with it in the corner, and a grip to pull it
+   to the size you want. Stepping buttons were a poor stand-in for dragging. */
+function figChrome(box,api){
+  box.classList.add('fx');
+  const bar=document.createElement('div');bar.className='figbar';
+  bar.innerHTML=`<button data-x="ed" title="Edit this figure">✎</button>
+    <button data-x="sw" title="Replace it">⇄</button>
+    <button data-x="rm" title="Remove it">✕</button>`;
+  const grip=document.createElement('div');grip.className='figgrip';
+  grip.innerHTML='<span class="figpct"></span>';
+  box.appendChild(bar);box.appendChild(grip);
+
+  bar.onclick=e=>{const x=e.target.dataset?.x;if(!x)return;
+    e.stopPropagation();
+    if(x==='ed')api.edit();else if(x==='sw')api.swap();else api.remove();};
+
+  grip.onmousedown=e=>{
+    e.preventDefault();e.stopPropagation();
+    const svg=box.classList.contains('figbox')?box:(box.querySelector('.figbox')||box.querySelector('svg'));
+    if(!svg)return;
+    const st=document.getElementById('stage');
+    const k=st?st.getBoundingClientRect().width/1280:1;
+    const w0=svg.getBoundingClientRect().width/k, p0=api.size(), x0=e.clientX;
+    const pct=grip.querySelector('.figpct');
+    box.classList.add('sizing');pct.textContent=p0+' %';
+    const move=ev=>{
+      const w=Math.max(24,w0+(ev.clientX-x0)/k);
+      const n=Math.min(100,Math.max(20,Math.round(p0*w/w0/5)*5));
+      pct.textContent=n+' %';
+      (box.parentElement||box).style.setProperty('--fsn',n/100);
+      box.style.setProperty('--fsn',n/100);
+      grip.dataset.n=n;
+    };
+    const up=()=>{
+      document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);
+      box.classList.remove('sizing');
+      const n=+grip.dataset.n;
+      if(n&&n!==p0){snap('figure size');api.setSize(n);touch();paint();}
+    };
+    document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+  };
+}
+
 function paintHero(s){
   const el=document.getElementById('hero');if(!el)return;
   const on=s.fig&&S.figs[s.fig];
-  el.innerHTML=(on?fig(s.fig):'<div class="empty">no figure yet — click to add one</div>')+
-   (on?`<div class="figtools">
-      <button data-a="sm" title="Smaller">−</button>
-      <button data-a="bg" title="Bigger">+</button>
-      <button data-a="sw" title="Swap for another">⇄</button>
-      <button data-a="x" title="Remove">✕</button></div>`:'');
+  el.innerHTML=on?fig(s.fig):'<div class="empty">no figure yet — click to add one</div>';
   el.onclick=e=>{
-    const a=e.target.dataset?.a;
-    if(a==='x'){snap('remove figure');s.fig=null;s.layout='text';touch();paint();return;}
-    if(a==='sw'){pickFigure(id=>{snap('figure');s.fig=id;touch();paint();});return;}
-    if(a==='sm'||a==='bg'){snap('figure size');
-      s.figScale=Math.min(100,Math.max(30,(s.figScale||100)+(a==='bg'?10:-10)));
-      touch();paint();return;}
+    if(e.target.closest('.figbar,.figgrip'))return;
     if(!on)return pickFigure(id=>{snap('figure');s.fig=id;
       if(s.layout==='text')s.layout='figure';touch();paint();});
     figEdit(s);                       /* a click on the picture means edit it */
   };
+  if(on)figChrome(el.querySelector('.figbox')||el,{
+    size:()=>s.figScale||100,
+    setSize:n=>{s.figScale=n;},
+    edit:()=>figEdit(s),
+    swap:()=>pickFigure(id=>{snap('figure');s.fig=id;touch();paint();}),
+    remove:()=>{snap('remove figure');s.fig=null;s.layout='text';touch();paint();}
+  });
 }
 const ICO={
   para :'<path d="M2 3.5h10M2 7h10M2 10.5h6.5"/>',
@@ -1093,10 +1225,7 @@ function paintBody(s){
     const d=document.createElement('div');d.className='bk';
     const isFig=b.kind==='fig';
     d.innerHTML=block(b)+`<div class="bkt">
-      ${isFig?'<button data-m="fsm" title="Smaller">−</button>'+
-              '<button data-m="fbg" title="Bigger">+</button>'+
-              '<button data-m="fed" title="Edit this figure">✎</button>'+
-              '<button data-m="fsw" title="Swap for another">⇄</button>':''}
+
       <button data-m="add" title="Insert below">＋</button>
       <button data-m="up" title="Move up">▲</button>
       <button data-m="dn" title="Move down">▼</button>
@@ -1104,17 +1233,7 @@ function paintBody(s){
     d.onclick=ev=>{
       const m=ev.target.dataset?.m;
       if(m==='add'){ev.stopPropagation();return insertMenu(ev.target,bi+1);}
-      if(m&&/^f/.test(m)){
-        ev.stopPropagation();
-        const{id,size}=figRef(b.src);
-        const put=(nid,nsz)=>{snap('figure');
-          const a=blocks(s.body);a[bi]={kind:'fig',src:figMark(nid??id,nsz??size)};
-          s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);};
-        if(m==='fsw')return pickFigure(nid=>put(nid,null));
-        if(m==='fsm')return put(null,Math.max(30,size-10));
-        if(m==='fbg')return put(null,Math.min(100,size+10));
-        if(m==='fed')return figEdit(s,id,nid=>put(nid,null));
-      }
+
       if(m){ev.stopPropagation();snap(m==='rm'?'delete paragraph':'move paragraph');const a=blocks(s.body);
         if(m==='rm')a.splice(bi,1);
         else{const j=bi+(m==='up'?-1:1);if(j<0||j>=a.length)return;[a[bi],a[j]]=[a[j],a[bi]];}
@@ -1138,6 +1257,23 @@ function paintBody(s){
         if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))ta.blur();};
     };
     w.appendChild(d);
+    if(b.kind==='fig'){
+      const box=d.querySelector('.inlinefig .figbox');
+      if(box&&box.querySelector('svg')){
+        const put=(nid,nsz)=>{const a=blocks(s.body);
+          const{id,size}=figRef(a[bi].src);
+          a[bi]={kind:'fig',src:figMark(nid??id,nsz??size)};
+          s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();};
+        figChrome(box,{
+          size:()=>figRef(b.src).size,
+          setSize:n=>put(null,n),
+          edit:()=>figEdit(s,figRef(b.src).id,nid=>{snap('figure');put(nid,null);}),
+          swap:()=>pickFigure(nid=>{snap('figure');put(nid,null);}),
+          remove:()=>{snap('remove figure');const a=blocks(s.body);a.splice(bi,1);
+            s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();}
+        });
+      }
+    }
   });
 }
 
@@ -1163,7 +1299,7 @@ function clock(sec){
    whole thing sits in the middle, and — only to rescue an overflow — the body
    size. Everything it decides is written back into the markdown.
 --------------------------------------------------------------------------- */
-const TIDY_FIG=[100,92,84,76,68,60,52],TIDY_TXT=[100,94,88,82];
+const TIDY_FIG=[100,92,84,76,68,60,52],TIDY_TXT=[100,94,88,82,76,70];
 function measureStage(s){
   let m=document.getElementById('measure');
   if(!m){m=document.createElement('div');m.id='measure';document.body.appendChild(m);}
@@ -2839,6 +2975,193 @@ function articleMd(){
   });
   return out.replace(/\n{3,}/g,'\n\n');
 }
+/* ---------- pictures that travel ------------------------------------------
+   Substack and Google Docs will not take an inline <svg>. So the article can
+   also go out with every figure rasterised: as HTML with the pictures embedded,
+   which LibreOffice and Word open and Docs imports, or as a real .docx, which
+   is a zip — written here by hand rather than pulling in a library.
+--------------------------------------------------------------------------- */
+const CRC=(()=>{const t=new Uint32Array(256);
+  for(let i=0;i<256;i++){let c=i;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c>>>0;}
+  return b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=t[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};})();
+function zipStore(files){                       // no compression: a zip is a zip
+  const enc=new TextEncoder(),parts=[],dir=[];let off=0;
+  const u16=n=>[n&255,(n>>8)&255], u32=n=>[n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255];
+  files.forEach(({name,data})=>{
+    const nm=enc.encode(name), body=data instanceof Uint8Array?data:enc.encode(data);
+    const crc=CRC(body);
+    const head=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),
+      ...u32(crc),...u32(body.length),...u32(body.length),...u16(nm.length),...u16(0)]);
+    parts.push(head,nm,body);
+    dir.push({nm,crc,len:body.length,off});
+    off+=head.length+nm.length+body.length;
+  });
+  const cstart=off;
+  dir.forEach(d=>{
+    const c=new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),
+      ...u32(d.crc),...u32(d.len),...u32(d.len),...u16(d.nm.length),...u16(0),...u16(0),...u16(0),...u16(0),
+      ...u32(0),...u32(d.off)]);
+    parts.push(c,d.nm);off+=c.length+d.nm.length;
+  });
+  parts.push(new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(dir.length),...u16(dir.length),
+    ...u32(off-cstart),...u32(cstart),...u16(0)]));
+  return new Blob(parts,{type:'application/zip'});
+}
+function svgToPng(svg,w){
+  return new Promise(res=>{
+    const m=svg.match(/viewBox="\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
+    const vw=m?+m[1]:800, vh=m?+m[2]:450;
+    const W=w||1600, H=Math.round(W*vh/vw);
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');c.width=W;c.height=H;
+      const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,W,H);
+      g.drawImage(img,0,0,W,H);
+      res({url:c.toDataURL('image/png'),w:W,h:H});
+    };
+    img.onerror=()=>res(null);
+    /* the drawing must state its own size or an <img> gives it 300x150 */
+    const sized=svg.replace('<svg',`<svg width="${vw}" height="${vh}"`);
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(sized);
+  });
+}
+async function rasterAll(onStep){
+  const need=new Set();
+  articleSlides().forEach(s=>{
+    if(s.fig&&S.figs[s.fig])need.add(s.fig);
+    blocks(s.body).forEach(b=>{if(b.kind==='fig'){const{id}=figRef(b.src);if(S.figs[id])need.add(id);}});
+  });
+  const out={};let i=0;
+  for(const id of need){
+    out[id]=await svgToPng(S.figs[id],1600);
+    onStep&&onStep(++i,need.size);
+  }
+  return out;
+}
+const b64bytes=u=>{const b=atob(u.split(',')[1]);const a=new Uint8Array(b.length);
+  for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;};
+
+async function articleHtmlPng(pics){
+  const M=S.meta||{};
+  const line=[M.author,M.affiliation].filter(Boolean).join(' · ');
+  const where=[M.event,M.venue,M.date].filter(Boolean).join(' · ');
+  const pic=id=>pics[id]?`<figure><img src="${pics[id].url}" width="${Math.round(pics[id].w/2)}" alt=""></figure>`:'';
+  let out='',sec=null,sub=null;
+  articleSlides().forEach(s=>{
+    if(s.group!==sec){sec=s.group;sub=null;out+=`<h2>${esc(sec||'')}</h2>\n`;}
+    if((s.sub||null)!==sub){sub=s.sub||null;if(sub)out+=`<h3>${esc(sub)}</h3>\n`;}
+    const{quote,rest,notes}=articleParts(s);
+    out+=`<h4>${inl(s.title)}</h4>\n`;
+    if(s.fig&&pics[s.fig])out+=pic(s.fig)+'\n';
+    if(notes)out+=`<p>${inl(notes)}</p>\n`;
+    quote.forEach(b=>{out+=`<blockquote>${inl(b.src.split('\n').map(l=>l.replace(/^>\s?/,'')).join(' '))}</blockquote>\n`;});
+    rest.forEach(b=>{
+      if(b.kind==='fig'){out+=pic(figRef(b.src).id)+'\n';return;}
+      out+=block(b)+'\n';});
+  });
+  return `<article><h1>${esc(S.title||'Untitled')}</h1>
+${line?`<p class="by">${esc(line)}</p>`:''}
+${where?`<p class="by">${esc(where)}</p>`:''}
+${out}</article>`;
+}
+
+/* A .docx built by hand: direct formatting rather than a style sheet, so it
+   looks the same wherever it is opened, and every picture is a PNG inside. */
+function docxDoc(pics){
+  const rels=[],media=[];let rid=0;
+  const T=t=>esc(t).replace(/\n/g,' ');
+  const run=(t,o={})=>`<w:r><w:rPr>${o.b?'<w:b/>':''}${o.i?'<w:i/>':''}`+
+    `<w:sz w:val="${o.sz||22}"/><w:szCs w:val="${o.sz||22}"/>`+
+    `${o.col?`<w:color w:val="${o.col}"/>`:''}</w:rPr><w:t xml:space="preserve">${T(t)}</w:t></w:r>`;
+  const para=(runs,o={})=>`<w:p><w:pPr><w:spacing w:before="${o.before||80}" w:after="${o.after||80}"/>`+
+    `${o.ind?`<w:ind w:left="${o.ind}"/>`:''}${o.bar?'<w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="1E1B4B"/></w:pBdr>':''}`+
+    `</w:pPr>${runs}</w:p>`;
+  /* markdown inline -> runs, keeping bold and italic */
+  const rich=(t,base={})=>{
+    const parts=[];let s2=String(t||'').replace(/!\[\[[^\]]*\]\]/g,'').replace(/\[([^\]]+)\]\(([^)]+)\)/g,'$1 ($2)');
+    const rx=/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;let last=0,m;
+    while((m=rx.exec(s2))){
+      if(m.index>last)parts.push(run(s2.slice(last,m.index),base));
+      const v=m[0];
+      if(v.startsWith('**'))parts.push(run(v.slice(2,-2),{...base,b:true}));
+      else if(v.startsWith('`'))parts.push(run(v.slice(1,-1),{...base,col:'6B7280'}));
+      else parts.push(run(v.slice(1,-1),{...base,i:true}));
+      last=rx.lastIndex;
+    }
+    if(last<s2.length)parts.push(run(s2.slice(last),base));
+    return parts.join('')||run('',base);
+  };
+  const image=id=>{
+    const p=pics[id];if(!p)return '';
+    rid++;const name=`image${rid}.png`;
+    media.push({name:`word/media/${name}`,data:b64bytes(p.url)});
+    rels.push(`<Relationship Id="rId${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${name}"/>`);
+    const cx=Math.round(Math.min(5486400,p.w*9525/2)), cy=Math.round(cx*p.h/p.w);
+    return `<w:p><w:pPr><w:spacing w:before="120" w:after="120"/><w:jc w:val="center"/></w:pPr><w:r><w:drawing>`+
+      `<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/>`+
+      `<wp:docPr id="${rid}" name="${name}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">`+
+      `<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">`+
+      `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">`+
+      `<pic:nvPicPr><pic:cNvPr id="${rid}" name="${name}"/><pic:cNvPicPr/></pic:nvPicPr>`+
+      `<pic:blipFill><a:blip r:embed="rId${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`+
+      `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>`+
+      `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>`+
+      `</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  };
+  const M=S.meta||{};
+  let body=para(run(S.title||'Untitled',{b:true,sz:52}),{after:60});
+  const line=[M.author,M.affiliation].filter(Boolean).join(' · ');
+  const where=[M.event,M.venue,M.date].filter(Boolean).join(' · ');
+  if(line)body+=para(run(line,{sz:20,col:'6B7280'}),{before:0,after:0});
+  if(where)body+=para(run(where,{sz:20,col:'6B7280'}),{before:0,after:200});
+  let sec=null,sub=null;
+  articleSlides().forEach(s=>{
+    if(s.group!==sec){sec=s.group;sub=null;body+=para(run(sec||'',{b:true,sz:36}),{before:360,after:100});}
+    if((s.sub||null)!==sub){sub=s.sub||null;if(sub)body+=para(run(sub,{b:true,sz:26,col:'555555'}),{before:200,after:60});}
+    const{quote,rest,notes}=articleParts(s);
+    body+=para(run(s.title,{b:true,sz:28}),{before:220,after:60});
+    if(s.fig&&pics[s.fig])body+=image(s.fig);
+    if(notes)body+=para(rich(notes));
+    quote.forEach(b=>body+=para(rich(b.src.split('\n').map(l=>l.replace(/^>\s?/,'')).join(' '),{i:true,sz:24}),
+      {ind:360,bar:true,before:140,after:140}));
+    rest.forEach(b=>{
+      if(b.kind==='fig'){body+=image(figRef(b.src).id);return;}
+      if(b.kind==='gap'||b.kind==='rule'){body+=para(run(''));return;}
+      if(b.kind==='list'){b.src.split('\n').forEach(l=>
+        body+=para(rich('•  '+l.replace(/^\s*(?:[-*]|\d+\.)\s+/,'')),{ind:280,before:20,after:20}));return;}
+      if(b.kind==='table'){b.src.split('\n').forEach(l=>{
+        if(/^\s*\|[\s|:-]+\|\s*$/.test(l))return;
+        body+=para(rich(l.replace(/^\||\|$/g,'').split('|').map(x=>x.trim()).join('   ·   ')),
+          {before:20,after:20});});return;}
+      body+=para(rich(b.src.replace(/\s*\n\s*/g,' ')));
+    });
+  });
+  const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+ xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+ xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+<w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>
+<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body></w:document>`;
+  return zipStore([
+    {name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="png" ContentType="image/png"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`},
+    {name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rIdDoc" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`},
+    {name:'word/document.xml',data:doc},
+    {name:'word/_rels/document.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`},
+    ...media,
+  ]);
+}
+
 function downloadText(name,text,type){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([text],{type:type||'text/plain'}));
@@ -2869,8 +3192,15 @@ function save(){
     said about it, then the line meant to land. Hidden slides stay out. Open the HTML, select all, and
     paste — Substack and Medium take the figures with it.</p>
    <div class="rw" style="margin-top:8px">
-     <button class="b" id="eArtH">Article (HTML)</button>
-     <button class="b" id="eArtM">Article (Markdown)</button></div>
+     <button class="b" id="eArtH">HTML · figures as SVG</button>
+     <button class="b" id="eArtP">HTML · figures as pictures</button></div>
+   <div class="rw" style="margin-top:6px">
+     <button class="b" id="eArtD">Word (.docx)</button>
+     <button class="b" id="eArtM">Markdown</button></div>
+   <p class="tip" style="margin-top:8px">Substack and Google Docs do not take an inline SVG, so the
+    second and third turn every figure into a picture first. The <code>.docx</code> opens in Word,
+    LibreOffice and Google Docs — useful when you want comments on it.</p>
+   <div id="artMsg" class="tip"></div>
    <p class="tip" style="margin-top:8px"><code>deck.meta.json</code> carries the title, the event details and
    the visual style. Put it in <code>slides/</code> and <code>build_bundle.py</code> picks it up, so rebuilding
    from markdown never loses these settings.</p>
@@ -2897,6 +3227,22 @@ function save(){
   document.getElementById('eArtH').onclick=()=>{
     downloadText(slug+'-article.html',ARTICLE_SHELL(S.title,articleHtml()),'text/html');
     closeDialog();toast('Open it, select all, paste');};
+  const withPics=async fn=>{
+    const msg=document.getElementById('artMsg');
+    msg.innerHTML='<span class="spin"></span> turning the figures into pictures…';
+    const pics=await rasterAll((i,n)=>{msg.innerHTML=`<span class="spin"></span> ${i} of ${n}…`;});
+    const bad=Object.entries(pics).filter(([,v])=>!v).map(([k])=>k);
+    await fn(pics);
+    closeDialog();
+    toast(bad.length?`Done — ${bad.length} figure(s) would not render`:'Done');
+  };
+  document.getElementById('eArtP').onclick=()=>withPics(async pics=>{
+    downloadText(slug+'-article-pictures.html',
+      ARTICLE_SHELL(S.title,await articleHtmlPng(pics)),'text/html');});
+  document.getElementById('eArtD').onclick=()=>withPics(async pics=>{
+    const blob=docxDoc(pics);
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=slug+'.docx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);});
   document.getElementById('eArtM').onclick=()=>{
     downloadText(slug+'-article.md',articleMd(),'text/markdown');
     closeDialog();toast('Figures are referenced as images/<id>.svg');};

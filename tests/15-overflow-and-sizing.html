@@ -1,0 +1,103 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  // a slide with room, then push it over the edge with a picture
+  // a slide that fits, has words, and carries no picture of its own yet
+  let i=-1;
+  for(let k=0;k<w.S.slides.length;k++){
+    const x=w.S.slides[k];
+    if(x.layout!=='text'||!(x.body||'').trim()||/!\[\[/.test(x.body))continue;
+    w.cur=k;w.paint();await wait(120);
+    if(!d.getElementById('overflag').classList.contains('on')){i=k;break;}
+  }
+  ok('found a text slide with room',i>=0,'slide '+(i+1));
+  ok('it fits to begin with',!d.getElementById('overflag').classList.contains('on'));
+  const before=w.S.slides[i].body;
+  w.S.slides[i].body=before+'\n\n![[fig-panel-1]]\n\n'+before;
+  w.paint();await wait(300);
+  ok('now it overflows',d.getElementById('overflag').classList.contains('on'));
+
+  // ---------- what spills is still reachable ----------
+  const tx=d.querySelector('#sheet .stage .tx');
+  ok('the frame scrolls in the editor',tx.scrollHeight>tx.clientHeight+4,
+     tx.scrollHeight+' of '+tx.clientHeight);
+  ok('so the spilled part can be reached',getComputedStyle(tx).overflowY!=='hidden',
+     getComputedStyle(tx).overflowY);
+  const sb=tx.offsetWidth-tx.clientWidth;
+  ok('and no scrollbar changes the geometry',sb===0,sb+'px of scrollbar');
+
+  // ---------- the warning does something ----------
+  const flag=d.getElementById('overflag');
+  const acts=[...flag.querySelectorAll('button')].map(b=>b.dataset.fix);
+  ok('the warning offers fixes',acts.join(',')==='tidy,small,notes',acts.join(','));
+
+  flag.querySelector('[data-fix="small"]').click();await wait(250);
+  ok('smaller picture shrinks the last figure',/!\[\[fig-panel-1\|85%\]\]/.test(w.S.slides[i].body),
+     (w.S.slides[i].body.match(/!\[\[[^\]]*\]\]/)||[''])[0]);
+  w.undo();await wait(200);
+
+  const n0=(w.S.slides[i].notes||'').length;
+  d.getElementById('overflag').querySelector('[data-fix="notes"]').click();await wait(300);
+  ok('moving the tail lengthens the notes',(w.S.slides[i].notes||'').length>n0,
+     n0+' → '+(w.S.slides[i].notes||'').length);
+  ok('and shortens the body',w.S.slides[i].body.length<before.length*2);
+  ok('which clears the warning',!d.getElementById('overflag').classList.contains('on'));
+  w.undo();await wait(250);
+
+  d.getElementById('overflag').querySelector('[data-fix="tidy"]').click();await wait(400);
+  const fixed=!d.getElementById('overflag').classList.contains('on');
+  ok('fit it either fits it or shrinks the type trying',
+     fixed||w.S.slides[i].textScale<100,
+     `${w.S.slides[i].layout} · figure ${w.S.slides[i].figScale} % · type ${w.S.slides[i].textScale} % · ${fixed?'fits':'still over'}`);
+  w.undo();await wait(200);
+  w.S.slides[i].body=before;w.paint();await wait(200);
+
+  // ---------- controls sit on the picture ----------
+  const fi=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');
+  w.cur=fi;w.paint();await wait(250);
+  const hero=d.querySelector('#sheet .hero .figbox');
+  ok('the figure carries its own controls',hero.classList.contains('fx')&&
+     !!hero.querySelector('.figbar')&&!!hero.querySelector('.figgrip'));
+  const btns=[...hero.querySelectorAll('.figbar button')].map(b=>b.dataset.x);
+  ok('edit, replace and remove',btns.join(',')==='ed,sw,rm',btns.join(','));
+
+  // drag the grip and the size follows
+  const svg=hero.querySelector('svg'), grip=hero.querySelector('.figgrip');
+  const w0=svg.getBoundingClientRect().width;
+  const gr=grip.getBoundingClientRect();
+  grip.dispatchEvent(new W.MouseEvent('mousedown',{clientX:gr.left+8,clientY:gr.top+8,bubbles:true}));
+  await wait(40);
+  d.dispatchEvent(new W.MouseEvent('mousemove',{clientX:gr.left+8-160,clientY:gr.top+8,bubbles:true}));
+  await wait(60);
+  ok('dragging shows the percentage',hero.classList.contains('sizing')&&
+     /\d+ %/.test(hero.querySelector('.figpct').textContent),
+     hero.querySelector('.figpct').textContent);
+  d.dispatchEvent(new W.MouseEvent('mouseup',{bubbles:true}));
+  await wait(250);
+  ok('and it sticks',w.S.slides[fi].figScale<100,w.S.slides[fi].figScale+' %');
+  const w1=d.querySelector('#sheet .hero .figbox svg').getBoundingClientRect().width;
+  ok('the picture really is smaller',w1<w0*0.9,Math.round(w0)+' → '+Math.round(w1));
+  ok('and it survives markdown',new RegExp('· '+w.S.slides[fi].figScale+'%').test(w.slideMd(w.S.slides[fi])));
+  w.undo();await wait(200);
+
+  // ---------- an inline picture has the same controls ----------
+  const ii=w.S.slides.findIndex(x=>/!\[\[/.test(x.body||''));
+  w.cur=ii;w.paint();await wait(300);
+  const box=d.querySelector('#bd .inlinefig .figbox');
+  ok('an inline picture too',!!box&&box.classList.contains('fx')&&!!box.querySelector('.figgrip'));
+  ok('with the same three buttons',
+     [...box.querySelectorAll('.figbar button')].map(b=>b.dataset.x).join(',')==='ed,sw,rm');
+  const bs=w.blocks(w.S.slides[ii].body).length;
+  box.querySelector('[data-x="rm"]').click();await wait(250);
+  ok('remove takes it out of the body',w.blocks(w.S.slides[ii].body).length===bs-1,
+     bs+' → '+w.blocks(w.S.slides[ii].body).length);
+  w.undo();await wait(200);
+  ok('and undo puts it back',w.blocks(w.S.slides[ii].body).length===bs);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

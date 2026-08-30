@@ -25,8 +25,8 @@ addEventListener('load',async()=>{
   // --- inline figure is editable like any element ---
   const bi=w.blocks(w.S.slides[inlineAt].body).findIndex(b=>b.kind==='fig');
   ok('body has a figure block',bi>=0,'index '+bi);
-  const btn=[...d.querySelectorAll('#bd .bk')][bi]?.querySelector('[data-m="fed"]');
-  ok('inline figure has an Edit button',!!btn);
+  const btn=[...d.querySelectorAll('#bd .bk')][bi]?.querySelector('.figbox .figbar [data-x="ed"]');
+  ok('inline figure has an Edit button on the picture',!!btn);
   btn.click(); await wait(1300);
   ok('editor opened on the inline figure',!!d.getElementById('fefr')&&w.FE.id==='fig-marks',
      w.FE&&w.FE.id);

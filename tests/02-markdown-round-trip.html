@@ -36,6 +36,25 @@ addEventListener('load',async()=>{
   ok('and it has a real size',hero.getBoundingClientRect().width>100,
      Math.round(hero.getBoundingClientRect().width)+'px');
 
+  // --- two copies of one figure must not share ids ---
+  // (the hidden stage Tidy measures in puts a second copy of the same drawing on
+  //  the page; url(#…) then resolved to whichever came first and masks broke)
+  w.cur=marky;w.paint();await wait(150);
+  w.measureStage(w.S.slides[marky]);await wait(60);
+  const all=[...d.querySelectorAll('[id]')].map(x=>x.id);
+  const dupes=all.filter((x,i)=>all.indexOf(x)!==i);
+  ok('no id appears twice in the document',dupes.length===0,dupes.slice(0,4).join(', '));
+  const copies=d.querySelectorAll('svg');
+  ok('and there really are two copies to clash',copies.length>=2,copies.length+' svg');
+  const uses=[...d.querySelectorAll('use')];
+  ok('every use still points at something',
+     uses.every(u=>{const h=u.getAttribute('href')||u.getAttribute('xlink:href')||'';
+       return !h.startsWith('#')||!!d.getElementById(h.slice(1));}),uses.length+' use');
+  const masked=[...d.querySelectorAll('[mask]')];
+  ok('every mask reference resolves',
+     masked.every(m=>{const v=(m.getAttribute('mask')||'').match(/url\(#([^)]+)\)/);
+       return !v||!!d.getElementById(v[1]);}),masked.length+' masked');
+
   // --- the header says where you are ---
   const hi=w.S.slides.findIndex(x=>x.sub);
   w.cur=hi;w.paint();await wait(150);

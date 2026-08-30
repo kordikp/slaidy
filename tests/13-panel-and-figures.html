@@ -48,27 +48,23 @@ addEventListener('load',async()=>{
   ok('the size survives markdown',/!\[\[fig-panel-2\|60%\]\]/.test(w.slideMd(w.S.slides[ii])));
   const rt=w.importMarkdown('x.md','# A\n\n'+w.slideMd(w.S.slides[ii]));
   ok('and comes back',/!\[\[fig-panel-2\|60%\]\]/.test(rt[0].body));
-  // the − button steps it down
-  const bk=[...d.querySelectorAll('#bd .bk')].find(x=>/fig-panel-2/.test(
-    w.blocks(w.S.slides[ii].body)[[...d.querySelectorAll('#bd .bk')].indexOf(x)]?.src||''));
-  const minus=bk&&bk.querySelector('[data-m="fsm"]');
-  ok('an inline figure has a size control',!!minus);
-  minus.click();await wait(150);
-  ok('minus makes it smaller',/!\[\[fig-panel-2\|50%\]\]/.test(w.S.slides[ii].body),
-     (w.S.slides[ii].body.match(/!\[\[fig-panel-2[^\]]*\]\]/)||[''])[0]);
-  w.undo();await wait(120);
+  // the size is pulled from a grip on the picture itself
+  const boxes=[...d.querySelectorAll('#bd .inlinefig .figbox')];
+  ok('each inline figure carries a grip',boxes.every(b=>b.querySelector('.figgrip')),
+     boxes.length+' figures');
+  ok('and its own toolbar',boxes.every(b=>b.querySelector('.figbar')));
 
   // ---------- clicking a figure edits it ----------
   const hi=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');
   w.cur=hi;w.paint();await wait(250);
-  const svg=d.querySelector('#sheet .hero svg');
+  const svg=d.querySelector('#sheet .hero .figbox svg');
   ok('the slide shows its figure',!!svg);
   svg.dispatchEvent(new W.MouseEvent('click',{bubbles:true}));await wait(900);
   ok('clicking it opens the editor, not a picker',!!d.getElementById('fefr')&&
      !d.querySelector('.dlg.wide2'),d.getElementById('fefr')?'editor':'something else');
   d.getElementById('feCancel').click();await wait(150);
   // and the swap button does open the picker
-  d.querySelector('.hero [data-a="sw"]').click();await wait(250);
+  d.querySelector('.hero .figbox .figbar [data-x="sw"]').click();await wait(250);
   ok('the swap button opens the picker',!!d.querySelector('.dlg.wide2'));
   ok('the picker offers to draw a new one',/Draw a new one/.test(d.querySelector('.dlg').textContent));
   d.getElementById('pfNo').click();await wait(120);

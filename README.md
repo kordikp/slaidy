@@ -168,8 +168,21 @@ One undo reverses either.
 **Export.** PDF through the browser's own print engine (nothing is uploaded), markdown
 in the shape you started with, one `.json` bundle carrying slides and figures, or the deck
 **as an article**: the figure, what you would have said about it, then the line meant to
-land. Hidden slides stay out. The HTML is self-contained — open it, select all, paste, and
-Substack or Medium take the figures with it.
+land. Hidden slides stay out.
+
+The article goes out four ways. HTML with the figures inline as SVG is the smallest and
+sharpest. HTML with the figures **rasterised** is the one to paste into Substack or Medium,
+which will not take an inline SVG. A **`.docx`** carries the pictures inside a real Word
+file — for LibreOffice, or for Google Docs when you want comments on it; it is written by
+hand, zip and all, rather than by pulling in a library. And markdown, referencing the
+figures as files.
+
+**Pictures on a slide.** Hovering one gives it a toolbar in its own corner and a grip at
+the bottom right: drag to size it, live, with the percentage shown. Every picture carries
+its own size, hero or inline, so a slide with two of them sizes each on its own. When
+something spills past the frame the warning offers to fix it — fit the slide, shrink the
+picture, or move what is over the edge into the speaker notes — and the frame scrolls in
+the editor so the thing you need to reach is reachable.
 
 **AI.** Optional, and off unless you give it an endpoint. `studio.sh` runs a small
 proxy that forwards to OpenAI using `OPENAI_KEY`, so the key stays on your machine and

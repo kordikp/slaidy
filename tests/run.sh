@@ -43,7 +43,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   snapDiff,history_,snapshot,downloadDeck,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
   deleteSlide,duplicateSlide,srcEditor,feEditText,scalePreview,tex2mml,slideRanges,block,inl,
   get BLOCKIX(){return BLOCKIX},set BLOCKIX(v){BLOCKIX=v},SNIP,analyseSlide,briefWizard,
-  feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel};"""
+  feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection};"""
 ready = """
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}

@@ -91,6 +91,18 @@ a picture alone, or a table — which is the thing worth seeing when you are sca
 hundred of them. A hidden slide stays in the list, greyed and struck through, rather than
 disappearing.
 
+**Figures come out sparse, not chatty.** The design system tells the model how much text a figure
+may carry, in numbers taken from the deck it is drawing for rather than from taste: across this
+deck's 180 figures the median is **eleven text elements** and **four words per label**, and nearly
+half the labels are one to three words. So the rule is at most twelve labels of one to four words,
+the takeaway line the only sentence allowed, and *if a relationship can be drawn, do not caption
+it*. A figure that will not fit in twelve labels is carrying two ideas.
+
+**And you can add your own rule.** `⋯ → AI and figures` has a box for what every figure in this
+deck should obey — *three colours at most*, *arrows carry the verb* — appended to the house rules
+on every figure the AI draws or revises. It lives on the deck, not in the browser, so figures come
+out the same wherever it is opened and the rule travels with an export.
+
 **Formulas.** `$x^2$` inline, `$$ … $$` on its own line. TeX in, **MathML out** — the browser
 renders maths natively, so nothing is vendored for it. The subset is the one a systems talk uses:
 sub- and superscripts, fractions, roots, sums and products with limits, `\mathbf`, `\hat` and
@@ -115,13 +127,23 @@ want; swapping it is a separate button. Adding one asks which you meant: pick fr
 library, or describe what it should show and have it drawn to the same rules as the rest.
 Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
 
+**Figures never take more room than the slide has.** A figure among text is contained on both
+axes, the way the hero figure always was. It used to be width only, and that is how a figure ate a
+slide: asked for at 85% of a 1168-wide column it took 993 × 558 in a column 540 tall — taller than
+the space it sat in — and the table and the key line under it were pushed off the bottom. The cap
+is 340 stage pixels, measured rather than guessed: across a 238-slide deck it is the value at which
+nothing overflows at all. A percentage now means *of the largest that fits*, which is what it
+already meant for the hero figure.
+
 **The canvas follows the drawing.** A figure gets exactly the room its `viewBox` asks for — the
 slide reads the viewBox and takes that aspect ratio. So shrinking a drawing inside the editor used
 to change nothing on the slide: the canvas was still 800 × 450 and the smaller drawing simply sat
 in the middle of it, the empty margin holding the space. The editor's **Canvas** panel says how
 much of it is empty and offers **Trim to the drawing**, which sets the canvas to what is actually
-drawn, moves the paper with it, and keeps anything that was centred centred. **Reset** puts the
-shared 800 × 450 back. A trimmed canvas is a choice, so it is no longer reported as a fault.
+drawn, moves the paper with it, and keeps anything that was centred centred. Select part of the drawing
+and **Crop the canvas to this** does it by hand instead: the canvas becomes the selection, whatever
+falls outside it included. **Reset** puts the shared 800 × 450 back. All three go through the
+editor's own undo, and a trimmed canvas is a choice, so it is no longer reported as a fault.
 
 Inside the editor: click takes the whole object, double-click steps inside, `Esc` steps back
 out. Lines and arrows are **drawn by dragging**, from one point to any other, and a selected one

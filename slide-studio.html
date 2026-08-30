@@ -168,8 +168,20 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx .gap{height:34px}
 .stage .tx .rule{border:0;border-top:1px solid var(--line);margin:20px 0}
 .stage .tx .inlinefig{margin:12px 0;--fs:100%;--fsn:1;display:flex;justify-content:center}
-.stage .tx .inlinefig .figbox{width:calc(100%*var(--fsn));aspect-ratio:var(--arw)/var(--arh);
- position:relative}
+/* Contained on BOTH axes, like the hero figure. It used to be width only, and
+   that is why a figure among text ate the slide: asked for at 85% of a
+   1168-wide column it took 993 × 558, in a column 540 tall — the figure alone
+   was taller than the space, and the table and the key line under it were
+   pushed off the bottom.
+   The cap is in stage pixels because the stage is always 1280 × 720 in its own
+   coordinates, whichever surface is drawing it. 340 was measured, not guessed:
+   across the deck's 238 slides it is the value at which nothing overflows at
+   all. A percentage now means "of the largest that fits", which is what it
+   already meant for the hero figure. A figure that wants more room than this
+   wants the figure layout, where the frame contains it. */
+.stage .tx .inlinefig .figbox{
+ width:calc(min(100%,var(--inlmax,340px)*var(--arw)/var(--arh))*var(--fsn));
+ aspect-ratio:var(--arw)/var(--arh);position:relative}
 .stage .tx .inlinefig svg{width:100%;height:100%;display:block}
 .stage .tx .undrawn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:26px 20px;
  border:1px dashed #CFD3DA;border-radius:10px;background:#FAFAFB;color:#6B7280;font-size:14px;text-align:center}
@@ -561,7 +573,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bTidyAll">Tidy every slide…</button>
       <button id="bRun">Trim to length…</button>
       <button id="bDeck">Deck settings…</button>
-      <button id="bCfg2">AI endpoint…</button>
+      <button id="bCfg2">AI and figures…</button>
     </div>
   </div>
   <button class="ic" id="bSaveNow" title="Save now (Ctrl-S)"><svg viewBox="0 0 14 14" width="15" height="15"
@@ -1991,7 +2003,7 @@ function blankSlide(s){
 const FIGREF=/!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]/g;
 
 async function drawFigure(id,s,brief){
-  let t=(await llm(FIG_SYS,
+  let t=(await llm(figSys(),
     `Draw a NEW figure from scratch. It is referenced from the slide as ![[${id}]].\n\n`+
     `SLIDE TITLE: ${s.title}\nSECTION: ${s.group||''}\n\nSLIDE BODY:\n${(s.body||'').slice(0,1400)}\n\n`+
     (brief?`WHAT THE AUTHOR ASKED FOR: ${brief}\n\n`:'')+
@@ -2736,7 +2748,7 @@ function pickFigure(pick){
       const out=document.getElementById('nfOut');out.classList.remove('hidden');
       out.innerHTML='<span class="spin"></span> drawing…';
       try{
-        const t=await llm(FIG_SYS,`Draw a new figure.\n\nWHAT IT MUST SHOW: ${what}\n\n`+
+        const t=await llm(figSys(),`Draw a new figure.\n\nWHAT IT MUST SHOW: ${what}\n\n`+
           `SLIDE: ${S.slides[cur]?S.slides[cur].title:''}`,20000);
         const c=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
         const a=c.indexOf('<svg'),b2=c.lastIndexOf('</svg>');
@@ -2768,17 +2780,27 @@ function pickFigure(pick){
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('studio:cfg')||'{}');}catch(e){return{};}};
 function configure(){
   const c=cfg();
-  dialog(`<h3>AI endpoint</h3>
+  dialog(`<h3>AI and figures</h3>
   <p class="tip">Leave the URL empty to call <code>/api/generate</code> when this file is served next to a
    p-book backend. Otherwise point it at any OpenAI-compatible <code>/chat/completions</code>. The key stays
    in this browser.</p>
   <div class="fld"><label>Endpoint</label><input id="cU" value="${esc(c.url||'')}" placeholder="https://api.openai.com/v1/chat/completions"></div>
   <div class="fld"><label>Key</label><input id="cK" type="password" value="${esc(c.key||'')}"></div>
   <div class="fld"><label>Model</label><input id="cM" value="${esc(c.model||'gpt-5.6-sol')}"></div>
+  <div class="fld" style="margin-top:14px"><label>What every figure in this deck should obey</label>
+    <textarea id="cF" rows="5" placeholder="Fewer labels than you think — name the parts, do not narrate them.&#10;Arrows carry the verb; never caption what an arrow already shows.&#10;Three colours at most in one figure.">${esc((S.style&&S.style.figBrief)||'')}</textarea></div>
+  <p class="tip">Added to the locked design system on every figure the AI draws or revises — the canvas,
+    the palette, the animation and the limit of twelve labels of one to four words are already in there.
+    This lives <b>on the deck</b>, not in this browser, so figures come out the same wherever it is opened.</p>
   <div class="rw"><button class="b p" id="cS">Save</button><button class="b" id="cC">Cancel</button></div>`);
-  document.getElementById('cS').onclick=()=>{localStorage.setItem('studio:cfg',JSON.stringify({
-    url:document.getElementById('cU').value.trim(),key:document.getElementById('cK').value.trim(),
-    model:document.getElementById('cM').value.trim()||'gpt-5.6-sol'}));closeDialog();toast('Saved');};
+  document.getElementById('cS').onclick=()=>{
+    localStorage.setItem('studio:cfg',JSON.stringify({
+      url:document.getElementById('cU').value.trim(),key:document.getElementById('cK').value.trim(),
+      model:document.getElementById('cM').value.trim()||'gpt-5.6-sol'}));
+    const b=document.getElementById('cF').value.trim();
+    S.style=S.style||{};
+    if(b!==((S.style.figBrief)||'')){S.style.figBrief=b;touch();}
+    closeDialog();toast('Saved');};
   document.getElementById('cC').onclick=closeDialog;
 }
 async function llm(system,user,maxTok){
@@ -3095,6 +3117,22 @@ function feSetCanvas(x,y,w,h,c){
     }
   });
   FE.src=feHtml();feMount();
+}
+/* Trimming is automatic — it takes in everything that is drawn. Cropping is by
+   hand: select the part that matters and the canvas becomes that, whatever
+   falls outside included. They answer different questions — "stop holding empty
+   margin" and "this bit is the figure" — so both are here. */
+function feCropToSelection(){
+  const c=feContentBox();
+  if(!c)return toast('Nothing on the canvas');
+  const b=feBounds();
+  if(!b)return toast('Select the part to crop to first');
+  const pad=10;
+  const x=Math.round(b.x-pad),y=Math.round(b.y-pad),
+        w=Math.round(b.w+pad*2),h=Math.round(b.h+pad*2);
+  if(w<40||h<30)return toast('That would leave almost nothing');
+  feSetCanvas(x,y,w,h,c);
+  toast(`Cropped to ${w} × ${h} — anything outside is off the figure now`);
 }
 function feTrimCanvas(){
   const c=feContentBox();
@@ -3579,6 +3617,9 @@ function feDel(){
 /* ---- the inspector beside the canvas ---- */
 function fePanel(){
   const p=document.getElementById('fepanel');if(!p)return;
+  /* whichever panel drew it, the crop button does the same thing */
+  setTimeout(()=>document.getElementById('feCrop')
+    ?.addEventListener('click',feCropToSelection),0);
   const el=FE.sel;
   if(FE.sels.length>1)return feMultiPanel(p);
   if(!el){
@@ -3595,11 +3636,12 @@ function fePanel(){
         <div class="ferow"><code>${Math.round(c.vb[2])} × ${Math.round(c.vb[3])}</code>
           <span class="tip" style="margin:0">${Math.round(c.empty*100)}% of it is empty</span></div>
         <div class="rw" style="margin-top:8px">
-          <button class="b" id="feTrim" title="Set the canvas to the drawing, so the slide stops holding the empty margin">Trim to the drawing</button>
+          <button class="b" id="feTrim" title="Set the canvas to everything that is drawn, so the slide stops holding the empty margin">Trim to the drawing</button>
           ${std?'':'<button class="b" id="feReset" title="Back to the shared 800 × 450">Reset</button>'}
         </div>
-        <div class="tip">A figure takes exactly the room its canvas asks for. Shrink the drawing and
-          the slide keeps the old box until you trim it.</div></div>`;})()}
+        <div class="tip">A figure takes exactly the room its canvas asks for, so shrinking the drawing
+          changes nothing until the canvas follows it. Select part of the drawing to crop to that
+          instead.</div></div>`;})()}
       <div class="sec"><div class="sect">Whole figure</div>
         <div class="chips" id="feWhole">
           <button data-p="Simplify: remove the least important element and give the rest more whitespace.">Simplify</button>
@@ -3627,6 +3669,8 @@ function fePanel(){
   <div class="sec"><div class="sect">Selected</div>
     <div class="ferow"><code>&lt;${tag}&gt;${isGroup?' · '+el.children.length+' inside':''}</code>
       <button class="b" id="feUp" title="select the group around it">↑ parent</button></div>
+    <div class="rw" style="margin-top:8px"><button class="b" id="feCrop"
+      title="Make the canvas this, and cut away whatever falls outside">Crop the canvas to this</button></div>
     ${isGroup?'<div class="rw" style="margin-top:8px"><button class="b" id="feUngroup">Ungroup</button>'+
       '<button class="b" id="feKids">Select what is inside</button></div>':''}
     ${el.parentElement&&el.parentElement!==FE.svg?
@@ -3703,6 +3747,8 @@ function feMultiPanel(p){
       <button class="b" id="feDelM">Delete</button></div>
     ${FE.sels.some(x=>x.parentElement&&x.parentElement!==FE.svg)?
       '<div class="rw" style="margin-top:5px"><button class="b" id="feOutM">Take out of the group</button></div>':''}
+    <div class="rw" style="margin-top:5px"><button class="b" id="feCrop"
+      title="Make the canvas these, and cut away whatever is outside">Crop the canvas to these</button></div>
     <div class="tip"><kbd>Ctrl</kbd>+<kbd>G</kbd> groups · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> ungroups</div>
   </div>
   <div class="sec"><div class="sect">Apply to all</div>
@@ -3744,12 +3790,31 @@ function wireSwatch(id,fn){
 const FIG_SYS=`You revise explanatory SVG figures for a technical talk. Rules that must not change:
 viewBox exactly "0 0 800 450"; first child a background rect; title centred at x=400 y=34, 19px bold #1E1B4B;
 one takeaway line centred at x=400 y=428, 12.5px #6B7280.
+
+RESTRAINT — this is the rule most often broken. A figure is a diagram, not a paragraph with boxes
+drawn round it. Measured across the 180 figures already in this deck: about ELEVEN text elements
+each, and the typical label is FOUR WORDS. Nearly half are one to three words.
+· at most 12 <text> elements in the whole figure, the title and the takeaway included
+· a label is a noun or a short phrase, 1 to 4 words. Never a sentence, never a clause with a verb
+· the only line allowed to be a sentence is the takeaway at y=428, and it is one line
+· say it with position, size, arrows and grouping. If a relationship can be drawn, do not caption it
+· no legend unless the same encoding repeats and cannot be labelled in place
+· no explanatory paragraph anywhere, and no bullet list rendered as stacked <text>
+· if it will not fit in twelve labels the figure is carrying two ideas — carry one
 Palette only: #1E1B4B #6B7280 #FFFFFF #FAFAF7 #E5E7EB #0EA5E9 #E0F2FE #075985 #7C3AED #EDE9FE #4C1D95
 #10B981 #D1FAE5 #065F46 #D97706 #FEF3C7 #92400E #EF4444 #FEE2E2 #991B1B.
 Animation: CSS @keyframes inside one <style>, 6s ease-in-out infinite, transform/opacity only, never SMIL,
 and the figure must read fully in its unanimated state. No gradients, filters, <image> or <foreignObject>.
 Text never below 11px and never within 14px of the canvas edge.
 Return ONLY the complete revised <svg> element. No fences, no commentary.`;
+
+/* The house rules above, plus whatever this deck's author added. Kept on the
+   deck rather than in the browser, so a deck's figures come out the same way
+   wherever it is opened and the brief travels with an export. */
+function figSys(){
+  const brief=((S.style&&S.style.figBrief)||'').trim();
+  return brief?FIG_SYS+`\n\nTHE AUTHOR OF THIS DECK ALSO ASKS:\n${brief}`:FIG_SYS;
+}
 
 function feClean(svg){return svg.replace(/<(?:rect|circle)[^>]*class="(?:fe-mark|fe-band)[^"]*"[^>]*\/?>(?:<\/(?:rect|circle)>)?/g,'')
   .replace(/\s*class="fe-hot"/g,'').replace(/ class="([^"]*)\bfe-hot\b\s*"/g,' class="$1"');}
@@ -3771,7 +3836,7 @@ async function feAskSelection(){
   out.innerHTML='<span class="spin"></span> redrawing…';
   const sel=feClean(FE.sel.outerHTML).slice(0,1500);
   try{
-    const t=await llm(FIG_SYS,
+    const t=await llm(figSys(),
       `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\n`+
       `THE USER HAS SELECTED THIS ELEMENT:\n${sel}\n\n`+
       `CHANGE REQUESTED, about that element specifically: ${instr}\n`+
@@ -3914,15 +3979,16 @@ function feTab(t){
   p.innerHTML=`<div class="sec"><div class="sect">Redraw the whole figure</div>
     <textarea id="feAiIn" rows="4" placeholder="e.g. drop the third column and make the arrow labels bigger"></textarea>
     <button class="b p" id="feAiGo" style="width:100%;margin-top:6px">Generate</button>
-    <div class="tip">The locked design system travels with the request: 800×450, the palette,
-      CSS keyframes, legible at projection size.</div>
+    <div class="tip">The locked design system travels with the request: 800×450, the palette, CSS
+      keyframes, legible at projection size, and at most twelve labels of one to four words.${
+      (S.style&&S.style.figBrief)?' Plus what you set under <b>⋯ → AI and figures</b>.':''}</div>
     <div id="feAiOut" class="hidden" style="margin-top:8px"></div></div>`;
   document.getElementById('feAiGo').onclick=async()=>{
     const instr=document.getElementById('feAiIn').value.trim();
     if(!instr){toast('Say what to change');return;}
     const out=document.getElementById('feAiOut');out.classList.remove('hidden');
     out.innerHTML='<span class="spin"></span> redrawing…';
-    try{feAccept(await llm(FIG_SYS,
+    try{feAccept(await llm(figSys(),
       `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\nCHANGE REQUESTED: ${instr}`,
       20000),out);}
     catch(e){out.textContent='Failed: '+e.message;}

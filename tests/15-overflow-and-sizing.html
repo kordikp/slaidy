@@ -18,7 +18,12 @@ addEventListener('load',async()=>{
   ok('found a text slide with room',i>=0,'slide '+(i+1));
   ok('it fits to begin with',!d.getElementById('overflag').classList.contains('on'));
   const before=w.S.slides[i].body;
-  w.S.slides[i].body=before+'\n\n![[fig-panel-1]]\n\n'+before;
+  // enough to overflow on its own: an inline figure is capped now, so a figure
+  // alone no longer guarantees a spill
+  const filler=Array.from({length:26},(_,n)=>
+    'Line '+(n+1)+' of prose that exists only to make this slide too long to fit.').join('\n\n');
+  w.S.slides[i].body=before+'\n\n![[fig-panel-1]]\n\n'+filler;
+  const tooLong=w.S.slides[i].body.length;
   w.paint();await wait(300);
   ok('now it overflows',d.getElementById('overflag').classList.contains('on'));
 
@@ -45,7 +50,8 @@ addEventListener('load',async()=>{
   d.getElementById('overflag').querySelector('[data-fix="notes"]').click();await wait(300);
   ok('moving the tail lengthens the notes',(w.S.slides[i].notes||'').length>n0,
      n0+' → '+(w.S.slides[i].notes||'').length);
-  ok('and shortens the body',w.S.slides[i].body.length<before.length*2);
+  ok('and shortens the body',w.S.slides[i].body.length<tooLong,
+     tooLong+' → '+w.S.slides[i].body.length);
   ok('which clears the warning',!d.getElementById('overflag').classList.contains('on'));
   w.undo();await wait(250);
 
@@ -98,6 +104,28 @@ addEventListener('load',async()=>{
      bs+' → '+w.blocks(w.S.slides[ii].body).length);
   w.undo();await wait(200);
   ok('and undo puts it back',w.blocks(w.S.slides[ii].body).length===bs);
+
+  // ---------- an inline figure is contained on both axes ----------
+  // it used to be width only, so a figure among text could be taller than the
+  // slide and push everything under it off the bottom
+  const j=w.S.slides.findIndex(x=>x.layout==='text');
+  w.cur=j;w.S.slides[j].body='![[fig-panel-1|100%]]';w.paint();await wait(300);
+  const st=d.getElementById('stage'),col=st.querySelector('.tx');
+  const k2=st.getBoundingClientRect().width/1280;
+  const fb=st.querySelector('.inlinefig .figbox');
+  const fh=fb.getBoundingClientRect().height/k2, fw=fb.getBoundingClientRect().width/k2;
+  const ch=col.getBoundingClientRect().height/k2, cw=col.getBoundingClientRect().width/k2;
+  ok('an inline figure at 100% is not taller than the cap',fh<=345,Math.round(fh)+'px tall');
+  ok('and fits the column it is in',fh<=ch+1&&fw<=cw+1,
+     Math.round(fw)+'×'+Math.round(fh)+' in '+Math.round(cw)+'×'+Math.round(ch));
+  ok('it keeps the drawing\'s shape',
+     Math.abs(fw/fh-800/450)<0.05,(fw/fh).toFixed(2));
+  w.S.slides[j].body='![[fig-panel-1|50%]]';w.paint();await wait(500);
+  const fb2=d.getElementById('stage').querySelector('.inlinefig .figbox');
+  const half=fb2?fb2.getBoundingClientRect().width/k2:0;
+  ok('a percentage is still of the largest that fits',Math.abs(half-fw/2)<4,
+     Math.round(half)+' vs half of '+Math.round(fw));
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

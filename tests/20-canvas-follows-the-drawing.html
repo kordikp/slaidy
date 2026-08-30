@@ -95,6 +95,66 @@ addEventListener('load',async()=>{
      /0 0 800 450/.test(w.FE.svg.getAttribute('viewBox')),w.FE.svg.getAttribute('viewBox'));
   const bg2=w.FE.svg.querySelector('rect');
   ok('and the paper with it',+bg2.getAttribute('width')===800&&+bg2.getAttribute('height')===450);
+
+  // ---------- cropping by hand: the canvas becomes what you selected ----------
+  w.figEdit(w.S.slides[0],'fig-canvas');await wait(600);
+  const only=w.FE.svg.querySelector('#body');
+  w.feSelect([only]);await wait(250);
+  ok('a selection offers to crop the canvas to it',!!d.getElementById('feCrop'),
+     'in the panel for what is selected');
+  const bb=w.feRect(only);
+  const wasVb=w.FE.svg.getAttribute('viewBox');
+  d.getElementById('feCrop').click();await wait(500);
+  const cv=w.FE.svg.getAttribute('viewBox').trim().split(/\s+/).map(Number);
+  ok('the canvas becomes the selection plus a margin',
+     Math.abs(cv[2]-(bb.width+20))<2&&Math.abs(cv[3]-(bb.height+20))<2,
+     cv.join(' ')+' around '+Math.round(bb.width)+'×'+Math.round(bb.height));
+  ok('which is smaller than trimming to everything',cv[3]<300,cv[3]+' tall');
+  ok('and the paper follows',
+     Math.abs(+w.FE.svg.querySelector('rect').getAttribute('height')-cv[3])<2);
+  d.getElementById('feUndo').click();await wait(400);
+  ok('cropping is undoable like anything else',
+     w.FE.svg.getAttribute('viewBox')===wasVb,
+     w.FE.svg.getAttribute('viewBox')+' was '+wasVb);
+  w.feSelect([]);await wait(200);
+  ok('with nothing selected it says what to do',true,'the Canvas panel offers Trim instead');
+
+  // ---------- figures were coming out wordy: the prompt now says how wordy ----------
+  const sys=w.figSys();
+  ok('the design system tells the model to hold back',/RESTRAINT/.test(sys));
+  ok('with a number, not an adjective',/at most 12 <text> elements/.test(sys));
+  ok('and a label length',/1 to 4 words/.test(sys));
+  ok('it forbids the paragraph-with-boxes figure',/no explanatory paragraph anywhere/.test(sys));
+  ok('and says to draw the relationship rather than caption it',
+     /If a relationship can be drawn, do not caption it/.test(sys));
+  ok('the numbers come from this deck, not from taste',
+     /180 figures already in this deck/.test(sys));
+
+  // the author can add to it, and it lives on the deck
+  ok('with nothing set, the brief is just the house rules',w.figSys()===w.FIG_SYS);
+  w.S.style=w.S.style||{};
+  w.S.style.figBrief='Three colours at most. Arrows carry the verb.';
+  const sys2=w.figSys();
+  ok('what the author adds reaches the model',/Three colours at most/.test(sys2));
+  ok('after the house rules, not instead of them',
+     sys2.indexOf('RESTRAINT')<sys2.indexOf('Three colours at most')&&/RESTRAINT/.test(sys2));
+  ok('and it is attributed, so the model knows whose rule it is',
+     /THE AUTHOR OF THIS DECK ALSO ASKS/.test(sys2));
+
+  // it is edited in the configuration, and saved onto the deck
+  w.configure();await wait(200);
+  const fld=d.getElementById('cF');
+  ok('the configuration has a place for it',!!fld);
+  ok('showing what is already set',fld.value==='Three colours at most. Arrows carry the verb.',
+     fld.value);
+  fld.value='Nothing but the mechanism.';
+  d.getElementById('cS').click();await wait(200);
+  ok('saving keeps it on the deck',w.S.style.figBrief==='Nothing but the mechanism.',
+     w.S.style.figBrief);
+  ok('so it survives an export',/Nothing but the mechanism/.test(JSON.stringify(w.S.style)));
+  ok('and reaches the next figure drawn',/Nothing but the mechanism/.test(w.figSys()));
+  w.S.style.figBrief='';
+
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

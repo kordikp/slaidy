@@ -73,7 +73,7 @@ addEventListener('load',async()=>{
   // ---------- adding shapes ----------
   const svg3=d.getElementById('fefr').contentDocument.querySelector('svg');
   const kids3=()=>[...svg3.children].filter(x=>!/fe-mark|fe-band/.test(x.getAttribute('class')||''));
-  for(const [k,tag] of [['rect','rect'],['circle','circle'],['line','line'],['text','text'],['arrow','g'],['box','g']]){
+  for(const [k,tag] of [['rect','rect'],['circle','circle'],['text','text'],['box','g']]){
     const n=kids3().length;
     w.feAdd(k);await wait(60);
     const el=w.FE.sels[0];
@@ -81,9 +81,12 @@ addEventListener('load',async()=>{
        el&&el.tagName);
   }
   ok('added text has content',[...svg3.querySelectorAll(':scope > text')].some(t=>/New label/.test(t.textContent)));
-  ok('arrow is a line plus a head',w.FE.sels[0]&&true);
-  const arrow=[...svg3.children].reverse().find(x=>x.tagName.toLowerCase()==='g'&&x.querySelector('polygon'));
-  ok('arrow has both parts',!!arrow&&!!arrow.querySelector('line')&&!!arrow.querySelector('polygon'));
+  // lines and arrows are drawn by dragging, not dropped in the middle
+  w.feAdd('line');
+  ok('the line tool arms drawing instead',w.feDraw==='line');
+  w.feAdd('arrow');
+  ok('so does the arrow tool',w.feDraw==='arrow');
+  w.feDraw=null;
 
   // ---------- nothing of ours leaks into the file ----------
   const html=w.feHtml();

@@ -1,0 +1,113 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  w.cur=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');w.paint();await wait(200);
+  w.figEdit(w.S.slides[w.cur]);await wait(1300);
+  const idoc=d.getElementById('fefr').contentDocument, svg=idoc.querySelector('svg');
+  ok('editor open',!!svg);
+
+  // ---------- an arrow goes from anywhere to anywhere ----------
+  const g=w.makeArrow(idoc,100,100,400,300,true);
+  svg.appendChild(g);
+  const ends=w.arrowEnds(g);
+  ok('an arrow remembers its two ends',ends.join(',')==='100,100,400,300',ends.join(','));
+  const ln=g.querySelector('line'),hd=g.querySelector('polygon');
+  const ang=Math.atan2(+ln.getAttribute('y2')-100,+ln.getAttribute('x2')-100);
+  ok('the shaft runs along the diagonal',Math.abs(ang-Math.atan2(200,300))<0.02,
+     (ang*180/Math.PI).toFixed(1)+'°');
+  ok('the shaft stops short of the tip',
+     Math.hypot(400-+ln.getAttribute('x2'),300-+ln.getAttribute('y2'))>10);
+  const pts=hd.getAttribute('points').split(' ').map(p=>p.split(',').map(Number));
+  ok('the head has three points',pts.length===3);
+  ok('and its tip is the endpoint',Math.hypot(pts[0][0]-400,pts[0][1]-300)<0.2,pts[0].join(','));
+  // move one end and the head follows
+  w.setEnds(g,100,100,200,500);
+  const p2=g.querySelector('polygon').getAttribute('points').split(' ')[0].split(',').map(Number);
+  ok('moving an end moves the head',Math.hypot(p2[0]-200,p2[1]-500)<0.2,p2.join(','));
+
+  // endpoint handles instead of corner handles
+  w.feSelect([g]);await wait(120);
+  ok('a line gets two end handles',idoc.querySelectorAll('.fe-end').length===2,
+     idoc.querySelectorAll('.fe-end').length+'');
+  ok('and no corner handles',idoc.querySelectorAll('.fe-h').length===0);
+  const shape=[...svg.children].find(x=>['rect','circle','g','text'].includes(x.tagName)
+    &&!w.isArrow(x)&&!x.classList.contains('fe-mark')
+    &&x.getBoundingClientRect().width>4&&x.getBoundingClientRect().width<600);
+  ok('found a shape to select',!!shape,shape&&shape.tagName);
+  w.feSelect([shape]);await wait(200);
+  ok('a shape gets eight corner handles',idoc.querySelectorAll('.fe-h').length===8,
+     idoc.querySelectorAll('.fe-h').length+'');
+  ok('and no end handles',idoc.querySelectorAll('.fe-end').length===0);
+  g.remove();
+
+  // ---------- drawing mode ----------
+  w.feArm('arrow');
+  ok('the tool arms drawing',w.feDraw==='arrow');
+  ok('and the canvas says so',d.getElementById('fecanvas').classList.contains('drawing'));
+  const m=svg.getScreenCTM(),P=(x,y)=>{const p=svg.createSVGPoint();p.x=x;p.y=y;
+    const q=p.matrixTransform(m);return{x:q.x,y:q.y};};
+  const a=P(120,140),b=P(420,360);
+  const real=()=>[...svg.children].filter(x=>!(x.classList&&
+    ['fe-mark','fe-h','fe-end','fe-band'].some(c=>x.classList.contains(c)))).length;
+  const n0=real();
+  idoc.dispatchEvent(new W.MouseEvent('mousedown',{clientX:a.x,clientY:a.y,bubbles:true}));
+  await wait(40);
+  idoc.dispatchEvent(new W.MouseEvent('mousemove',{clientX:b.x,clientY:b.y,bubbles:true}));
+  await wait(40);
+  idoc.dispatchEvent(new W.MouseEvent('mouseup',{clientX:b.x,clientY:b.y,bubbles:true}));
+  await wait(120);
+  ok('dragging drew one',real()===n0+1,n0+' → '+real());
+  const drawn=w.FE.sels[0];
+  const de=w.arrowEnds(drawn);
+  ok('from where the drag began to where it ended',
+     de&&Math.hypot(de[0]-120,de[1]-140)<3&&Math.hypot(de[2]-420,de[3]-360)<3,de&&de.map(Math.round).join(','));
+  ok('drawing mode switched itself off',!w.feDraw);
+  drawn.remove();
+
+  // ---------- joining two objects ----------
+  const shapes=[...svg.children].filter(x=>['rect','circle','g'].includes(x.tagName)
+    &&!x.classList.contains('fe-mark')).slice(0,2);
+  if(shapes.length===2){
+    w.feSelect(shapes);w.feConnect();await wait(120);
+    const con=w.FE.sels[0];
+    ok('joining makes one arrow',w.isArrow(con)&&con.hasAttribute('data-from'));
+    ok('and it remembers both ends',!!idoc.getElementById(con.getAttribute('data-from'))&&
+       !!idoc.getElementById(con.getAttribute('data-to')));
+    const before=w.arrowEnds(con).map(Math.round).join(',');
+    w.feTranslate(shapes[0],shapes[0].getAttribute('transform')||'',60,40);
+    w.rerouteAll();
+    const after=w.arrowEnds(con).map(Math.round).join(',');
+    ok('moving one end re-routes the arrow',before!==after,before+'  →  '+after);
+    con.remove();
+  }
+
+  // ---------- the source panel ----------
+  w.feTab('source');await wait(200);
+  const view=d.getElementById('feSrcView');
+  ok('the source renders as lines',!!view&&view.querySelectorAll('.srcline').length>10,
+     view?view.querySelectorAll('.srcline').length+' lines':'');
+  ok('geometry is dimmed',view.querySelectorAll('.geo').length>3);
+  ok('text content stands out',view.querySelectorAll('.txt').length>2);
+  const txt=[...svg.querySelectorAll('text')].find(t=>t.textContent.trim());
+  w.feSelect([txt]);await wait(150);
+  const on=view.querySelectorAll('.srcline.on');
+  ok('selecting scrolls the source to it',on.length===1,on.length+' highlighted');
+  ok('and it is the right line',w.FE.srcMap[+on[0].dataset.i]===txt);
+  // and the other way round
+  const other=[...view.querySelectorAll('.srcline:not(.srcend)')].find(r=>
+    w.FE.srcMap[+r.dataset.i]&&w.FE.srcMap[+r.dataset.i]!==txt&&w.FE.srcMap[+r.dataset.i].tagName!=='defs');
+  other.dispatchEvent(new W.MouseEvent('click',{bubbles:true}));await wait(150);
+  ok('clicking a line selects that element',w.FE.sels[0]===w.FE.srcMap[+other.dataset.i],
+     w.FE.sels[0]&&w.FE.sels[0].tagName);
+  ok('editor marks never appear in the source',
+     ![...view.querySelectorAll('.srcline')].some(r=>/fe-mark|fe-h"|fe-end/.test(r.textContent)));
+  d.getElementById('feSrcEdit').click();await wait(120);
+  ok('and it can still be edited as text',!d.getElementById('feSrc').classList.contains('hidden'));
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

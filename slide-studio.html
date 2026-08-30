@@ -311,7 +311,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .fetabs{display:flex;gap:2px;background:#F1F2F5;border-radius:var(--r6);padding:2px;margin-left:6px}
 .fetabs button{padding:3px 11px;border-radius:4px;font-size:12px;color:var(--gray)}
 .fetabs button.on{background:#fff;color:var(--ink);font-weight:550;box-shadow:0 1px 2px rgba(15,18,26,.09)}
-.fewrap{display:grid;grid-template-columns:1fr 288px;flex:1;min-height:0}
+.fewrap{display:grid;grid-template-columns:1fr 288px;flex:1;min-height:0;transition:grid-template-columns .15s}
+.fewrap.src{grid-template-columns:1fr 440px}
 .fecanvas{position:relative;background:#F7F8FA;display:grid;place-items:center;padding:16px;min-height:0;overflow:hidden}
 .fetools{position:absolute;left:9px;top:50%;transform:translateY(-50%);z-index:3;
  display:flex;flex-direction:column;gap:2px;background:#fff;border:1px solid var(--line);
@@ -320,6 +321,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
  color:var(--gray);transition:.12s}
 .fetools button:hover{background:var(--accbg);color:var(--acc)}
 .fetools .hr{height:1px;background:var(--line);margin:3px 2px}
+.fecanvas.drawing{cursor:crosshair}
+.fecanvas.drawing iframe{pointer-events:auto}
 .fecanvas iframe{width:100%;height:100%;border:0;background:#fff;border-radius:var(--r6);
  box-shadow:0 1px 2px rgba(15,18,26,.05),0 6px 20px rgba(15,18,26,.06)}
 .fehint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11.5px;color:var(--faint);
@@ -332,7 +335,23 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .fepanel textarea{width:100%;border:1px solid var(--line);border-radius:var(--r6);padding:6px 8px;
  font:12px/1.5 system-ui;resize:vertical;outline:none}
 .fepanel textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
-.fesrc{font:11.5px/1.55 ui-monospace,SFMono-Regular,monospace!important;height:calc(92vh - 190px);resize:none}
+.fesrc{font:11.5px/1.55 ui-monospace,SFMono-Regular,monospace!important;height:calc(92vh - 230px);resize:none}
+.srcsec{display:flex;flex-direction:column;min-height:0;height:100%}
+.srcview{flex:1;min-height:0;overflow:auto;margin-top:8px;border:1px solid var(--line);
+ border-radius:var(--r6);background:#FCFCFD;padding:6px 0;
+ font:11px/1.7 ui-monospace,SFMono-Regular,monospace}
+.srcline{white-space:pre-wrap;overflow-wrap:anywhere;padding-right:8px;cursor:pointer;
+ border-left:2px solid transparent;text-indent:-12px}
+.srcline:hover{background:#F1F2F5}
+.srcline.on{background:var(--accbg);border-left-color:var(--acc)}
+.srcline .t{color:#7A8194;font-weight:600}
+.srcline .a{color:var(--acc)}
+.srcline .v{color:#2A6F4E}
+.srcline .txt{color:var(--ink);font-weight:600;padding:0 3px}
+.srcline .geo{opacity:.33}
+.srcline .cutx{opacity:.5}
+.srcend{opacity:.45;cursor:default}
+.srcend:hover{background:none}
 .sw{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
 .sw button{aspect-ratio:1;border-radius:4px;border:1px solid rgba(15,18,26,.14);transition:.1s}
 .sw button:hover{transform:scale(1.16)}
@@ -1596,6 +1615,7 @@ function figEdit(s,figId,onRename){
         <div class="fetools" id="fetools">
           ${Object.keys(ADD).map(k=>`<button data-a="${k}" title="${ADD[k].l}">${fico(k)}</button>`).join('')}
           <span class="hr"></span>
+          <button data-a="con" title="Join the two selected (Ctrl-J)">${fico('con')}</button>
           <button data-a="dup" title="Duplicate (Ctrl-D)">${fico('dup')}</button>
         </div>
         <iframe id="fefr"></iframe>
@@ -1607,7 +1627,9 @@ function figEdit(s,figId,onRename){
   document.querySelectorAll('.fetabs button').forEach(b=>b.onclick=()=>feTab(b.dataset.t));
   document.getElementById('fetools').onclick=e=>{
     const b=e.target.closest('button');if(!b)return;
-    b.dataset.a==='dup'?feDup():feAdd(b.dataset.a);};
+    if(b.dataset.a==='dup')return feDup();
+    if(b.dataset.a==='con')return feConnect();
+    feAdd(b.dataset.a);};
   document.getElementById('feCancel').onclick=closeDialog;
   document.getElementById('feUndo').onclick=feUndo;
   document.getElementById('feSave').onclick=()=>feCommit(false);
@@ -1623,7 +1645,8 @@ function feMount(){
     svg{display:block;width:100%;height:100%}
     .fe-hot{cursor:move}
     .fe-hot:hover{outline:1px dashed rgba(75,63,207,.55);outline-offset:1px}
-    .fe-h{pointer-events:all}
+    .fe-h,.fe-end{pointer-events:all}
+    .fe-end{cursor:crosshair}
     .fe-h[data-h="nw"],.fe-h[data-h="se"]{cursor:nwse-resize}
     .fe-h[data-h="ne"],.fe-h[data-h="sw"]{cursor:nesw-resize}
     .fe-h[data-h="n"],.fe-h[data-h="s"]{cursor:ns-resize}
@@ -1662,6 +1685,9 @@ function feResolve(el){
   return top;
 }
 function feDown(e){
+  if(feDraw)return feDrawStart(e);
+  if(e.target&&e.target.classList&&e.target.classList.contains('fe-end'))
+    return feEndDrag(e,+e.target.getAttribute('data-end'));
   if(e.target&&e.target.classList&&e.target.classList.contains('fe-h'))
     return feResize(e,e.target.getAttribute('data-h'));
   const el=feResolve(e.target), add=e.shiftKey||e.ctrlKey||e.metaKey;
@@ -1775,6 +1801,22 @@ function feRect(el){
   return{x:Math.min(...xs),y:Math.min(...ys),width:Math.max(...xs)-Math.min(...xs),height:Math.max(...ys)-Math.min(...ys)};
 }
 
+function feEndDrag(e,which){
+  const el=FE.sels[0], ends=arrowEnds(el);
+  if(!ends)return;
+  const base=[...ends];
+  const move=ev=>{
+    const p=fePt(ev);
+    const q=ev.shiftKey?snapAxis({x:base[which?0:2],y:base[which?1:3]},p):p;
+    if(which)setEnds(el,base[0],base[1],q.x,q.y);
+    else setEnds(el,q.x,q.y,base[2],base[3]);
+    feBox();
+  };
+  const up=()=>{FE.doc.removeEventListener('mousemove',move);FE.doc.removeEventListener('mouseup',up);fePush();};
+  FE.doc.addEventListener('mousemove',move);FE.doc.addEventListener('mouseup',up);
+  e.preventDefault();e.stopPropagation();
+}
+
 /* Scale about the opposite corner, so the handle you are not holding stays put.
    Corners keep the proportions — a squashed logo is nearly always a mistake —
    and Shift lets go of that. Edge handles stretch one axis by definition. */
@@ -1827,6 +1869,7 @@ function feKey(e){
       &&!/fe-mark|fe-band/.test(c.getAttribute('class')||'')));}
   if(mod&&e.key==='g'){e.preventDefault();return e.shiftKey?feUngroup():feGroup();}
   if(mod&&e.key==='d'){e.preventDefault();return feDup();}
+  if(mod&&e.key==='j'){e.preventDefault();return feConnect();}
   if(mod&&e.key==='e'){e.preventDefault();return feUnnest();}
   if(e.key==='z'&&mod){e.preventDefault();return feUndo();}
   if(!FE.sels.length)return;
@@ -1841,6 +1884,115 @@ function feKey(e){
   if(e.key==='Escape'){e.preventDefault();
     const ps=[...new Set(FE.sels.map(x=>x.parentElement))].filter(x=>x&&x!==FE.svg);
     feSelect(ps.length?ps:[]);}
+}
+
+/* ---- lines, arrows and connectors ----------------------------------------
+   An arrow is a <g> holding a line and a head polygon, not a <marker>: the
+   figures already carry their own defs and ids, and a self-contained group
+   cannot collide with them. The head is rebuilt from the angle, so an arrow
+   goes from anywhere to anywhere.
+--------------------------------------------------------------------------- */
+const HEAD=13, HALF=5;
+function arrowGeom(g,x1,y1,x2,y2){
+  const ln=g.querySelector('line'), hd=g.querySelector('polygon');
+  const dx=x2-x1, dy=y2-y1, L=Math.hypot(dx,dy)||1, ux=dx/L, uy=dy/L;
+  const bx=x2-ux*HEAD, by=y2-uy*HEAD;            // where the shaft stops
+  ln.setAttribute('x1',x1.toFixed(1));ln.setAttribute('y1',y1.toFixed(1));
+  ln.setAttribute('x2',bx.toFixed(1));ln.setAttribute('y2',by.toFixed(1));
+  if(hd)hd.setAttribute('points',
+    [[x2,y2],[bx-uy*HALF,by+ux*HALF],[bx+uy*HALF,by-ux*HALF]]
+      .map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' '));
+  g.setAttribute('data-a',`${x1.toFixed(1)},${y1.toFixed(1)}`);
+  g.setAttribute('data-b',`${x2.toFixed(1)},${y2.toFixed(1)}`);
+}
+function makeArrow(doc,x1,y1,x2,y2,head){
+  const g=doc.createElementNS(NS,'g');g.setAttribute('class','fe-arrow');
+  const ln=doc.createElementNS(NS,'line');
+  ln.setAttribute('stroke','#1E1B4B');ln.setAttribute('stroke-width','1.5');
+  ln.setAttribute('stroke-linecap','round');
+  g.appendChild(ln);
+  if(head){const p=doc.createElementNS(NS,'polygon');p.setAttribute('fill','#1E1B4B');g.appendChild(p);}
+  arrowGeom(g,x1,y1,x2,y2);
+  return g;
+}
+const isArrow=el=>el&&el.tagName==='g'&&el.classList.contains('fe-arrow');
+function arrowEnds(el){
+  if(isArrow(el)){
+    const a=(el.getAttribute('data-a')||'').split(',').map(Number);
+    const b=(el.getAttribute('data-b')||'').split(',').map(Number);
+    if(a.length===2&&b.length===2&&a.every(isFinite)&&b.every(isFinite))return[a[0],a[1],b[0],b[1]];
+  }
+  if(el&&el.tagName==='line')
+    return['x1','y1','x2','y2'].map(k=>+el.getAttribute(k)||0);
+  return null;
+}
+function setEnds(el,x1,y1,x2,y2){
+  if(isArrow(el))return arrowGeom(el,x1,y1,x2,y2);
+  el.setAttribute('x1',x1.toFixed(1));el.setAttribute('y1',y1.toFixed(1));
+  el.setAttribute('x2',x2.toFixed(1));el.setAttribute('y2',y2.toFixed(1));
+}
+
+/* Drawing mode: the next drag on the canvas lays down a line or an arrow. */
+let feDraw=null;
+function feArm(kind){
+  feDraw=kind;
+  document.getElementById('fecanvas')?.classList.add('drawing');
+  toast(kind==='line'?'Drag to draw a line':'Drag to draw an arrow');
+}
+function feDrawStart(e){
+  const p0=fePt(e);
+  const g=feDraw==='line'
+    ? (()=>{const l=FE.doc.createElementNS(NS,'line');
+        l.setAttribute('stroke','#1E1B4B');l.setAttribute('stroke-width','1.5');
+        l.setAttribute('stroke-linecap','round');
+        setEnds(l,p0.x,p0.y,p0.x,p0.y);return l;})()
+    : makeArrow(FE.doc,p0.x,p0.y,p0.x,p0.y,true);
+  FE.svg.appendChild(g);
+  const move=ev=>{const p=fePt(ev);
+    setEnds(g,p0.x,p0.y,ev.shiftKey?snapAxis(p0,p).x:p.x,ev.shiftKey?snapAxis(p0,p).y:p.y);};
+  const up=ev=>{
+    FE.doc.removeEventListener('mousemove',move);FE.doc.removeEventListener('mouseup',up);
+    const p=fePt(ev);
+    if(Math.hypot(p.x-p0.x,p.y-p0.y)<6)g.remove();
+    else{feHot(g);fePush();feSelect([g]);}
+    feDraw=null;document.getElementById('fecanvas')?.classList.remove('drawing');
+  };
+  FE.doc.addEventListener('mousemove',move);FE.doc.addEventListener('mouseup',up);
+  e.preventDefault();
+}
+const snapAxis=(a,b)=>Math.abs(b.x-a.x)>Math.abs(b.y-a.y)?{x:b.x,y:a.y}:{x:a.x,y:b.y};
+
+/* ---- connectors: an arrow that remembers what it joins ---- */
+let oidN=0;
+const feId=el=>el.id||(el.id='fe-o'+(++oidN));
+function edgePoint(box,tx,ty){
+  const cx=box.x+box.width/2, cy=box.y+box.height/2;
+  const dx=tx-cx, dy=ty-cy;
+  if(!dx&&!dy)return{x:cx,y:cy};
+  const sx=dx?box.width/2/Math.abs(dx):Infinity, sy=dy?box.height/2/Math.abs(dy):Infinity;
+  const t=Math.min(sx,sy);
+  return{x:cx+dx*t,y:cy+dy*t};
+}
+function reroute(g){
+  const from=FE.doc.getElementById(g.getAttribute('data-from'));
+  const to=FE.doc.getElementById(g.getAttribute('data-to'));
+  if(!from||!to)return;
+  let A,B;try{A=feRect(from);B=feRect(to);}catch(e){return;}
+  const a=edgePoint(A,B.x+B.width/2,B.y+B.height/2);
+  const b=edgePoint(B,A.x+A.width/2,A.y+A.height/2);
+  arrowGeom(g,a.x,a.y,b.x,b.y);
+}
+function rerouteAll(){
+  FE.svg?.querySelectorAll('g[data-from][data-to]').forEach(reroute);
+}
+function feConnect(){
+  if(FE.sels.length!==2){toast('Select the two things to join');return;}
+  fePush();
+  const [a,b]=FE.sels;
+  const g=makeArrow(FE.doc,0,0,1,1,true);
+  g.setAttribute('data-from',feId(a));g.setAttribute('data-to',feId(b));
+  FE.svg.appendChild(g);feHot(g);reroute(g);feSelect([g]);
+  toast('Joined — the arrow follows them');
 }
 
 /* ---- duplicating and adding ---- */
@@ -1875,7 +2027,7 @@ function feDup(){
   fePush();
   const copies=FE.sels.map(el=>{
     const c=el.cloneNode(true);
-    c.querySelectorAll('.fe-mark,.fe-h,.fe-band').forEach(x=>x.remove());
+    c.querySelectorAll('.fe-mark,.fe-h,.fe-end,.fe-band').forEach(x=>x.remove());
     feFreshIds(c);
     const ps=feParentScale(el);
     feTranslate(c,c.getAttribute('transform')||'',10/ps.x,10/ps.y);
@@ -1896,14 +2048,17 @@ const FICO={
   box   :'<rect x="2" y="4" width="10" height="6" rx="1.5"/><path d="M4.5 7h5"/>',
   save  :'<path d="M2.6 2.4h6.2l2.6 2.6v6.6a1 1 0 0 1-1 1H2.6a1 1 0 0 1-1-1V3.4a1 1 0 0 1 1-1z"/>'+
          '<path d="M4.4 2.4v3.2h4.2V2.4M4.4 12.6V8.8h5.2v3.8"/>',
+  con   :'<circle cx="3" cy="3.2" r="1.9"/><circle cx="11" cy="10.8" r="1.9"/>'+
+         '<path d="M4.5 4.7 9.5 9.3"/>',
   dup   :'<rect x="1.8" y="1.8" width="7" height="7" rx="1.3"/>'+
          '<path d="M5.2 12.2h5.6a1.4 1.4 0 0 0 1.4-1.4V5.2"/>'
 };
 const fico=k=>`<svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor"
   stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FICO[k]}</svg>`;
 const ADD={
-  rect  :{l:'Rectangle'},circle:{l:'Circle'},line:{l:'Line'},
-  arrow :{l:'Arrow'},    text  :{l:'Text'},  box   :{l:'Label box'}
+  rect  :{l:'Rectangle'},circle:{l:'Circle'},
+  line  :{l:'Line — drag it'},arrow:{l:'Arrow — drag it'},
+  text  :{l:'Text'},     box   :{l:'Label box'}
 };
 function feAdd(kind){
   if(!FE.svg)return;
@@ -1914,14 +2069,10 @@ function feAdd(kind){
   let el;
   if(kind==='rect')  el=mk('rect',{x:330,y:190,width:140,height:70,rx:8,fill:'#FFFFFF',stroke:INK,'stroke-width':1.5});
   if(kind==='circle')el=mk('circle',{cx:400,cy:225,r:44,fill:'#FFFFFF',stroke:INK,'stroke-width':1.5});
-  if(kind==='line')  el=mk('line',{x1:320,y1:225,x2:480,y2:225,stroke:INK,'stroke-width':1.5});
+  if(kind==='line'||kind==='arrow')return feArm(kind);   /* drawn by dragging */
   if(kind==='text')  {el=mk('text',{x:400,y:228,'font-size':14,fill:INK,'text-anchor':'middle'});
                       el.textContent='New label';}
-  if(kind==='arrow'){
-    el=mk('g',{});
-    el.appendChild(mk('line',{x1:320,y1:225,x2:466,y2:225,stroke:INK,'stroke-width':1.5}));
-    el.appendChild(mk('polygon',{points:'480,225 464,218 464,232',fill:INK}));
-  }
+
   if(kind==='box'){
     el=mk('g',{});
     el.appendChild(mk('rect',{x:330,y:196,width:140,height:58,rx:8,fill:'#FFFFFF',stroke:LINE,'stroke-width':1.5}));
@@ -1995,7 +2146,8 @@ function feKeyOutside(e){
 function feSelect(els){
   FE.sels=(Array.isArray(els)?els:els?[els]:[]).filter(Boolean);
   FE.sel=FE.sels[FE.sels.length-1]||null;
-  feBox();fePanel();
+  feBox();
+  if(FE.tab==='source')srcSync(); else fePanel();
   document.getElementById('fehint')?.classList.toggle('hidden',!!FE.sels.length);
 }
 
@@ -2003,6 +2155,7 @@ function feSelect(els){
    An overlay positioned in page pixels drifts the moment anything reflows. */
 function feBox(){
   if(!FE.doc||!FE.svg)return;
+  rerouteAll();
   FE.doc.querySelectorAll('.fe-mark:not(.fe-h)').forEach(x=>x.remove());
   FE.sels.forEach((el,i)=>{
     let bb;try{bb=el.getBBox();}catch(e){return;}
@@ -2028,6 +2181,22 @@ const HANDLES=[['nw',0,0],['n',.5,0],['ne',1,0],['e',1,.5],['se',1,1],['s',.5,1]
 /* The handles are updated in place, never rebuilt. Destroying the rect under the
    pointer mid-drag is what made resizing feel like it was fighting the mouse. */
 function feHandles(){
+  FE.doc.querySelectorAll('.fe-end').forEach(x=>x.remove());
+  /* a line has two ends, not eight corners */
+  const ends=FE.sels.length===1?arrowEnds(FE.sels[0]):null;
+  if(ends){
+    FE.doc.querySelectorAll('.fe-h').forEach(x=>x.remove());
+    const z=feZoom(),r=6/z.x;
+    [[ends[0],ends[1],0],[ends[2],ends[3],1]].forEach(([x,y,k])=>{
+      const c=FE.doc.createElementNS(NS,'circle');
+      c.setAttribute('class','fe-mark fe-end');c.setAttribute('data-end',k);
+      c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',r);
+      c.setAttribute('fill','#fff');c.setAttribute('stroke','#4B3FCF');
+      c.setAttribute('stroke-width','1.25');c.setAttribute('vector-effect','non-scaling-stroke');
+      FE.svg.appendChild(c);
+    });
+    return;
+  }
   const B=FE.sels.length?feBounds():null;
   if(!B||(B.w<=0&&B.h<=0)){FE.doc.querySelectorAll('.fe-h').forEach(x=>x.remove());return;}
   const z=feZoom(),w=7/z.x,h=7/z.y;
@@ -2227,7 +2396,7 @@ and the figure must read fully in its unanimated state. No gradients, filters, <
 Text never below 11px and never within 14px of the canvas edge.
 Return ONLY the complete revised <svg> element. No fences, no commentary.`;
 
-function feClean(svg){return svg.replace(/<rect[^>]*class="(?:fe-mark|fe-band)[^"]*"[^>]*\/?>(?:<\/rect>)?/g,'')
+function feClean(svg){return svg.replace(/<(?:rect|circle)[^>]*class="(?:fe-mark|fe-band)[^"]*"[^>]*\/?>(?:<\/(?:rect|circle)>)?/g,'')
   .replace(/\s*class="fe-hot"/g,'').replace(/ class="([^"]*)\bfe-hot\b\s*"/g,' class="$1"');}
 function feHtml(){
   if(!FE.svg)return FE.src;
@@ -2269,24 +2438,102 @@ function feAccept(t,out){
   document.getElementById('feDrop').onclick=()=>out.classList.add('hidden');
 }
 
+/* ---- the source, read as structure rather than coordinates ----------------
+   What a person scans for is which elements are there, what they say, and the
+   few attributes worth changing by hand. Geometry — d, points, transforms, the
+   x and y of everything — is what the mouse is for, so it is dimmed and long
+   values are cut short. Clicking a line selects the element; selecting an
+   element scrolls to its line.
+--------------------------------------------------------------------------- */
+const GEO=new Set(['x','y','x1','y1','x2','y2','cx','cy','r','rx','ry','width','height',
+  'd','points','transform','viewBox','dy','dx','offset','stroke-dasharray',
+  'vector-effect','preserveAspectRatio','markerWidth','markerHeight','refX','refY','orient']);
+const cut=(v,n)=>v.length>n?esc(v.slice(0,n))+'<span class="cutx">…</span>':esc(v);
+function srcHtml(){
+  FE.srcMap=[];
+  const skip=el=>el.classList&&['fe-mark','fe-h','fe-end','fe-band']
+    .some(c=>el.classList.contains(c));
+  const out=[];
+  const walk=(el,d)=>{
+    if(skip(el))return;
+    const i=FE.srcMap.length;FE.srcMap.push(el);
+    const cls=(el.getAttribute('class')||'').split(/\s+/).filter(x=>x&&x!=='fe-hot').join(' ');
+    const named=[],geo=[];
+    [...el.attributes].forEach(a=>{
+      if(a.name==='class'){if(cls)named.push(`<span class="a">class</span>=<span class="v">"${esc(cls)}"</span>`);return;}
+      const h=`<span class="a">${esc(a.name)}</span>=<span class="v">"${cut(a.value,GEO.has(a.name)?18:44)}"</span>`;
+      (GEO.has(a.name)?geo:named).push(h);
+    });
+    const kids=[...el.children].filter(k=>!skip(k));
+    const own=[...el.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim())
+      .map(n=>n.textContent.trim()).join(' ');
+    /* what the line says first is what a person is looking for: the element,
+       then its words, then the attributes worth editing, and the coordinates last */
+    out.push(`<div class="srcline" data-i="${i}" style="padding-left:${18+d*13}px">`+
+      `<span class="t">${esc(el.tagName)}</span>`+
+      (own?` <span class="txt">${esc(own)}</span>`:'')+
+      (named.length?' '+named.join(' '):'')+
+      (geo.length?` <span class="geo">${geo.join(' ')}</span>`:'')+
+      (kids.length?'<span class="t"> ›</span>':'')+
+      `</div>`);
+    kids.forEach(k=>walk(k,d+1));
+    if(kids.length)out.push(`<div class="srcline srcend" style="padding-left:${18+d*13}px">`+
+      `<span class="t">└ ${esc(el.tagName)}</span></div>`);
+  };
+  [...FE.svg.children].forEach(c=>walk(c,0));
+  return out.join('');
+}
+function srcSync(){
+  const box=document.getElementById('feSrcView');
+  if(!box||!FE.srcMap)return;
+  box.querySelectorAll('.srcline.on').forEach(x=>x.classList.remove('on'));
+  let first=null;
+  FE.sels.forEach(el=>{
+    const i=FE.srcMap.indexOf(el);
+    if(i<0)return;
+    const row=box.querySelector(`.srcline[data-i="${i}"]`);
+    if(row){row.classList.add('on');first=first||row;}
+  });
+  if(first)first.scrollIntoView({block:'nearest'});
+}
+
 /* ---- tabs ---- */
 function feTab(t){
   FE.tab=t;
+  document.querySelector('.fewrap')?.classList.toggle('src',t==='source');
   document.querySelectorAll('.fetabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
   const p=document.getElementById('fepanel'),c=document.getElementById('fecanvas');
   if(t==='design'){c.classList.remove('hidden');fePanel();return;}
   if(t==='source'){
     c.classList.remove('hidden');
-    p.innerHTML=`<div class="sec"><div class="sect">SVG source</div>
-      <textarea id="feSrc" class="fesrc" spellcheck="false">${esc(feHtml())}</textarea>
-      <div class="rw" style="margin-top:6px"><button class="b p" id="feSrcGo">Render</button></div>
+    p.innerHTML=`<div class="sec srcsec"><div class="ferow">
+        <div class="sect" style="margin:0">Source</div>
+        <button class="b" id="feSrcEdit">Edit as text</button></div>
+      <div class="tip">Click a line to select it on the canvas. Coordinates are dimmed —
+        that is what the mouse is for.</div>
+      <div id="feSrcView" class="srcview">${srcHtml()}</div>
+      <textarea id="feSrc" class="fesrc hidden" spellcheck="false">${esc(feHtml())}</textarea>
+      <div class="rw hidden" id="feSrcAct" style="margin-top:6px">
+        <button class="b p" id="feSrcGo">Render</button>
+        <button class="b" id="feSrcBack">Back</button></div>
       <div id="feSrcMsg" class="tip"></div></div>`;
+    const view=document.getElementById('feSrcView'),ta=document.getElementById('feSrc');
+    view.onclick=e=>{
+      const row=e.target.closest('.srcline');if(!row||row.classList.contains('srcend'))return;
+      const el=FE.srcMap[+row.dataset.i];if(el)feSelect([el]);
+    };
+    document.getElementById('feSrcEdit').onclick=()=>{
+      view.classList.add('hidden');ta.classList.remove('hidden');
+      document.getElementById('feSrcAct').classList.remove('hidden');ta.focus();
+    };
+    document.getElementById('feSrcBack').onclick=()=>feTab('source');
     document.getElementById('feSrcGo').onclick=()=>{
-      const v=document.getElementById('feSrc').value.trim(),bad=checkSvg(v);
+      const v=ta.value.trim(),bad=checkSvg(v);
       document.getElementById('feSrcMsg').innerHTML=bad.length?
         `<span style="color:var(--b)">${esc(bad.join('; '))}</span>`:'ok';
       if(bad.includes('invalid XML')||bad.includes('unparseable'))return;
       fePush();FE.src=v;feMount();};
+    srcSync();
     return;
   }
   c.classList.remove('hidden');
@@ -2475,7 +2722,8 @@ function shortcuts(){
    ['Ctrl + A','select everything'],['Ctrl + G','group the selection'],['Ctrl + Shift + G','ungroup'],
    ['arrows','nudge, Shift for ten'],['Esc','step out to the group around it'],
    ['drag a handle','resize — corners keep the proportions, Shift lets go'],
-   ['Ctrl + D','duplicate the selection'],
+   ['Ctrl + D','duplicate the selection'],['Ctrl + J','join the two selected with an arrow'],
+   ['drag with a line tool','draw from one point to another, Shift to keep it straight'],
    ['Del','remove the selection'],['Ctrl + Z','undo']];
   dialog('<h3>Shortcuts</h3><table style="margin-top:10px;width:100%;font-size:13px;border-collapse:collapse">'+
     R.map(([k,v])=>v?`<tr><td style="padding:4px 14px 4px 0;white-space:nowrap"><kbd>${esc(k)}</kbd></td>

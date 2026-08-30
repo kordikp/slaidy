@@ -100,7 +100,22 @@ library, or describe what it should show and have it drawn to the same rules as 
 Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
 
 Inside the editor: click takes the whole object, double-click steps inside, `Esc` steps back
-out. Drag empty space to lasso what you enclose (`Alt` for what you touch). Handles
+out. Lines and arrows are **drawn by dragging**, from one point to any other, and a selected one
+shows a handle at each end instead of corner handles. `Ctrl-J` joins two selected objects with an
+arrow that **re-routes itself** when either of them moves — the join is stored as `data-from` and
+`data-to` on the arrow, so it survives a save.
+
+The **Source** tab reads the drawing as structure rather than coordinates: the element, then its
+words, then the attributes worth editing by hand, with geometry dimmed and long values cut short.
+Selecting on the canvas scrolls the source to that element; clicking a line selects it. `Edit as
+text` is still there when you want the raw thing.
+
+> No SVG library is vendored, and that is deliberate. The editing ones — Fabric and its kin — parse
+> a document into their own object model and re-serialise on export, which would not survive figures
+> that carry hand-written `<style>` keyframes, `<defs>`, `<use>` and comments. The ones that leave
+> the DOM alone are drawing APIs, not editors: they give you `rect()` and `line()`, not selection,
+> handles, grouping or connectors. What is needed here is small, specific, and has to keep the file
+> diffable. Drag empty space to lasso what you enclose (`Alt` for what you touch). Handles
 resize about the opposite corner, corners keeping proportions. `Ctrl-G` groups,
 `Ctrl-Shift-G` ungroups, `Ctrl-E` lifts an element out of its group carrying the
 wrapper's transform with it. Shapes and text can be added; anything can be duplicated.

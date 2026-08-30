@@ -73,7 +73,8 @@ def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
     print("  AI: " + (f"on, {MODEL} via {BASE}" if KEY
-                      else "off — no OPENAI_KEY, so the AI panels will say so plainly"))
+                      else "off — no OPENAI_KEY, so the AI panels will say so plainly"),
+          flush=True)   # stdout is a pipe when started detached; without this it is never seen
     ThreadingHTTPServer(("", port), partial(Handler, directory=root)).serve_forever()
 
 

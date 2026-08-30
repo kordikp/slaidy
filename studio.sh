@@ -24,6 +24,18 @@ cp "$DECK" "$WORK/deck.json"
 
 PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
 
+# Pick up OPENAI_KEY from .env if it is not already in the environment, so the AI
+# panels work without an export every time. Only these three names are read, and
+# the value never reaches the command line — just this shell's environment.
+ENVFILE="${OPENAI_ENV_FILE:-.env}"
+if [ -z "${OPENAI_KEY:-}${OPENAI_API_KEY:-}" ] && [ -r "$ENVFILE" ]; then
+  for v in OPENAI_KEY OPENAI_API_KEY STUDIO_MODEL; do
+    line=$(grep -m1 "^$v=" "$ENVFILE" 2>/dev/null) || continue
+    val=${line#*=}; val=${val%\"}; val=${val#\"}; val=${val%\'}; val=${val#\'}
+    [ -n "$val" ] && export "$v=$val"
+  done
+fi
+
 echo "Slide Studio  ·  $(basename "$DECK")"
 echo "  http://localhost:$PORT"
 echo "  Ctrl-C to stop. Your edits are stored by the browser under that address,"

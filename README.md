@@ -122,13 +122,16 @@ picks the layout from what is left.
 in the shape you started with, or one `.json` bundle carrying slides and figures.
 
 **AI.** Optional, and off unless you give it an endpoint. `studio.sh` runs a small
-proxy that forwards to OpenAI using `OPENAI_KEY` from the environment, so the key stays
-on your machine:
+proxy that forwards to OpenAI using `OPENAI_KEY`, so the key stays on your machine and
+never reaches the page:
 
 ```bash
-export OPENAI_KEY=sk-...
-./studio.sh
+export OPENAI_KEY=sk-...   # or put it in .env beside studio.sh
+./studio.sh                # prints "AI: on, <model> via <endpoint>"
 ```
+
+A `.env` in the same directory is read if the variable is not already set —
+`OPENAI_KEY`, `OPENAI_API_KEY` and `STUDIO_MODEL`, and nothing else.
 
 Or point `⋯ → AI endpoint` at any OpenAI-compatible `/chat/completions` yourself, in
 which case the key is held by the browser. Without either, the panels say so plainly.

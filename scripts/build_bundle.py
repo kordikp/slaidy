@@ -28,9 +28,18 @@ FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
 # A section name per file. Anything not listed here is derived from the filename,
 # so "04-how-it-works.md" becomes "How It Works".
-# A section name per file. Anything not listed here is derived from the filename,
-# so "04-how-it-works.md" becomes "How It Works".
-GROUPS = {}
+GROUPS = {
+    "01-prologue.md": "Prologue",
+    "02-act1-four-rooms.md": "I · Four Rooms",
+    "03-act2-one-question.md": "II · One Question",
+    "04-act3-walls-came-down.md": "III · How the Walls Came Down",
+    "05-act4-literature-map.md": "IV · The Literature, Mapped",
+    "06-act5-who-built-what.md": "V · Who Has Built What",
+    "07-act6-what-breaks.md": "VI · What Breaks",
+    "08-act7-what-it-costs.md": "VII · What It Costs",
+    "09-act8-what-we-build.md": "VIII · What We Build",
+    "10-epilogue.md": "Epilogue",
+}
 
 
 def parse_slides(text, group):
@@ -108,10 +117,31 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=os.path.join(ROOT, "slides"))
     ap.add_argument("--figs", action="append", default=None)
-    ap.add_argument("--out", default=os.path.join(ROOT, "decks", "deck.json"))
-    ap.add_argument("--title", default="Untitled deck")
+    ap.add_argument("--out", default=os.path.join(ROOT, "decks", "great-convergence.json"))
+    ap.add_argument("--title", default="The Great Convergence")
     ap.add_argument("--id", default=None)
+    ap.add_argument("--force", action="store_true",
+                    help="rebuild even when the deck on disk is newer than the markdown")
     a = ap.parse_args()
+
+    # The deck is the document now: Slide Studio writes it directly. Rebuilding
+    # from markdown therefore *overwrites edits* — which is exactly how a slide
+    # title typed in the studio came back to its old value. Refuse, unless the
+    # markdown really is the newer thing or --force says otherwise.
+    if os.path.exists(a.out) and not a.force:
+        deck_at = os.path.getmtime(a.out)
+        src_at = max([os.path.getmtime(os.path.join(a.src, f))
+                      for f in os.listdir(a.src) if f.endswith((".md", ".json"))] or [0])
+        if deck_at > src_at:
+            import datetime
+            fmt = lambda t: datetime.datetime.fromtimestamp(t).strftime("%d %b %H:%M")
+            sys.exit(
+                f"Refusing to rebuild {os.path.relpath(a.out, ROOT)}.\n"
+                f"  the deck      was written {fmt(deck_at)}\n"
+                f"  the markdown  was written {fmt(src_at)}\n"
+                "The deck is newer, so it holds edits the markdown does not, and rebuilding\n"
+                "would discard them. Export markdown from the studio first\n"
+                "(⋯ → Export → Markdown), or pass --force if you meant to overwrite.")
 
     figdirs = a.figs or [os.path.join(ROOT, "images"), os.path.join(a.src, "..", "images")]
 

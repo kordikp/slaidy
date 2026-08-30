@@ -233,27 +233,37 @@ rejects anything unreadable at projection size.
 **The deck file is the document.** One `.json` holding the slides, the figures and the
 settings — you open it, you edit it, you save it, the way any editor works.
 
-In Chrome the app holds a handle to that file and every save writes to it. The status pill
-in the toolbar names it: `saved 20:51 → my-talk.json`. It remembers the file between
-sessions, so reopening the app reopens the deck.
-
-Where there is no handle — a browser without the File System Access API, or a page opened
-straight off disk — the deck lives in the browser's own storage instead, and the pill says
-`in this browser only` rather than pretending otherwise. `⋯ → Save to a file` attaches it
-to a real file at any point.
+Started with `studio.sh`, the **server owns that file**: it serves the real file at
+`/deck.json` and writes it back at `/api/deck`. Every save goes to the file on disk, the
+status pill names it (`saved 20:51 → decks/my-talk.json`), and there is nothing to
+re-permission after a restart. Opened another way, Chrome can hold a file handle instead;
+without either, the deck lives in the browser's own storage and the pill says
+`in this browser only` rather than pretending otherwise.
 
 Markdown is how a deck comes **in** and goes **out**, not where it lives. `⋯ → Import
 markdown` reads a folder of `.md` files, says what it found — how many slides, which
-sections, which figures are referenced but missing — and only then imports. Export writes
-the files back in the same shape.
+sections, which figures are referenced but missing — and only then imports.
 
-At startup the app opens, in order: the file it last saved to; a `deck.json` served beside
-it; and if the browser holds a copy **newer** than that file, that copy, with a line saying
-so. Nothing is discarded and nothing asks you to arbitrate — a dialog whose *OK* threw away
-an evening of edits is how this used to work.
+### Not losing work
 
-Browser storage also keeps version snapshots (`⋯ → Version history`) and a crash copy. It
-is a safety net under the file, not a second version of the truth.
+Everything here exists because a version of it once failed.
+
+- **The deck is never copied to be served.** It used to be, and `cp` stamps the copy with
+  the current time — so on every restart the served deck looked newer than the edits held
+  in the browser, and the edits lost.
+- **A save that fails says so loudly** — a banner, not just a pill — and offers a download.
+  The browser copy is written *first* and unconditionally, so the one moment the safety net
+  is needed is not the moment it gets skipped.
+- **A file that changed underneath is never overwritten.** Each save carries the version it
+  started from; if another tab or a script has written the file since, the server answers
+  409 and the app says so. Nobody's work disappears quietly.
+- **Rebuilding from markdown refuses to clobber a newer deck.** `build_bundle.py` compares
+  mtimes and stops, naming both, unless `--force`.
+- **Version history** (`⋯ → Version history`) keeps twelve snapshots, and each row says what
+  that version has that the deck in front of you does not — *3 figures differ
+  (fig-affiliation…) · 2 titles differ* — because "237 slides" is no help when you are
+  hunting one edited figure. Restoring snapshots the current state first and is undoable.
+- **Closing the window with unsaved changes warns.**
 
 ## Development
 

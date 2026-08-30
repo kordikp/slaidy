@@ -5,10 +5,10 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
-  // this test page is served by a plain file server — exactly the failing case
+  // served by scripts/serve.py with no OPENAI_KEY — the common first run
   let msg='';
   try{ await w.llm('s','u',10); }catch(e){ msg=e.message; }
-  ok('a plain file server no longer looks like a JSON bug',
+  ok('a missing key is not reported as a JSON bug',
      !/Unexpected token|not valid JSON/.test(msg),msg.slice(0,58)+'…');
   ok('and it says what to do instead',/studio\.sh/.test(msg)&&/AI endpoint/.test(msg));
 

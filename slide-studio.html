@@ -622,8 +622,9 @@ function setStatus(state,info){
     warn:'unsaved'+(fileName?' — '+fileName:''),
     bad:'⚠ NOT saved — click to download a backup'
   }[state]||state;
-  el.title=state==='bad'?(saveErr||'the browser refused to store this deck'):
-    fileName?'Written to '+fileName+' every time it saves':
+  el.title=state==='bad'?(saveErr||'could not write the deck'):
+    fileName?'Written to '+fileName+' every time it saves'+
+      (srvDeck?' — by the server that is serving this page':''):
     'Held in this browser only. Open a deck file, or Save as, to put it somewhere you own.';
 }
 /* ---------- where the deck lives ------------------------------------------
@@ -634,6 +635,38 @@ function setStatus(state,info){
    copy that disagrees with the file on disk.
 --------------------------------------------------------------------------- */
 let fileHandle=null, fileName=null;
+/* When the page is served by studio.sh, the server owns the real deck file and
+   will write it on request. That beats a file handle: nothing to re-permission
+   after a restart, no second copy, and the file the app edits is the file on
+   disk. The handle stays as the fallback for any other way of opening this. */
+let srvDeck=null;
+async function probeServer(){
+  if(location.protocol==='file:')return null;
+  try{
+    const r=await fetch('api/deck',{cache:'no-store'});
+    if(!r.ok)return null;
+    const d=await r.json();
+    return (d&&d.writable&&d.path)?d:null;
+  }catch(e){return null;}
+}
+async function writeServer(){
+  if(!srvDeck)return false;
+  const r=await fetch('api/deck',{method:'PUT',
+    headers:{'Content-Type':'application/json',
+             ...(srvDeck.mtime?{'X-Deck-Mtime':String(srvDeck.mtime)}:{})},
+    body:JSON.stringify(S)});
+  let j=null; try{j=await r.json();}catch(e){}
+  if(r.status===409){
+    /* someone else wrote the file. Never resolve this quietly — the whole
+       point is that nobody's work disappears without being told. */
+    const e=new Error((j&&j.error)||'the file changed on disk');
+    e.conflict=(j&&j.mtime)||0;
+    throw e;
+  }
+  if(!r.ok)throw new Error((j&&j.error)||('the server answered '+r.status));
+  if(j&&j.mtime)srvDeck.mtime=j.mtime;
+  return true;
+}
 const canFile=()=>typeof window.showOpenFilePicker==='function';
 async function handleOK(h,ask){
   if(!h)return false;
@@ -697,16 +730,26 @@ async function saveDeckAs(){
 
 async function persist(){
   setStatus('busy');
+  /* The browser copy goes first and unconditionally. It is the cheap safety
+     net, and it used to be skipped whenever the file write threw — so the one
+     moment it was needed was the one moment it did not run. */
+  let where=null;
+  try{ where=await put(KEY(),S);
+       await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()}); }
+  catch(e){ where=null; }
   try{
-    const toDisk=await writeFile();                 /* the file, when we hold one */
-    const where=await put(KEY(),S);                 /* and a copy to come back to */
+    const toDisk=srvDeck?await writeServer():await writeFile();
     lastSaved=new Date();dirty=false;saveErr=null;
     if(Date.now()-lastSnap>90000){lastSnap=Date.now();snapshot().catch(()=>{});}
     setStatus('ok',toDisk?null:(where==='local storage'?where:'in this browser only'));
-    await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()});
   }catch(e){
     saveErr=e.message||String(e);
     setStatus('bad');
+    /* a pill in the corner is not enough warning for "your work is not on disk" */
+    banner(e.conflict
+      ? `Not saved — ${saveErr}. Your work is safe in this browser; nothing was overwritten.`
+      : `Not saved to ${fileName||'disk'} — ${saveErr}. Your work is safe in this browser.`,
+      'Download a copy',()=>downloadDeck());
   }
 }
 async function snapshot(){
@@ -2120,7 +2163,12 @@ async function llm(system,user,maxTok){
       : 'this page is being served without an AI endpoint. Start it with ./studio.sh '+
         '(it forwards to OpenAI using OPENAI_KEY), or point ⋯ → AI endpoint at an API yourself.');
   }
-  if(j.error) throw new Error(typeof j.error==='string'?j.error:(j.error.message||'API error'));
+  /* an endpoint you configured yourself should name itself when it complains —
+     "no such endpoint" alone does not tell you which one you pointed at */
+  if(j.error){
+    const m=typeof j.error==='string'?j.error:(j.error.message||'API error');
+    throw new Error(c.url?`${url} (${r.status}): ${m}`:m);
+  }
   return j.choices?.[0]?.message?.content ?? j.text ?? j.content ?? j.output ?? '';
 }
 async function ask(instr,host,btn){
@@ -3833,6 +3881,28 @@ document.getElementById('status').onclick=()=>{
     downloadDeck(S.id+'-backup');
     toast('Backup downloaded — reopen it with Open… to continue');}};
 document.getElementById('bHist').onclick=history_;
+/* A row saying "237 slides" is no help when what you are hunting for is one
+   edited figure. Say what this version has that the deck in front of you does
+   not — that is the question anyone opening this dialog is actually asking. */
+function snapDiff(d){
+  if(!d||!d.slides)return '';
+  const out=[];
+  const fa=d.figs||{},fb=S.figs||{};
+  const fig=Object.keys(fa).filter(k=>fa[k]!==fb[k]);
+  if(fig.length)out.push(`${fig.length} figure${fig.length>1?'s':''} differ (${
+    fig.slice(0,3).join(', ')}${fig.length>3?'…':''})`);
+  const ka=d.slides,kb=S.slides;
+  let tt=0,bb=0;
+  const by=n=>kb.find(x=>x.n===n);
+  ka.forEach(x=>{const y=by(x.n);if(!y)return;
+    if((x.title||'')!==(y.title||''))tt++;
+    if((x.body||'')!==(y.body||''))bb++;});
+  if(ka.length!==kb.length)out.push(`${ka.length} slides, not ${kb.length}`);
+  if(tt)out.push(`${tt} title${tt>1?'s':''} differ`);
+  if(bb)out.push(`${bb} slide${bb>1?'s':''} differ in the body`);
+  if((d.title||'')!==(S.title||''))out.push('deck title differs');
+  return out.length?out.join(' · '):'identical to what is loaded now';
+}
 async function history_(){
   let snaps=[];
   try{ const keys=(await IDB.keys()).map(String).filter(k=>k.startsWith('snap:'+S.id+':')).sort().reverse();
@@ -3845,7 +3915,8 @@ async function history_(){
      <button class="b p" id="hDl">Download a copy now</button>
      <button class="b" id="hSave">Save snapshot now</button></div>
    ${snaps.length?snaps.map(x=>`<div class="snap"><div><b>${new Date(x.t).toLocaleString()}</b>
-       <span class="w"> · ${x.n} slides</span></div>
+       <span class="w"> · ${x.n} slides</span>
+       <div class="w" style="margin-top:2px">${esc(snapDiff(x.deck))}</div></div>
        <button class="b" data-k="${x.k}">Restore</button></div>`).join('')
      :'<p class="tip">No snapshots yet. One is written after your next edit.</p>'}`);
   document.getElementById('hDl').onclick=()=>{downloadDeck(S.id+'-'+new Date().toISOString().slice(0,10));toast('Downloaded');};
@@ -3854,7 +3925,11 @@ async function history_(){
     if(!confirm('Restore this version? The current state is snapshotted first.'))return;
     lastSnap=0;await snapshot().catch(()=>{});
     const v=await IDB.get(b.dataset.k);
-    if(v&&v.deck){S=v.deck;normalise();cur=0;closeDialog();await persist();paint();toast('Restored');}
+    if(v&&v.deck){
+      snap('restore version',Object.fromEntries(              /* so Ctrl-Z undoes it too */
+        [...new Set([...Object.keys(S.figs||{}),...Object.keys(v.deck.figs||{})])]
+          .map(k=>[k,S.figs&&S.figs[k]!==undefined?S.figs[k]:null])));
+      S=v.deck;normalise();cur=0;closeDialog();await persist();paint();toast('Restored');}
   });
 }
 const pop=document.getElementById('pop');
@@ -3937,7 +4012,32 @@ async function boot(){
     lastSaved=new Date();setStatus('ok');paint();
   };
 
-  /* 1. the file this browser was last saving to */
+  /* 1. the deck the server is serving, which it will also write */
+  srvDeck=await probeServer();
+  if(srvDeck){
+    fileName=srvDeck.path;
+    try{
+      const r=await fetch('deck.json',{cache:'no-store'});
+      const b=await r.json();
+      if(b.slides&&b.slides.length){
+        /* the browser copy only wins if it is genuinely newer than the file */
+        let mine=null,mineAt=0;
+        try{
+          const ix=await IDB.get('index:'+(b.id||'deck'));
+          if(ix&&ix.at){mineAt=ix.at;mine=await get('deck:'+(b.id||'deck'));}
+        }catch(e){}
+        if(mine&&mine.slides&&mine.slides.length&&mineAt>(srvDeck.mtime||0)+1000){
+          load(mine);dirty=true;setStatus('warn');
+          banner(`Unsaved edits from ${new Date(mineAt).toTimeString().slice(0,5)} — `+
+                 `newer than ${srvDeck.path}.`,'Save them',()=>persist());
+          return;
+        }
+        load(b);return;
+      }
+    }catch(e){}
+  }
+
+  /* 2. the file this browser was last saving to */
   const remembered=await recallHandle();
   if(remembered&&await handleOK(remembered.h,false)){
     try{
@@ -3949,7 +4049,7 @@ async function boot(){
 
   if(location.protocol==='file:')return;
 
-  /* 2. a deck.json beside the page, unless this browser holds something newer */
+  /* 3. a deck.json beside the page, unless this browser holds something newer */
   let file=null,fileAt=0;
   try{
     const r=await fetch('deck.json');
@@ -3978,7 +4078,7 @@ async function boot(){
     return;
   }
   load(file);
-  if(!fileHandle&&canFile())setTimeout(()=>banner(
+  if(!srvDeck&&!fileHandle&&canFile())setTimeout(()=>banner(
     'Editing a copy in this browser. Point it at the file to save straight to disk.',
     'Choose the file',()=>saveDeckAs()),1200);
 }

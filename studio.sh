@@ -19,8 +19,11 @@ PORT="${PORT:-8080}"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+# The DECK is deliberately not copied in. `cp` stamps the copy with the current
+# time, so every restart made the served deck look newer than the edits held in
+# the browser — and the edits lost. The server owns the real file instead: it
+# streams it at /deck.json and writes it back at /api/deck.
 cp slide-studio.html "$WORK/index.html"
-cp "$DECK" "$WORK/deck.json"
 
 PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
 
@@ -43,4 +46,4 @@ echo "  so always start it the same way — or keep a copy with Export."
 echo
 
 ( sleep 1; (xdg-open "http://localhost:$PORT" || open "http://localhost:$PORT") >/dev/null 2>&1 || true ) &
-exec "$PY" scripts/serve.py "$WORK" "$PORT"
+exec "$PY" scripts/serve.py "$WORK" "$PORT" "$DECK"

@@ -18,7 +18,6 @@ cleanup(){ [ -n "${SRV:-}" ] && kill "$SRV" 2>/dev/null; rm -rf "$WORK"; }
 trap cleanup EXIT
 cp slide-studio.html "$WORK/index.html"
 python3 tests/make-fixture.py >/dev/null
-cp tests/fixture.json "$WORK/deck.json"
 cp tests/*.html "$WORK/"
 
 # expose the internals the tests drive, without shipping that hook in the app
@@ -39,7 +38,9 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
   srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
   progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
-  aiHost,DESIGN_SEEDS,STUB,FIGREF,get llmImpl(){return llm}};"""
+  aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
+  get srvDeck(){return srvDeck},get dirty(){return dirty},get fileName(){return fileName},
+  snapDiff,history_,snapshot,downloadDeck};"""
 ready = """
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}
@@ -49,7 +50,10 @@ PY
 
 # exec, so $SRV is the server itself — killing the subshell leaves the child
 # holding the port, and the next run then talks to a server whose root is gone
-(cd "$WORK" && exec python3 -m http.server "$PORT" >/dev/null 2>&1) & SRV=$!
+# the real server, so the tests exercise the save path the app actually uses
+cp tests/fixture.json "$WORK/real-deck.json"
+SERVE="$PWD/scripts/serve.py"
+(cd "$WORK" && exec python3 "$SERVE" . "$PORT" real-deck.json >/dev/null 2>&1) & SRV=$!
 sleep 1
 
 FILES=("$@")
@@ -58,6 +62,9 @@ pass=0; fail=0
 for t in "${FILES[@]}"; do
   # a fresh profile per test: the app now prefers what the browser already holds,
   # which is right for a person and wrong for a suite that must start from the file
+  # the app really writes the deck now, so give every test the same fixture
+  # rather than whatever the previous one left behind
+  cp tests/fixture.json "$WORK/real-deck.json"
   prof="$WORK/prof-$t"
   out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=30000 \
         --user-data-dir="$prof" \

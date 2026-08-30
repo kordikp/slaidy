@@ -12,7 +12,10 @@ addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
  const realFetch=W.fetch;
  let calls=[],replies=[],lag=0;
- const stub=()=>{W.fetch=async(url,o)=>{calls.push(JSON.parse(o.body));
+ // count only calls to the model; the app also PUTs the deck as it saves
+ const stub=()=>{const real=W.fetch;W.fetch=async(url,o)=>{
+   if(!/generate|completions/.test(String(url)))return real(url,o);
+   calls.push(JSON.parse(o.body));
    if(lag)await wait(lag);
    const t=replies.shift();
    if(t===undefined)throw new Error('no canned reply left');

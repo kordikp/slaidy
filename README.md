@@ -1,10 +1,20 @@
 # Slide Studio
 
-A slide editor in one HTML file, where the deck stays a folder of markdown.
+**A slide editor in one HTML file, where the deck stays a folder of markdown.**
+
+[![tests](https://github.com/kordikp/slide-studio/actions/workflows/tests.yml/badge.svg)](https://github.com/kordikp/slide-studio/actions/workflows/tests.yml)
+[![MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+![one file](https://img.shields.io/badge/dependencies-none-brightgreen)
+![no build](https://img.shields.io/badge/build%20step-none-brightgreen)
 
 You edit in the browser, present full screen, and export a PDF — but the deck on disk
 is `.md` files and `.svg` figures the whole time. Nothing is locked inside the
 application, and if the application disappears you still have a deck.
+
+### [Try it in your browser →](https://kordikp.github.io/slide-studio/)
+
+No sign-up and nothing uploaded; it is the same single file, served from GitHub Pages
+with an example deck beside it.
 
 ```bash
 git clone https://github.com/kordikp/slide-studio
@@ -14,6 +24,22 @@ cd slide-studio
 
 That serves the example deck at `http://localhost:8080` and opens it. Press `?` for
 the shortcuts, `P` to present.
+
+### What it is for
+
+A talk you will give more than once, whose figures you want to keep, whose text you
+want to `grep`, and whose history you want in git. If you need a deck by Thursday and
+will never open it again, use anything else — this is for the deck you maintain.
+
+**Three rules the project keeps**, in order, and which most decisions come back to:
+
+1. **One file, no dependencies, no build step.** `slide-studio.html` opens from a
+   `file://` URL and works. CI fails the build if a `<script src=>` appears.
+2. **The deck outlives the editor.** Markdown in, markdown out, figures as SVG. Nothing
+   the app can write is something only the app can read.
+3. **One stage, three surfaces.** The editor, the projector and the PDF draw the same
+   1280×720 stage from the same code, differing only by `transform: scale()`. What you
+   arrange is what the room sees.
 
 ---
 
@@ -98,7 +124,7 @@ half the labels are one to three words. So the rule is at most twelve labels of 
 the takeaway line the only sentence allowed, and *if a relationship can be drawn, do not caption
 it*. A figure that will not fit in twelve labels is carrying two ideas.
 
-**And you can add your own rule.** `⋯ → AI and figures` has a box for what every figure in this
+**And you can add your own rule.** `⋯ → AI usage` has a box for what every figure in this
 deck should obey — *three colours at most*, *arrows carry the verb* — appended to the house rules
 on every figure the AI draws or revises. It lives on the deck, not in the browser, so figures come
 out the same wherever it is opened and the rule travels with an export.
@@ -135,8 +161,9 @@ library, or describe what it should show and have it drawn to the same rules as 
 Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
 
 **Carrying slides to another deck.** Click, `Shift`-click for a run, `Ctrl`-click for one more,
-`Ctrl-A` for all of them — the list marks what would be taken. `Ctrl-C` copies, `Ctrl-X` cuts,
-`Ctrl-V` pastes below wherever you are, in this deck or any other.
+`Ctrl-A` for all of them — the list marks what would be taken. Then `Ctrl-C` / `Ctrl-X` / `Ctrl-V`,
+or **right-click for the same menu**, which is where these belong: the thing you are acting on is
+in the list, so the menu is on the list rather than in ⋯.
 
 The markdown goes on the **system clipboard**, so it pastes into a mail, an editor, or a deck open
 on another machine. The same slides **and every figure they reference** go into the browser's own
@@ -154,6 +181,12 @@ drawings are shared rather than duplicated. One undo takes a whole paste back ou
 or header, and every control starts on *same as the deck* until you move it — so changing the deck
 still moves every slide that has not spoken up. The markdown writes only the departures
 (`*Style:* titleSize=30, accent=#0EA5E9`), and an override cleared away leaves nothing behind.
+
+**Where the AI went.** `⋯ → AI usage` holds the endpoint, the key, the model, this deck's own
+figure rule — and what it has all cost: calls, tokens **as the endpoint reported them**, time
+waited, and what the spending went on (drawing figures, writing slides, proposing ideas…). Counted
+in the browser and never sent anywhere. Where an endpoint reports no tokens, none are shown rather
+than guessed: a usage panel that estimates invites you to plan against a number nobody measured.
 
 **Type size.** For the whole deck, `⋯ → Deck settings` has a title size and a body size; they move
 every slide at once, apply as you drag, and are kept on the deck so an export and a rebuild keep
@@ -229,10 +262,12 @@ too, for the same reason.
 
 **Hiding slides.** Hide a slide and the presentation walks past it; it stays in the file
 and in the list, greyed. `H` hides the current one, and `H` while presenting walks the
-hidden ones too, for a rehearsal. `⋯ → Trim to length` does it in bulk: it hides the
-slides that do the least work until the deck fits, sharing the budget between sections in
-proportion to their length so the talk keeps its shape. Slides flagged `keep` are never
-hidden automatically.
+hidden ones too, for a rehearsal.
+
+> **"Trim to length" was removed.** Give it a number of minutes and it hid the slides that did the
+> least work until the deck fitted. Which slides matter is the one judgement a tool cannot make for
+> you, and a deck-wide guess at it was worse than no answer at all. `scripts/short_run.py` still
+> does it offline for anyone who wants the bulk version.
 
 ```bash
 python3 scripts/short_run.py --minutes 45 --dry-run

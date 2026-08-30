@@ -535,6 +535,9 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 /* what Ctrl-C would take */
 .item.picked{background:var(--accbg);box-shadow:inset 2px 0 0 var(--acc)}
 .item.picked.on{background:var(--accbg)}
+.ctxmenu{min-width:196px}
+.ctxsep{height:1px;background:var(--line);margin:4px 6px}
+.ctxmenu button.danger:hover{color:#B4232A;background:#FDF0F0}
 .item .own{color:var(--acc);font-weight:700;margin-left:5px}
 .gcell.skipped{opacity:.4;box-shadow:inset 0 0 0 1px var(--faint)}
 .runsum{font-size:13px;margin-bottom:9px}
@@ -543,6 +546,11 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .runtab{width:100%;border-collapse:collapse;font-size:12.5px}
 .runtab td{padding:4px 0;border-bottom:1px solid var(--hair)}
 .runtab td.n{text-align:right;width:44px;font-variant-numeric:tabular-nums}
+.usetab{width:100%;border-collapse:collapse;font-size:12.5px}
+.usetab td{padding:4px 0;border-bottom:1px solid var(--hair);vertical-align:middle}
+.usetab td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:14px}
+.usetab td.bar{width:86px;padding-left:12px}
+.usetab td.bar i{display:block;height:5px;border-radius:3px;background:var(--acc);min-width:2px}
 .runout{border:1px solid var(--line);border-radius:var(--r6);padding:11px 13px;background:#FAFAFB}
 
 /* ---------- print / PDF ---------- */
@@ -579,18 +587,16 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
   <div class="menu">
     <button class="ic" id="bMore" title="More">⋯</button>
     <div class="pop" id="pop">
+      <button id="bNewDeck">New deck…</button>
+      <button id="bBrief">New deck from a brief…</button>
       <button id="bOpen">Open a deck…</button>
       <button id="bSaveAs">Save to a file…</button>
-      <button id="bCopy">Copy slides…</button>
-      <button id="bPaste">Paste slides</button>
       <button id="bImport">Import markdown…</button>
-      <button id="bBrief">New deck from a brief…</button>
       <button id="bHist">Version history</button>
       <button id="bSave">Export…</button>
       <button id="bTidyAll">Tidy every slide…</button>
-      <button id="bRun">Trim to length…</button>
       <button id="bDeck">Deck settings…</button>
-      <button id="bCfg2">AI and figures…</button>
+      <button id="bCfg2">AI usage…</button>
     </div>
   </div>
   <button class="ic" id="bSaveNow" title="Save now (Ctrl-S)"><svg viewBox="0 0 14 14" width="15" height="15"
@@ -1509,6 +1515,56 @@ async function pasteSlides(){
         (nf?` · ${nf} figure${nf>1?'s':''} renamed to avoid a clash`:''));
 }
 
+/* Copy and paste were in the ⋯ menu, which is the wrong place: the thing you
+   are acting on is in the list, so the menu belongs on the list. Right-click,
+   the way every file manager and every slide tool works. */
+function slideMenu(e,i){
+  e.preventDefault();
+  document.querySelector('.ctxmenu')?.remove();
+  if(!PICKED.has(i)){PICKED.clear();PICKED.add(i);anchor=i;cur=i;paint();}
+  const n=picked().length;
+  const m=document.createElement('div');
+  m.className='pop ctxmenu on';
+  m.innerHTML=[
+    ['copy',`Copy ${n>1?n+' slides':'this slide'}`],
+    ['cut',`Cut ${n>1?n+' slides':'this slide'}`],
+    ['paste','Paste slides here'],
+    ['dup','Duplicate'],
+    ['-',''],
+    ['skip',S.slides[i].skip?'Show it again':'Hide from the presentation'],
+    ['del',`Delete ${n>1?n+' slides':'this slide'}`],
+  ].map(([k,l])=>k==='-'?'<div class="ctxsep"></div>'
+      :`<button data-a="${k}"${k==='del'?' class="danger"':''}>${l}</button>`).join('');
+  document.body.appendChild(m);
+  m.style.position='fixed';
+  m.style.left=Math.min(e.clientX,innerWidth-210)+'px';
+  m.style.top=Math.min(e.clientY,innerHeight-m.offsetHeight-8)+'px';
+  m.onclick=ev=>{
+    const b=ev.target.closest('button');if(!b)return;
+    m.remove();
+    const a=b.dataset.a;
+    if(a==='copy')return copySlides();
+    if(a==='cut')return cutSlides();
+    if(a==='paste'){cur=i;return pasteSlides();}
+    if(a==='dup')return duplicateSlide(i);
+    if(a==='skip')return toggleSkip(i);
+    if(a==='del'){
+      const ix=picked();
+      if(ix.length>1){
+        if(ix.length>=S.slides.length)return toast('That is the whole deck');
+        snap('delete slides');
+        ix.slice().reverse().forEach(k=>S.slides.splice(k,1));
+        PICKED.clear();cur=Math.min(ix[0],S.slides.length-1);
+        normalise();touch();paint();
+        return banner(`Deleted ${ix.length} slides.`,'Undo',()=>undo());
+      }
+      return deleteSlide(i);
+    }
+  };
+  setTimeout(()=>document.addEventListener('click',function off(){
+    m.remove();document.removeEventListener('click',off);},{once:true}),0);
+}
+
 function paintNav(){
   const el=document.getElementById('nav');el.innerHTML='';let g=null,sb=null;
   S.slides.forEach((s,i)=>{
@@ -1544,6 +1600,7 @@ function paintNav(){
         anchor=i;cur=i;paint();return;
       }
       PICKED.clear();anchor=i;cur=i;paint();};
+    d.oncontextmenu=e=>slideMenu(e,i);
     d.ondragstart=e=>{e.dataTransfer.setData('i',i);e.dataTransfer.effectAllowed='move';d.classList.add('dragging');};
     d.ondragend=()=>{d.classList.remove('dragging');dragOff.call(d);};
     d.ondragover=dragOver;d.ondragleave=dragOff;d.ondrop=dropAt;
@@ -2195,7 +2252,7 @@ async function drawFigure(id,s,brief){
     `SLIDE TITLE: ${s.title}\nSECTION: ${s.group||''}\n\nSLIDE BODY:\n${(s.body||'').slice(0,1400)}\n\n`+
     (brief?`WHAT THE AUTHOR ASKED FOR: ${brief}\n\n`:'')+
     `Show the mechanism — how it works, what flows where — rather than restating the words `+
-    `already on the slide. Give it a title line and a one-line takeaway.`,20000)).trim();
+    `already on the slide. Give it a title line and a one-line takeaway.`,20000,'figure')).trim();
   t=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
   const a=t.indexOf('<svg'),b=t.lastIndexOf('</svg>');
   if(a<0||b<0)throw new Error('the model did not return an svg');
@@ -2282,7 +2339,7 @@ Return ONLY a JSON array of three objects with keys title, question, spec. No fe
 `SLIDES AROUND THE GAP:\n${near||'(the deck is empty)'}`+
 (SUGG_SEEN.length?`\n\nALREADY PROPOSED FOR THIS GAP — go somewhere else entirely:\n`+
   SUGG_SEEN.map(t=>'· '+t).join('\n'):''),
-      1800);
+      1800,'ideas');
     const a=raw.indexOf('['),b=raw.lastIndexOf(']');
     if(a<0||b<0)throw new Error('no suggestions came back');
     SUGG=JSON.parse(raw.slice(a,b+1)).filter(x=>x&&x.title).slice(0,3)
@@ -2380,7 +2437,7 @@ async function designSlide(brief,btn,fixedTitle){
         `THE SLIDE AS IT STANDS — rewrite it, do not hand it back unchanged:\n`+
         `TITLE: ${s.title}\n\n${(s.body||'').slice(0,1800)}\n\n`+
         (s.notes?`NOTES: ${(s.notes||'').slice(0,600)}\n\n`:''))+
-      `WHAT THE AUTHOR ASKS FOR: ${brief}`,2600)).trim();
+      `WHAT THE AUTHOR ASKS FOR: ${brief}`,2600,'slide')).trim();
     prog.done();
     let title='',body='',notes='';
     const a=raw.indexOf('{'),b=raw.lastIndexOf('}');
@@ -2581,7 +2638,7 @@ repeat what the figure already shows; is there one line that lands; is anything 
 work; does it overlap the slides either side.`,
       `DECK: ${S.title}\nSECTION: ${s.group||''}\nNEIGHBOURS:\n${near||'(none)'}\n\n`+
       `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\n`+
-      `NOTES:\n${s.notes||'(none)'}`,900))
+      `NOTES:\n${s.notes||'(none)'}`,900,'analyse'))
       .replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
     prog.done();
     if(!t){toast('Nothing came back');return;}
@@ -2601,7 +2658,7 @@ async function askSummary(){
     const t=(await llm(
       'You write one sentence saying what a conference slide is for: the point it makes, in plain words. '+
       'No preamble, no quotes, no more than 25 words. Return the sentence only.',
-      `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nNOTES:\n${s.notes||''}`,400))
+      `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nNOTES:\n${s.notes||''}`,400,'summary'))
       .replace(/^["']|["']$/g,'').trim();
     prog.done();
     snap('summary');s.summary=t;touch();paintSide();
@@ -2786,6 +2843,35 @@ function editMarkdown(){
    written, and the author reads and edits the arc before a word is spent on it.
 --------------------------------------------------------------------------- */
 let BRIEF=null;
+/* An empty deck that immediately asks where it will be saved. A deck with
+   nowhere to go is how work gets lost, and "save it later" is the sentence
+   people say before they lose it. */
+async function newDeck(){
+  if(dirty){await persist();
+    if(saveErr)return banner(`Not starting a new one — the deck you have is not saved (${saveErr}).`,
+      'Download a copy',()=>downloadDeck());}
+  S={id:'untitled',title:'Untitled deck',meta:{},style:{},figs:{},
+     slides:[{tag:'S',group:'',sub:null,title:'Untitled',body:'',notes:'',fig:null,
+              layout:'text',figScale:100,textScale:100,summary:'',skip:false,flags:[]}]};
+  normalise();cur=0;PICKED.clear();fileHandle=null;
+  document.getElementById('welcome').classList.add('hidden');
+  paint();
+  if(srvDeck){
+    fileName=srvDeck.path;dirty=true;setStatus('warn');
+    toast('New deck — saving to '+srvDeck.path);
+    return persist();
+  }
+  fileName=null;
+  if(canFile()){
+    await saveDeckAs();                      /* the picker, right now */
+    if(!fileHandle)banner('This deck has nowhere to be saved yet.','Choose a file',()=>saveDeckAs());
+  }else{
+    dirty=true;setStatus('warn');
+    banner('This browser cannot pick a file, so the deck lives here until you export it.',
+      'Export a copy',()=>downloadDeck());
+  }
+}
+
 function briefWizard(){
   const b=BRIEF||{title:'',abstract:'',questions:'',story:'',minutes:45};
   dialog(`<div class="mdhead"><h3>A deck from a brief</h3>
@@ -2853,7 +2939,7 @@ every claim carrying a number, a named system or a citation.`,
         `TITLE: ${b.title||'(none given)'}\nLENGTH: ${b.minutes} minutes\n\n`+
         `ABSTRACT:\n${b.abstract}\n\n`+
         `QUESTIONS IT MUST ANSWER:\n${b.questions||'(none given — derive them from the abstract)'}\n\n`+
-        `STORYLINE:\n${b.story||'(none given — propose one)'}`,4000);
+        `STORYLINE:\n${b.story||'(none given — propose one)'}`,4000,'outline');
       const a=raw.indexOf('{'),z=raw.lastIndexOf('}');
       if(a<0||z<0)throw new Error('no outline came back');
       const o=JSON.parse(raw.slice(a,z+1));
@@ -2957,7 +3043,7 @@ function pickFigure(pick){
       out.innerHTML='<span class="spin"></span> drawing…';
       try{
         const t=await llm(figSys(),`Draw a new figure.\n\nWHAT IT MUST SHOW: ${what}\n\n`+
-          `SLIDE: ${S.slides[cur]?S.slides[cur].title:''}`,20000);
+          `SLIDE: ${S.slides[cur]?S.slides[cur].title:''}`,20000,'figure');
         const c=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
         const a=c.indexOf('<svg'),b2=c.lastIndexOf('</svg>');
         if(a<0||b2<0){out.textContent='The model did not return an SVG.';return;}
@@ -2986,9 +3072,43 @@ function pickFigure(pick){
 
 /* ---------- AI ---------- */
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('studio:cfg')||'{}');}catch(e){return{};}};
+const KIND_LABEL={figure:'drawing figures',slide:'writing slides',ideas:'proposing ideas',
+  edit:'editing a slide',analyse:'analysing a slide',summary:'reading a slide',
+  outline:'shaping a deck',other:'other'};
+function nfmt(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'k':String(n||0);}
+function usageHtml(){
+  const u=useLoad();
+  if(!u.calls)return `<p class="tip">Nothing yet. Every call the app makes is counted here, with the
+    tokens the endpoint reports — never an estimate.</p>`;
+  const kinds=Object.entries(u.byKind).sort((a,b)=>b[1]-a[1]);
+  const tok=u.inTok+u.outTok;
+  const row=(k,v)=>`<tr><td>${k}</td><td class="num">${v}</td></tr>`;
+  return `<table class="usetab">
+    ${row('Calls',nfmt(u.calls)+(u.fails?` <span style="color:var(--b)">· ${u.fails} failed</span>`:''))}
+    ${tok?row('Tokens in',nfmt(u.inTok)):''}
+    ${tok?row('Tokens out',nfmt(u.outTok)):''}
+    ${tok?row('Tokens, total',`<b>${nfmt(tok)}</b>`):
+      row('Tokens',`<span class="tip" style="margin:0">not reported by this endpoint</span>`)}
+    ${row('Characters sent and back',nfmt(u.chars))}
+    ${row('Time waiting',clock(Math.round(u.ms/1000)))}
+    ${row('Slowest to arrive',u.calls?clock(Math.round(u.ms/u.calls/1000))+' on average':'—')}
+    ${u.first?row('Since',new Date(u.first).toLocaleDateString()):''}
+    ${u.last?row('Last call',new Date(u.last).toLocaleString()):''}
+  </table>
+  <div class="sect" style="margin:14px 0 6px">What it went on</div>
+  <table class="usetab">${kinds.map(([k,n])=>
+    `<tr><td>${esc(KIND_LABEL[k]||k)}</td><td class="num">${n}</td>
+     <td class="bar"><i style="width:${Math.round(n/u.calls*100)}%"></i></td></tr>`).join('')}</table>
+  ${Object.keys(u.byModel).length>1?`<div class="sect" style="margin:14px 0 6px">Models</div>
+    <table class="usetab">${Object.entries(u.byModel).sort((a,b)=>b[1]-a[1])
+      .map(([m,n])=>`<tr><td><code>${esc(m)}</code></td><td class="num">${n}</td></tr>`).join('')}</table>`:''}
+  <p class="tip">Counted in this browser only, and never sent anywhere. Tokens are what the endpoint
+    reported; where it reports none, none are shown rather than guessed.</p>`;
+}
+
 function configure(){
   const c=cfg();
-  dialog(`<h3>AI and figures</h3>
+  dialog(`<h3>AI usage</h3>
   <p class="tip">Leave the URL empty to call <code>/api/generate</code> when this file is served next to a
    p-book backend. Otherwise point it at any OpenAI-compatible <code>/chat/completions</code>. The key stays
    in this browser.</p>
@@ -3000,7 +3120,12 @@ function configure(){
   <p class="tip">Added to the locked design system on every figure the AI draws or revises — the canvas,
     the palette, the animation and the limit of twelve labels of one to four words are already in there.
     This lives <b>on the deck</b>, not in this browser, so figures come out the same wherever it is opened.</p>
-  <div class="rw"><button class="b p" id="cS">Save</button><button class="b" id="cC">Cancel</button></div>`);
+  <div class="sect" style="margin:16px 0 6px">What it has cost</div>
+  <div id="cUse">${usageHtml()}</div>
+  <div class="rw" style="margin-top:12px"><button class="b p" id="cS">Save</button>
+    <button class="b" id="cC">Cancel</button>
+    <span style="flex:1"></span>
+    <button class="b" id="cZero" title="Start the count again">Reset the count</button></div>`,'tall');
   document.getElementById('cS').onclick=()=>{
     localStorage.setItem('studio:cfg',JSON.stringify({
       url:document.getElementById('cU').value.trim(),key:document.getElementById('cK').value.trim(),
@@ -3010,20 +3135,56 @@ function configure(){
     if(b!==((S.style.figBrief)||'')){S.style.figBrief=b;touch();}
     closeDialog();toast('Saved');};
   document.getElementById('cC').onclick=closeDialog;
+  document.getElementById('cZero').onclick=()=>{
+    useReset();
+    document.getElementById('cUse').innerHTML=usageHtml();toast('Count reset');};
 }
-async function llm(system,user,maxTok){
+/* ---------- what the AI has actually cost ---------------------------------
+   Every call is counted where it is made, with the tokens the endpoint reports
+   — never an estimate. A usage panel that guesses is worse than none, because
+   it invites you to plan against a number nobody measured.
+--------------------------------------------------------------------------- */
+let USE=null;
+const USE_KEY='studio:usage';
+function useLoad(){
+  if(USE)return USE;
+  try{USE=JSON.parse(localStorage.getItem(USE_KEY)||'null');}catch(e){}
+  if(!USE||typeof USE!=='object')USE={calls:0,inTok:0,outTok:0,chars:0,ms:0,fails:0,
+                                      first:0,last:0,byKind:{},byModel:{}};
+  return USE;
+}
+function useSave(){try{localStorage.setItem(USE_KEY,JSON.stringify(USE));}catch(e){}}
+/* the in-memory copy has to go too, or the count comes back from cache */
+function useReset(){USE=null;try{localStorage.removeItem(USE_KEY);}catch(e){}return useLoad();}
+function useNote(kind,ms,sysLen,userLen,out,usage,model){
+  const u=useLoad();
+  u.calls++;u.ms+=ms;u.chars+=sysLen+userLen+(out||'').length;
+  u.inTok+=(usage&&(usage.prompt_tokens||usage.input_tokens))||0;
+  u.outTok+=(usage&&(usage.completion_tokens||usage.output_tokens))||0;
+  if(!u.first)u.first=Date.now();
+  u.last=Date.now();
+  u.byKind[kind]=(u.byKind[kind]||0)+1;
+  if(model)u.byModel[model]=(u.byModel[model]||0)+1;
+  useSave();
+}
+function useFail(){const u=useLoad();u.fails++;useSave();}
+/* The kind travels as an argument, not as a global set around the call: two
+   calls in flight at once would otherwise credit each other's work. */
+
+async function llm(system,user,maxTok,kind){
   const c=cfg();
   const url=c.url||'/api/generate';
   const body=c.url
     ? {model:c.model||'gpt-5.6-sol',max_completion_tokens:maxTok||4000,
        messages:[{role:'system',content:system},{role:'user',content:user}]}
     : {kind:'slide-edit',system,user,maxTok:maxTok||4000};
+  const t0=Date.now();
   let r;
   try{
     r=await fetch(url,{method:'POST',
       headers:{'Content-Type':'application/json',...(c.key?{Authorization:'Bearer '+c.key}:{})},
       body:JSON.stringify(body)});
-  }catch(e){ throw new Error(`could not reach ${url} — ${e.message}`); }
+  }catch(e){ useFail(); throw new Error(`could not reach ${url} — ${e.message}`); }
 
   /* A plain file server answers a POST with the page itself. Say that, rather
      than letting JSON.parse complain about a "<". */
@@ -3039,10 +3200,14 @@ async function llm(system,user,maxTok){
   /* an endpoint you configured yourself should name itself when it complains —
      "no such endpoint" alone does not tell you which one you pointed at */
   if(j.error){
+    useFail();
     const m=typeof j.error==='string'?j.error:(j.error.message||'API error');
     throw new Error(c.url?`${url} (${r.status}): ${m}`:m);
   }
-  return j.choices?.[0]?.message?.content ?? j.text ?? j.content ?? j.output ?? '';
+  const out=j.choices?.[0]?.message?.content ?? j.text ?? j.content ?? j.output ?? '';
+  useNote(kind||'other',Date.now()-t0,(system||'').length,(user||'').length,out,
+          j.usage||j.choices?.[0]?.usage,j.model||c.model);
+  return out;
 }
 async function ask(instr,host,btn){
   if(!instr){toast('Type an instruction');return;}
@@ -3057,7 +3222,7 @@ If the instruction asks for a figure the slide does not have, put a line contain
 If a change needs a different title, make the FIRST line exactly "TITLE: <the new title>" and put the body after it. Otherwise do not mention the title.`;
   const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
   try{
-    let t=(await llm(sys,usr)).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+    let t=(await llm(sys,usr,null,'edit')).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
     prog.done();
     const news=[...new Set([...t.matchAll(FIGREF)].map(m=>m[1]))].filter(id=>!S.figs[id]);
     propose(host,t+(news.length?`\n\n— and ${news.length===1?'a figure':news.length+' figures'} to draw: ${news.join(', ')}`:''),
@@ -4048,7 +4213,7 @@ async function feAskSelection(){
       `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\n`+
       `THE USER HAS SELECTED THIS ELEMENT:\n${sel}\n\n`+
       `CHANGE REQUESTED, about that element specifically: ${instr}\n`+
-      `Leave the rest of the figure as it is.`,20000);
+      `Leave the rest of the figure as it is.`,20000,'figure');
     feAccept(t,out);
   }catch(e){out.textContent='Failed: '+e.message;}
 }
@@ -4198,7 +4363,7 @@ function feTab(t){
     out.innerHTML='<span class="spin"></span> redrawing…';
     try{feAccept(await llm(figSys(),
       `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\nCHANGE REQUESTED: ${instr}`,
-      20000),out);}
+      20000,'figure'),out);}
     catch(e){out.textContent='Failed: '+e.message;}
   };
 }
@@ -4306,81 +4471,11 @@ function deckSettings(){
   document.getElementById('dsReset').onclick=()=>{snap('style');S.style={};touch();closeDialog();live();toast('Style reset');};
   document.getElementById('dsOk').onclick=closeDialog;
 }
-/* A slide earns its place by carrying the argument alone: it opens something,
-   it lands a line, it shows evidence. Asides go first — that is what an aside is.
-   Anything flagged `keep` is never hidden automatically. */
-function scoreSlide(s,i){
-  if(s.flags&&s.flags.includes('keep'))return 99;
-  let v=0;
-  if(/^>/m.test(s.body||''))v+=3;
-  if(s.tag==='E')v+=2; else if(s.tag==='D')v+=1; else if(s.tag==='B')v-=4;
-  if(s.fig&&S.figs[s.fig])v+=1;
-  const prev=S.slides[i-1];
-  if(!prev||(prev.sub||'')!==(s.sub||''))v+=2;          // opens a subsection
-  if(!prev||(prev.group||'')!==(s.group||''))v+=3;      // opens a section
-  if(i===0||i>=S.slides.length-3)v+=8;                  // the framing has to stay
-  if((s.summary||'').trim())v+=1;
-  return v;
-}
-function planTrim(minutes){
-  /* Share the budget between the sections in proportion to their length, so each
-     is compressed by the same factor and the talk keeps its shape. Greedy across
-     the whole deck gave one section 14 of 26 slides and another 1 of 48. */
-  const budget=minutes*60;
-  const secs=S.slides.map(x=>stats(x).secs);
-  const total=secs.reduce((a,b)=>a+b,0)||1;
-  const keep=new Set(); let t=0;
-  [...new Set(S.slides.map(x=>x.group))].forEach(g=>{
-    const idx=S.slides.map((x,i)=>x.group===g?i:-1).filter(i=>i>=0);
-    const share=budget*idx.reduce((a,i)=>a+secs[i],0)/total;
-    let used=0;
-    idx.map(i=>({i,v:scoreSlide(S.slides[i],i),t:secs[i]}))
-       .sort((a,b)=>b.v-a.v||a.t-b.t)
-       .forEach(x=>{ if(used+x.t>share&&used>0)return; keep.add(x.i); used+=x.t; });
-    t+=used;
-  });
-  return{keep,t};
-}
-function trimDialog(){
-  const secsAll=S.slides.reduce((a,x)=>a+stats(x).secs,0);
-  const sections=[...new Set(S.slides.map(s=>s.group||'—'))];
-  dialog(`<h3>Trim to length</h3>
-   <p class="tip">Hides the slides that do the least work, section by section, until the deck fits.
-    Nothing is deleted — hidden slides stay in the file and in the list, and
-    <kbd>H</kbd> shows them again. Slides marked <b>keep</b> are never hidden.</p>
-   <div class="fld" style="margin-top:14px"><label>Aim for <b id="tmM">45</b> minutes
-     <span class="pos">· the whole deck is ${clock(secsAll)}</span></label>
-     <input id="tmR" type="range" min="10" max="${Math.max(20,Math.round(secsAll/60))}" step="5" value="45"></div>
-   <div id="tmOut" class="runout"></div>
-   <div class="rw" style="margin-top:12px">
-     <button class="b p" id="tmGo">Hide the rest</button>
-     <button class="b" id="tmNo">Cancel</button>
-     <button class="b" id="tmAll">Show everything</button></div>`,'tall');
-  const R=document.getElementById('tmR'),out=document.getElementById('tmOut'),lab=document.getElementById('tmM');
-  let plan=null;
-  const draw=()=>{
-    const m=+R.value;lab.textContent=m;
-    plan=planTrim(m);
-    const per=sections.map(g=>{
-      const all=S.slides.filter(s=>(s.group||'—')===g);
-      const got=all.filter(s=>plan.keep.has(S.slides.indexOf(s)));
-      return`<tr><td>${esc(g)}</td><td class="n">${got.length}</td><td class="n muted">of ${all.length}</td></tr>`;
-    }).join('');
-    const now=liveStats();
-    out.innerHTML=`<div class="runsum"><b>${plan.keep.size}</b> slides shown · <b>${clock(plan.t)}</b>
-      <span class="muted">· ${S.slides.length-plan.keep.size} hidden · right now ${now.n} shown, ${now.hidden} hidden</span></div>
-      <table class="runtab">${per}</table>`;
-  };
-  R.oninput=draw;draw();
-  document.getElementById('tmGo').onclick=()=>{
-    snap('trim');
-    S.slides.forEach((s,i)=>s.skip=!plan.keep.has(i));
-    touch();closeDialog();paint();
-    toast(`${S.slides.length-plan.keep.size} slides hidden · ${clock(plan.t)}`);};
-  document.getElementById('tmNo').onclick=closeDialog;
-  document.getElementById('tmAll').onclick=()=>{
-    snap('show all');S.slides.forEach(s=>s.skip=false);touch();closeDialog();paint();toast('Nothing hidden');};
-}
+/* "Trim to length" used to live here: give it a number of minutes and it hid
+   the slides that did the least work until the deck fitted. It is gone. Which
+   slides matter is the one judgement a tool cannot make for you, and a
+   deck-wide guess at it was worse than no answer at all. H hides a slide, and
+   scripts/short_run.py still does it in bulk offline for anyone who wants that. */
 function tidyAllDialog(){
   dialog(`<h3>Tidy every slide</h3>
    <p class="tip">Draws each slide at full size in every sensible arrangement and keeps the one that
@@ -5026,7 +5121,6 @@ document.addEventListener('click',()=>pop.classList.remove('on'));
 pop.onclick=e=>e.stopPropagation();
 pop.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>pop.classList.remove('on')));
 document.getElementById('bTidyAll').onclick=tidyAllDialog;
-document.getElementById('bRun').onclick=trimDialog;
 document.getElementById('bDeck').onclick=deckSettings;
 document.getElementById('bCfg2').onclick=configure;
 document.getElementById('bHelp').onclick=shortcuts;
@@ -5036,8 +5130,7 @@ document.getElementById('bSaveNow').onclick=()=>{
   persist().then(()=>{b.disabled=false;toast(saveErr?'Could not save — '+saveErr:'Saved');});};
 document.getElementById('bOpen').onclick=openDeckFile;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
-document.getElementById('bCopy').onclick=copySlides;
-document.getElementById('bPaste').onclick=pasteSlides;
+document.getElementById('bNewDeck').onclick=newDeck;
 document.getElementById('bImport').onclick=()=>importWizard(null);
 document.getElementById('bBrief').onclick=briefWizard;
 document.getElementById('wBrief').onclick=briefWizard;

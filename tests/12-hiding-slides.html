@@ -39,32 +39,15 @@ addEventListener('load',async()=>{
     ok('and stay out of the body',!/Flags:/.test(r2[0].body));
   } else { ok('flags round-trip','skipped — fixture has none'); }
 
-  // --- trimming to a length ---
-  const total=w.S.slides.reduce((a,x)=>a+w.stats(x).secs,0);
-  const TARGET=Math.max(2,Math.round(total/60/3));
-  const plan=w.planTrim(TARGET);
-  ok('the plan fits its budget',plan.t<=TARGET*60,w.clock(plan.t)+' for '+TARGET+' min');
-  ok('and it is a real selection',plan.keep.size>3&&plan.keep.size<w.S.slides.length,
-     plan.keep.size+' of '+w.S.slides.length);
-  ok('it keeps the opening',plan.keep.has(0));
-  const last=Math.max(...plan.keep);
-  ok('and ends in the last section',
-     w.S.slides[last].group===w.S.slides[w.S.slides.length-1].group,w.S.slides[last].group);
-  const secs=new Set([...plan.keep].map(i=>w.S.slides[i].group));
-  ok('every section survives',secs.size===4,secs.size+' sections');
-  const asides=[...plan.keep].filter(i=>w.S.slides[i].tag==='B').length;
-  const allAsides=w.S.slides.filter(s=>s.tag==='B').length;
-  ok('asides are cut hardest',asides/Math.max(1,allAsides)<plan.keep.size/w.S.slides.length,
-     `${asides}/${allAsides} asides vs ${plan.keep.size}/${w.S.slides.length} overall`);
-  const shorter=w.planTrim(Math.max(1,Math.floor(TARGET/2)));
-  ok('a shorter target keeps fewer',shorter.keep.size<plan.keep.size,
-     plan.keep.size+' → '+shorter.keep.size);
-
-  // a slide flagged keep is never dropped
-  const ki=w.S.slides.findIndex(x=>x.tag==='B');
-  w.S.slides[ki].flags=['keep'];
-  ok('a slide flagged keep survives any budget',w.planTrim(1).keep.has(ki));
-  w.S.slides[ki].flags=[];
+  // "Trim to length" is gone — deciding which slides matter is not a thing a
+  // tool can guess, and the deck-wide version was worse than no answer. Hiding
+  // by hand is what remains, and what the rest of this file exercises.
+  ok('the app no longer offers to trim the deck for you',
+     !w.trimDialog&&!w.planTrim,'scripts/short_run.py still does it offline');
+  ok('and the menu does not mention it',
+     !/Trim to length/.test(d.getElementById('pop').textContent),
+     d.getElementById('pop').textContent.replace(/\s+/g,' ').slice(0,80));
+  const plan={keep:new Set(w.S.slides.map((_,i)=>i).filter(i=>i%3!==2))};
 
   // --- presenting walks past the hidden ones ---
   w.S.slides.forEach((s,i)=>s.skip=!plan.keep.has(i));

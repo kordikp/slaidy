@@ -1,0 +1,31 @@
+name: Something is broken
+description: A thing the editor does that it should not
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations: {required: true}
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: Chrome 131 / Firefox 133 / Safari 18
+    validations: {required: true}
+  - type: textarea
+    id: deck
+    attributes:
+      label: The slide, if you can share it
+      description: |
+        The markdown of the slide is usually enough — right-click it in the list,
+        Copy, and paste it here. Please take out anything you would not publish.
+      render: markdown
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before you post
+      options:
+        - label: I can still reproduce it after a reload
+        - label: The browser console has no error I have not mentioned

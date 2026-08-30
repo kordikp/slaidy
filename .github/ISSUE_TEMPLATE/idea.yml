@@ -1,0 +1,22 @@
+name: An idea
+description: Something the editor should be able to do
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: |
+        The thing you were doing when you wanted this, not the feature you have in
+        mind for it. Most good changes here started as "I wanted to move a paragraph
+        and could not find how".
+    validations: {required: true}
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would do about it
+  - type: markdown
+    attributes:
+      value: |
+        Two things this project says no to, so you know before you write:
+        a build step, and a dependency. Both are load-bearing — see the README.

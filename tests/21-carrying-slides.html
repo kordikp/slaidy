@@ -108,6 +108,39 @@ addEventListener('load',async()=>{
     ok('and offers it back',true,'(not applicable with one slide)');
     ok('which restores it',true,'(not applicable)');
   }
+
+  // ---------- copy and paste live on the list, where the slides are ----------
+  ok('they are gone from the ⋯ menu',
+     !/Copy slides|Paste slides/.test(d.getElementById('pop').textContent),
+     d.getElementById('pop').textContent.replace(/\s+/g,' ').slice(0,90));
+  const row=d.querySelectorAll('#nav .item')[0];
+  row.dispatchEvent(new W.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:120,clientY:200}));
+  await wait(150);
+  const menu=d.querySelector('.ctxmenu');
+  ok('right-clicking a slide opens its own menu',!!menu);
+  const acts=[...menu.querySelectorAll('button')].map(b=>b.dataset.a);
+  ok('with copy, cut and paste on it',['copy','cut','paste'].every(k=>acts.includes(k)),acts.join(','));
+  ok('and the rest of what you do to a slide',
+     ['dup','skip','del'].every(k=>acts.includes(k)),acts.join(','));
+  ok('right-clicking one that is not picked picks it',w.picked().join()==='0',w.picked().join());
+  menu.remove();
+
+  // it acts on the whole selection when there is one
+  while(w.S.slides.length<4)w.S.slides.push(Object.assign({},w.S.slides[0],
+    {title:'Filler '+w.S.slides.length}));
+  w.normalise();w.paint();await wait(200);
+  d.querySelectorAll('#nav .item')[0].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  d.querySelectorAll('#nav .item')[2].dispatchEvent(new W.MouseEvent('click',{bubbles:true,shiftKey:true}));
+  await wait(150);
+  d.querySelectorAll('#nav .item')[1].dispatchEvent(
+    new W.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:120,clientY:200}));
+  await wait(150);
+  const m2=d.querySelector('.ctxmenu');
+  ok('right-clicking inside a selection keeps it',w.picked().length===3,w.picked().join());
+  ok('and the menu counts them',/3 slides/.test(m2.textContent),
+     m2.textContent.replace(/\s+/g,' ').slice(0,60));
+  m2.remove();
+
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

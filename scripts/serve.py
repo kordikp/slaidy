@@ -139,7 +139,11 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             with urllib.request.urlopen(r, timeout=600) as resp:
                 d = json.loads(resp.read().decode())
-            return self._json(200, {"text": d["choices"][0]["message"]["content"]})
+            # pass the token counts through: the app cannot know what a call cost
+            # unless the endpoint says, and a usage panel that guesses is worthless
+            return self._json(200, {"text": d["choices"][0]["message"]["content"],
+                                    "usage": d.get("usage") or {},
+                                    "model": d.get("model") or req.get("model") or MODEL})
         except urllib.error.HTTPError as e:
             detail = e.read().decode()[:400]
             try:

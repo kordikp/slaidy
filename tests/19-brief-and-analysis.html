@@ -3,6 +3,10 @@
 const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(150); const w=W.__api;
  const realFetch=W.fetch;
@@ -135,6 +139,7 @@ addEventListener('load',async()=>{
   unstub();
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  unstub();
+ clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });
 </script>

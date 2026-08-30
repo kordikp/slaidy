@@ -3,6 +3,10 @@
 const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
 const SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">'+
   '<rect width="800" height="450" fill="#FAFAF7"/>'+
   '<style>@keyframes p{to{opacity:1}}</style>'+
@@ -296,6 +300,7 @@ addEventListener('load',async()=>{
 
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  unstub();
+ clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });
 </script>

@@ -30,18 +30,24 @@ login page instead of an answer.
 
 ## What holds, and what does not
 
-| | |
-|---|---|
-| origin | one, the demo's — but an `Origin` header is trivially forged outside a browser, so treat this as tidiness, not a wall |
-| shape | the two fields the app sends. No conversation, no model choice, no streaming |
-| size | 24 000 characters in |
-| tokens | 6 000 out, hard — this is a real limit |
-| per address | `DEMO_PER_IP_HOUR`, 15 |
-| per day | `DEMO_PER_DAY`, 300, then it stops answering |
+| | | |
+|---|---|---|
+| origin | one, the demo's | tidiness, not a wall — an `Origin` header is trivially forged outside a browser |
+| shape | the two fields the app sends | no conversation, no model choice, no streaming |
+| size | 24 000 characters in | |
+| tokens | 6 000 out | hard, and a real limit |
+| figures a day, per address | `DEMO_FIGS_IP_DAY`, 6 | a drawn figure is twenty thousand tokens of SVG against a few hundred for a paragraph, so it gets its own allowance |
+| calls a day, per address | `DEMO_PER_IP_DAY`, 40 | |
+| calls an hour, per address | `DEMO_PER_IP_HOUR`, 15 | |
+| calls a day, everyone | `DEMO_PER_DAY`, 300 | then it stops answering |
 
-The per-address count lives in one instance's memory. Serverless means several instances
-and a cold start wipes it, so it is a speed bump rather than a guarantee. **The limits
-that actually hold are the token ceiling and the daily budget**, and the daily budget is
-the number to watch, because behind it is somebody's academic quota.
+Every answer carries what is left and when it resets, so the page can show it and say
+when the AI comes back rather than only that it has gone. A refusal also carries the way
+round it: run it locally, where there is no limit at all.
+
+The per-address counts live in one instance's memory. Serverless means several instances
+and a cold start wipes them, so they are a speed bump rather than a guarantee. **The
+limits that actually hold are the token ceiling and the shared daily budget**, and that
+daily number is the one to watch, because behind it is somebody's academic quota.
 
 Turning it off is deleting the project, or emptying `DEMO_AI`. Neither breaks anything else.

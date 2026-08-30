@@ -196,7 +196,10 @@ still moves every slide that has not spoken up. The markdown writes only the dep
 (`*Style:* titleSize=30, accent=#0EA5E9`), and an override cleared away leaves nothing behind.
 
 **Where the AI went.** `⋯ → AI usage` holds the endpoint, the key, the model, this deck's own
-figure rule — and what it has all cost: calls, tokens **as the endpoint reported them**, time
+figure rule — and, on the demo, how much of its allowance is left and when it comes back. A
+drawn figure costs about twenty times what a paragraph does, so it has its own count. Running
+out says what ran out, when it lifts, and that on your own machine there is no limit at all.
+Then what it has all cost: calls, tokens **as the endpoint reported them**, time
 waited, and what the spending went on (drawing figures, writing slides, proposing ideas…). Counted
 in the browser and never sent anywhere. Where an endpoint reports no tokens, none are shown rather
 than guessed: a usage panel that estimates invites you to plan against a number nobody measured.

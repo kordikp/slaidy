@@ -3,6 +3,10 @@
 const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
@@ -71,6 +75,7 @@ addEventListener('load',async()=>{
   const back=w.importMarkdown('t.md','# Act I\n\n## Room 1 — Alpha\n\n'+md);
   ok('reimport recovers the subsection',back[0].sub==='Room 1 — Alpha',back[0].sub);
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });
 </script>

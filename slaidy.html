@@ -3189,10 +3189,31 @@ const KIND_LABEL={figure:'drawing figures',slide:'writing slides',ideas:'proposi
   edit:'editing a slide',analyse:'analysing a slide',summary:'reading a slide',
   outline:'shaping a deck',other:'other'};
 function nfmt(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'k':String(n||0);}
+/* What the demo's proxy last said was left. Shown as it was reported, with the
+   time it was reported at, because a number without a timestamp invites you to
+   trust it longer than you should. */
+function demoLimitsHtml(){
+  const l=useLoad().limits;
+  if(!l)return '';
+  const row=(k,v,of)=>`<tr><td>${k}</td><td class="num">${v}</td>
+    <td class="bar"><i style="width:${Math.round(Math.min(1,v/of)*100)}%"></i></td></tr>`;
+  const back=l.resetsAt?new Date(l.resetsAt):null;
+  const stale=Date.now()-(l.at||0)>36e5;
+  return `<div class="sect" style="margin:16px 0 6px">The demo's allowance</div>
+  <table class="usetab">
+    ${row('Figures left today',l.figures??0,6)}
+    ${row('Calls left today',l.day??0,40)}
+    ${row('Calls left this hour',l.hour??0,15)}
+  </table>
+  <p class="tip">${back?`Back to full at <b>${back.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</b>. `:''}${
+    stale?'Last seen over an hour ago. ':''}A drawn figure costs about twenty times what a
+    paragraph does, so it has its own allowance. <b>On your own machine there is no limit at
+    all</b> — put your key in above and it talks to the endpoint directly.</p>`;
+}
 function usageHtml(){
   const u=useLoad();
   if(!u.calls)return `<p class="tip">Nothing yet. Every call the app makes is counted here, with the
-    tokens the endpoint reports — never an estimate.</p>`;
+    tokens the endpoint reports — never an estimate.</p>`+demoLimitsHtml();
   const kinds=Object.entries(u.byKind).sort((a,b)=>b[1]-a[1]);
   const tok=u.inTok+u.outTok;
   const row=(k,v)=>`<tr><td>${k}</td><td class="num">${v}</td></tr>`;
@@ -3217,6 +3238,7 @@ function usageHtml(){
       .map(([m,n])=>`<tr><td><code>${esc(m)}</code></td><td class="num">${n}</td></tr>`).join('')}</table>`:''}
   <p class="tip">Counted in this browser only, and never sent anywhere. Tokens are what the endpoint
     reported; where it reports none, none are shown rather than guessed.</p>
+  ${demoLimitsHtml()}
   <p class="tip" style="margin-top:9px">The AI in this editor was built and is run on capacity from
     <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
     with thanks. If you are at a Czech institution you can get a key of your own there.</p>`;
@@ -3318,7 +3340,7 @@ async function llm(system,user,maxTok,kind){
   const body=c.url
     ? {model:c.model||'gpt-5.6-sol',max_completion_tokens:maxTok||4000,
        messages:[{role:'system',content:system},{role:'user',content:user}]}
-    : {kind:'slide-edit',system,user,maxTok:maxTok||4000};
+    : {kind:kind||'slide-edit',system,user,maxTok:maxTok||4000};
   const t0=Date.now();
   let r;
   try{
@@ -3340,8 +3362,20 @@ async function llm(system,user,maxTok,kind){
   }
   /* an endpoint you configured yourself should name itself when it complains —
      "no such endpoint" alone does not tell you which one you pointed at */
+  /* the demo's proxy says what is left and when it comes back; keep it so the
+     panel can show it without asking again */
+  if(j.limits){useLoad().limits={...j.limits,at:Date.now()};useSave();}
   if(j.error){
     useFail();
+    if(r.status===429){
+      const e=new Error(j.error+(j.limits&&j.limits.resetsAt
+        ? ` The demo's AI is back at ${new Date(j.limits.resetsAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.`:''));
+      e.limited=true;e.hint=j.hint;e.repo=j.repo;
+      setTimeout(()=>banner(
+        (j.hint||'Run it on your own machine and there is no limit.'),
+        'How',()=>configure()),400);
+      throw e;
+    }
     const m=typeof j.error==='string'?j.error:(j.error.message||'API error');
     throw new Error(c.url?`${url} (${r.status}): ${m}`:m);
   }

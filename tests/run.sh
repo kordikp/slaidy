@@ -46,7 +46,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
   copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,useLoad,useNote,useReset,usageHtml,
-  KIND_LABEL,nfmt,safeUrl,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS};"""
+  KIND_LABEL,nfmt,safeUrl,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml};"""
 ready = """
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}

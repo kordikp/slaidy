@@ -9,7 +9,7 @@ said nothing about why. This says why, before the browser starts.
 import re, sys, os
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-app = open(os.path.join(root, "slide-studio.html"), encoding="utf-8").read()
+app = open(os.path.join(root, "slaidy.html"), encoding="utf-8").read()
 src = app[app.index("<script>") + 8:app.rindex("</script>")]
 hook = open(os.path.join(root, "tests", "run.sh"), encoding="utf-8").read()
 a = hook.index("window.__api={")

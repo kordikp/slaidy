@@ -587,7 +587,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 </style></head><body>
 
 <div id="bar">
-  <a class="logo" href="https://github.com/kordikp/slide-studio" target="_blank" rel="noopener noreferrer"
+  <a class="logo" href="https://github.com/kordikp/slaidy" target="_blank" rel="noopener noreferrer"
      title="SlAIdy on GitHub — MIT, one file, no dependencies">SlAIdy</a>
   <span class="meta2" id="deckInfo">no deck</span>
   <span id="status" class="busy" title="storage status">no deck</span>
@@ -636,7 +636,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
   <h1>SlAIdy</h1>
   <p>A WYSIWYG editor and presenter for decks written in markdown. Nothing is uploaded; everything
      stays in this browser, and Export always gives you files you own.
-     <a href="https://github.com/kordikp/slide-studio" target="_blank" rel="noopener noreferrer">Source
+     <a href="https://github.com/kordikp/slaidy" target="_blank" rel="noopener noreferrer">Source
      on GitHub</a> — MIT, one file, no dependencies.</p>
 
   <p><b>To open a whole presentation, pick the one <code>.json</code> file in <code>decks/</code>.</b><br>
@@ -713,6 +713,10 @@ const IDB=(()=>{
   let db=null,dead=false;
   const open=()=>new Promise((res,rej)=>{
     if(db)return res(db); if(dead)return rej(new Error('IndexedDB unavailable'));
+    /* The database keeps its old name on purpose. It holds every deck, every
+       version snapshot and every remembered file handle in this browser;
+       renaming it to match the project would orphan the lot. A storage key is
+       not a brand. */
     let r; try{r=indexedDB.open('slide-studio',1);}catch(e){dead=true;return rej(e);}
     r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};
     r.onsuccess=()=>{db=r.result;res(db);};
@@ -1504,6 +1508,8 @@ async function copySlides(){
   const ix=picked(),list=ix.map(i=>structuredClone(S.slides[i]));
   if(!list.length)return;
   const md=list.map(slideMd).join('\n');
+  /* likewise the clipboard marker: a copy taken before the rename must still
+     paste after it */
   const payload={kind:'slide-studio/slides',at:Date.now(),from:S.title||S.id,
                  md,slides:list,figs:figsOf(list)};
   /* Two places, and it used to claim success if neither worked. The browser copy

@@ -35,5 +35,5 @@ What the app does *not* defend against: a deck you open is still yours to trust 
 
 ## Reporting something
 
-Open a [security advisory](https://github.com/kordikp/slide-studio/security/advisories/new)
+Open a [security advisory](https://github.com/kordikp/slaidy/security/advisories/new)
 rather than a public issue, and give it a few days before saying more.

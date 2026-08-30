@@ -1,6 +1,6 @@
 # Contributing
 
-The short version: the whole app is `slide-studio.html`. Open it, change it, run the
+The short version: the whole app is `slaidy.html`. Open it, change it, run the
 tests, send a pull request. There is no build to learn and nothing to install beyond
 Python and a Chrome.
 
@@ -11,7 +11,7 @@ Python and a Chrome.
 ./studio.sh decks/mine.json  # any other bundle
 ```
 
-Or open `slide-studio.html` in a browser. Served, it loads `deck.json` from the same
+Or open `slaidy.html` in a browser. Served, it loads `deck.json` from the same
 directory by itself and can reach `/api/generate`.
 
 ## Tests
@@ -43,7 +43,7 @@ Two guards run before the browser does:
 
 Not to be difficult, but because these three are what it is:
 
-- **A build step.** If `slide-studio.html` needs compiling, it is no longer a file you
+- **A build step.** If `slaidy.html` needs compiling, it is no longer a file you
   can email to someone.
 - **A dependency.** Vendoring a library would make the file bigger than the decks it
   edits, and the ones that matter here — an SVG editing model, a maths renderer — all

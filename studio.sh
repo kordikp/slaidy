@@ -15,7 +15,7 @@ DECK="${1:-decks/example.json}"
 PORT="${PORT:-8080}"
 
 [ -f "$DECK" ] || { echo "No such deck: $DECK"; echo "Available:"; ls -1 decks/*.json 2>/dev/null || echo "  (none — run scripts/build_bundle.py)"; exit 1; }
-[ -f slide-studio.html ] || { echo "slide-studio.html is missing"; exit 1; }
+[ -f slaidy.html ] || { echo "slaidy.html is missing"; exit 1; }
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -23,7 +23,7 @@ trap 'rm -rf "$WORK"' EXIT
 # time, so every restart made the served deck look newer than the edits held in
 # the browser — and the edits lost. The server owns the real file instead: it
 # streams it at /deck.json and writes it back at /api/deck.
-cp slide-studio.html "$WORK/index.html"
+cp slaidy.html "$WORK/index.html"
 
 PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
 

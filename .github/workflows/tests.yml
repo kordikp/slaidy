@@ -28,7 +28,7 @@ jobs:
         run: |
           set -e
           # the promise the project makes, checked rather than asserted in prose
-          grep -q "<script src=" slide-studio.html && { echo "external script found"; exit 1; } || true
-          grep -qE '<link[^>]+href="https?:' slide-studio.html && { echo "external stylesheet"; exit 1; } || true
+          grep -q "<script src=" slaidy.html && { echo "external script found"; exit 1; } || true
+          grep -qE '<link[^>]+href="https?:' slaidy.html && { echo "external stylesheet"; exit 1; } || true
           test "$(ls *.html | wc -l)" -eq 1
-          echo "slide-studio.html is $(du -h slide-studio.html | cut -f1), on its own"
+          echo "slaidy.html is $(du -h slaidy.html | cut -f1), on its own"

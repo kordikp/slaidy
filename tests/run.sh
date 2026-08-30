@@ -16,7 +16,7 @@ PORT="${PORT:-8931}"
 WORK="$(mktemp -d)"
 cleanup(){ [ -n "${SRV:-}" ] && kill "$SRV" 2>/dev/null; rm -rf "$WORK"; }
 trap cleanup EXIT
-cp slide-studio.html "$WORK/index.html"
+cp slaidy.html "$WORK/index.html"
 python3 tests/make-fixture.py >/dev/null
 cp tests/*.html "$WORK/"
 

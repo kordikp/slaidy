@@ -27,7 +27,7 @@ jobs:
       - name: Lay out the demo
         run: |
           mkdir -p _site
-          cp slide-studio.html _site/index.html
+          cp slaidy.html _site/index.html
           cp decks/example.json _site/deck.json
           cp LICENSE _site/LICENSE
       - uses: actions/configure-pages@v5

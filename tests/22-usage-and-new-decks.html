@@ -82,7 +82,7 @@ addEventListener('load',async()=>{
   const logo=d.querySelector('#bar .logo');
   ok('the project is called SlAIdy',logo.textContent.trim()==='SlAIdy',logo.textContent.trim());
   ok('and the name is the way to the source',
-     /github\.com\/kordikp\/slide-studio/.test(logo.getAttribute('href')),logo.getAttribute('href'));
+     /github\.com\/kordikp\/slaidy/.test(logo.getAttribute('href')),logo.getAttribute('href'));
   ok('opened safely, like every other outbound link',
      /noopener/.test(logo.getAttribute('rel'))&&logo.target==='_blank',logo.getAttribute('rel'));
   ok('the document is titled that too',/SlAIdy/.test(d.title),d.title);
@@ -100,6 +100,12 @@ addEventListener('load',async()=>{
   ok('and the panel thanks them',/e-infra\.cz/.test(d.querySelector('.dlg').innerHTML)
      &&/with thanks/.test(d.querySelector('.dlg').textContent));
   d.getElementById('cC').click();await wait(150);
+
+
+  // renaming the project must not orphan what people already have stored
+  ok('the database keeps its old name',
+     /indexedDB\.open\('slide-studio'/.test(W.document.documentElement.innerHTML),
+     'a storage key is not a brand');
 
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  W.fetch=realFetch;

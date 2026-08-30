@@ -328,6 +328,14 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 #welcome h1{font-size:25px;letter-spacing:-.022em;margin-bottom:7px;font-weight:660}
 #welcome p{color:var(--gray);margin-bottom:14px;font-size:13.5px;line-height:1.6}
 #welcome .rw{margin-top:16px}
+#nudge{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:none;align-items:center;
+ gap:10px;background:var(--ink);color:#fff;padding:9px 10px 9px 16px;border-radius:var(--r10);
+ font-size:13px;z-index:69;box-shadow:0 8px 26px rgba(10,12,16,.3);max-width:min(680px,92vw)}
+#nudge.on{display:flex}
+#nudge button{border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:3px 12px;font-size:12.5px;
+ color:#fff;white-space:nowrap}
+#nudge button:hover{background:rgba(255,255,255,.14)}
+#nudge #nudgeNo{padding:3px 9px;border-color:transparent;opacity:.6}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;
  padding:8px 15px;border-radius:var(--r6);font-size:12.5px;opacity:0;transition:.2s;pointer-events:none;z-index:70;
  box-shadow:0 6px 20px rgba(10,12,16,.24)}
@@ -403,12 +411,13 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .bkt button:hover{color:var(--acc);border-color:var(--acc)}
 .item .eye{color:var(--line);font-size:10.5px;line-height:1;flex:none;padding:0 2px;opacity:0;transition:.12s}
 .item:hover .eye{opacity:1}
-.item.hidden .eye{opacity:1;color:var(--faint)}
+.item.skipped .eye{opacity:1;color:var(--faint)}
 .item .eye:hover{color:var(--acc)}
-.item.hidden{opacity:.45}
-.item.hidden .tt{text-decoration:line-through;text-decoration-color:var(--faint)}
+.item.skipped{opacity:.5}
+.item.skipped .tt{text-decoration:line-through;text-decoration-color:var(--faint)}
+.item.skipped .pip{opacity:.35}
 .item .own{color:var(--acc);font-weight:700;margin-left:5px}
-.gcell.hidden{opacity:.4;box-shadow:inset 0 0 0 1px var(--faint)}
+.gcell.skipped{opacity:.4;box-shadow:inset 0 0 0 1px var(--faint)}
 .runsum{font-size:13px;margin-bottom:9px}
 .runsum b{font-size:15px}
 .muted{color:var(--faint)}
@@ -452,6 +461,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
     <button class="ic" id="bMore" title="More">⋯</button>
     <div class="pop" id="pop">
       <button id="bOpen">Open a deck…</button>
+      <button id="bSaveAs">Save to a file…</button>
+      <button id="bImport">Import markdown…</button>
       <button id="bHist">Version history</button>
       <button id="bSave">Export…</button>
       <button id="bTidyAll">Tidy every slide…</button>
@@ -514,6 +525,26 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
    ===================================================================== */
 
 const TAGS={S:['practical','var(--s)'],D:['in depth','var(--d)'],E:['evidence','var(--e)'],B:['aside','var(--b)']};
+/* The dot used to carry the tag, which nothing edits any more. It says what is
+   on the slide instead — the one thing you want to see when scanning a list of
+   two hundred and thirty-seven of them. */
+const KINDS={
+  table  :['has a table','var(--b)'],
+  both   :['words and a picture','var(--e)'],
+  figure :['a picture alone','var(--d)'],
+  text   :['words alone','var(--s)'],
+  empty  :['nothing yet','var(--line)'],
+};
+function slideKind(s){
+  const body=(s.body||'').trim();
+  const hasFig=!!(s.fig&&S.figs[s.fig])||/^!\[\[/m.test(body);
+  const words=body.replace(/!\[\[[^\]]*\]\]/g,'').replace(/[#*`>|_-]/g,'').trim();
+  if(/^\s*\|/m.test(body))return 'table';
+  if(hasFig&&words)return 'both';
+  if(hasFig)return 'figure';
+  if(words)return 'text';
+  return 'empty';
+}
 const LAYHINT={figure:'Only the figure is projected — the body moves below, as speaker material.','split-l':'Figure on the left, text on the right.','split-r':'Text on the left, figure on the right.',background:'Figure faint behind the text.',text:'Text only.'};
 const LAYOUTS=['figure','split-l','split-r','background','text'];
 const LAYNAME={figure:'Figure',"split-l":'Fig ◧',"split-r":'Fig ◨',background:'Behind',text:'Text'};
@@ -558,22 +589,94 @@ let lastSaved=null,lastSnap=0,saveErr=null;
 function setStatus(state,info){
   const el=document.getElementById('status');if(!el)return;
   el.className=state;
+  const where=fileName?' → '+fileName:(info?' · '+info:'');
   el.textContent={
     none:'no deck', busy:'saving…',
-    ok:'saved '+(lastSaved?lastSaved.toTimeString().slice(0,5):'')+(info?' · '+info:''),
-    warn:'unsaved changes',
+    ok:'saved '+(lastSaved?lastSaved.toTimeString().slice(0,5):'')+where,
+    warn:'unsaved'+(fileName?' — '+fileName:''),
     bad:'⚠ NOT saved — click to download a backup'
   }[state]||state;
   el.title=state==='bad'?(saveErr||'the browser refused to store this deck'):
-    state==='ok'?'stored in this browser; Export writes files you own':'';
+    fileName?'Written to '+fileName+' every time it saves':
+    'Held in this browser only. Open a deck file, or Save as, to put it somewhere you own.';
 }
+/* ---------- where the deck lives ------------------------------------------
+   The deck file is the document. When the browser can hold a handle to it —
+   Chrome can — saving writes to that file and there is one place the work is,
+   the way any editor works. Without a handle the browser's own storage is a
+   fallback, and the status pill says so rather than quietly holding a second
+   copy that disagrees with the file on disk.
+--------------------------------------------------------------------------- */
+let fileHandle=null, fileName=null;
+const canFile=()=>typeof window.showOpenFilePicker==='function';
+async function handleOK(h,ask){
+  if(!h)return false;
+  try{
+    const q=await h.queryPermission({mode:'readwrite'});
+    if(q==='granted')return true;
+    if(!ask)return false;
+    return (await h.requestPermission({mode:'readwrite'}))==='granted';
+  }catch(e){return false;}
+}
+async function rememberHandle(h,name){
+  fileHandle=h;fileName=name||h.name;
+  try{await IDB.put('handle',{h,name:fileName,id:S.id});}catch(e){}
+}
+async function recallHandle(){
+  try{
+    const v=await IDB.get('handle');
+    if(v&&v.h){fileHandle=v.h;fileName=v.name;return v;}
+  }catch(e){}
+  return null;
+}
+async function writeFile(){
+  if(!fileHandle)return false;
+  if(!(await handleOK(fileHandle,false)))return false;
+  const w=await fileHandle.createWritable();
+  await w.write(JSON.stringify(S));
+  await w.close();
+  return true;
+}
+async function openDeckFile(){
+  if(!canFile()){document.getElementById('picker2').click();return;}
+  let h;
+  try{[h]=await window.showOpenFilePicker({
+    types:[{description:'Deck',accept:{'application/json':['.json']}}],multiple:false});}
+  catch(e){return;}                                  /* the picker was dismissed */
+  if(dirty&&!confirm('This deck has changes that are not saved. Open another one anyway?'))return;
+  try{
+    const b=JSON.parse(await (await h.getFile()).text());
+    if(!b.slides)throw new Error('that file is not a deck');
+    S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
+       meta:b.meta||{},style:b.style||{}};
+    normalise();cur=0;dirty=false;
+    await rememberHandle(h);
+    document.getElementById('welcome').classList.add('hidden');
+    lastSaved=new Date();setStatus('ok');paint();
+    toast('Opened '+fileName);
+  }catch(e){toast('Could not open it: '+e.message);}
+}
+async function saveDeckAs(){
+  if(!canFile()){downloadDeck();return;}
+  try{
+    const h=await window.showSaveFilePicker({
+      suggestedName:(S.id||'deck')+'.json',
+      types:[{description:'Deck',accept:{'application/json':['.json']}}]});
+    await rememberHandle(h);
+    await writeFile();
+    lastSaved=new Date();dirty=false;setStatus('ok');
+    toast('Saved as '+fileName);
+  }catch(e){}
+}
+
 async function persist(){
   setStatus('busy');
   try{
-    const where=await put(KEY(),S);
+    const toDisk=await writeFile();                 /* the file, when we hold one */
+    const where=await put(KEY(),S);                 /* and a copy to come back to */
     lastSaved=new Date();dirty=false;saveErr=null;
     if(Date.now()-lastSnap>90000){lastSnap=Date.now();snapshot().catch(()=>{});}
-    setStatus('ok',where==='local storage'?where:'');
+    setStatus('ok',toDisk?null:(where==='local storage'?where:'in this browser only'));
     await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()});
   }catch(e){
     saveErr=e.message||String(e);
@@ -821,56 +924,137 @@ function importMarkdown(name,text){
 }
 function normalise(){ S.slides.forEach((s,i)=>{s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;s.textScale=s.textScale||100;}); }
 
-async function ingest(files){
+/* ---------- bringing markdown in -------------------------------------------
+   A folder of .md files is not obviously a deck: how many slides is it, what
+   are the sections, do the pictures come along. So the import says what it
+   found before it does anything, and nothing replaces open work without asking.
+--------------------------------------------------------------------------- */
+async function readFiles(files){
   const mds=[],svgs=[];let bundle=null;
   for(const f of files){
     const n=f.name.toLowerCase();
-    if(n.endsWith('.json')) bundle=JSON.parse(await f.text());
+    if(n.endsWith('.json')){try{bundle=JSON.parse(await f.text());}catch(e){}}
     else if(n.endsWith('.md')) mds.push([f.webkitRelativePath||f.name, await f.text()]);
     else if(n.endsWith('.svg')) svgs.push([f.name.replace(/\.svg$/i,''), await f.text()]);
   }
-  if(bundle){
-    S={id:bundle.id||'deck',title:bundle.title||'Deck',slides:bundle.slides||[],figs:bundle.figs||{},
-       meta:bundle.meta||{},style:bundle.style||{}};
-  } else if(mds.length){
-    mds.sort((a,b)=>a[0].localeCompare(b[0]));
-    const slides=[];
-    for(const [p,t] of mds) slides.push(...importMarkdown(p.split('/').pop(),t));
-    S={id:(mds[0][0].split('/')[0]||'deck').replace(/\W+/g,'-'),title:mds[0][0].split('/')[0]||'Deck',slides,
-       figs:S.figs||{},meta:S.meta||{},style:S.style||{}};
-  }
-  svgs.forEach(([id,svg])=>{S.figs[id]=svg;});
-  if(!S.slides.length){toast('No slides found in those files');return;}
-  normalise();cur=0;
-  const saved=await get(KEY());
-  if(saved&&saved.slides&&saved.slides.length&&
-     confirm(`This browser holds edits to "${saved.title||S.id}" (${saved.slides.length} slides).\n\nOK = keep the edited version.\nCancel = replace it with the files you just opened.`)){
-    S=saved;
-  }
-  normalise();
-  document.getElementById('welcome').classList.add('hidden');
-  await persist();paint();
-  toast(`${S.slides.length} slides · ${Object.keys(S.figs).length} figures`);
+  mds.sort((a,b)=>a[0].localeCompare(b[0]));
+  return{mds,svgs,bundle};
 }
+function previewImport({mds,svgs}){
+  const slides=[];
+  let ours=0,generic=0;
+  const OURS=/^### \d+\.\s*`\[[SDEB]\]`/m;
+  for(const [p,t] of mds){
+    slides.push(...importMarkdown(p.split('/').pop(),t));
+    OURS.test(t)?ours++:generic++;
+  }
+  const figsWanted=new Set();
+  slides.forEach(s=>{
+    if(s.fig)figsWanted.add(s.fig);
+    [...(s.body||'').matchAll(/!\[\[([a-zA-Z0-9._-]+)/g)].forEach(m=>figsWanted.add(m[1]));
+  });
+  const have=new Set([...svgs.map(([id])=>id),...Object.keys(S.figs||{})]);
+  return{slides,ours,generic,
+    sections:[...new Set(slides.map(x=>x.group).filter(Boolean))],
+    missing:[...figsWanted].filter(id=>!have.has(id))};
+}
+async function importWizard(files){
+  const read=files?await readFiles(files):null;
+  const show=async r=>{
+    if(r.bundle&&r.bundle.slides){
+      dialog(`<h3>Open this deck?</h3>
+        <p class="tip">It carries ${r.bundle.slides.length} slides and
+          ${Object.keys(r.bundle.figs||{}).length} figures.</p>
+        <div class="rw" style="margin-top:14px">
+          <button class="b p" id="iwGo">Open it</button>
+          <button class="b" id="iwNo">Cancel</button></div>`,'tall');
+      document.getElementById('iwNo').onclick=closeDialog;
+      document.getElementById('iwGo').onclick=async()=>{
+        if(dirty&&!confirm('The open deck has unsaved changes. Replace it?'))return;
+        const b=r.bundle;
+        S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
+           meta:b.meta||{},style:b.style||{}};
+        normalise();cur=0;fileHandle=null;fileName=null;
+        document.getElementById('welcome').classList.add('hidden');
+        closeDialog();await persist();paint();toast('Opened');};
+      return;
+    }
+    if(!r.mds.length){toast('No markdown or deck in that');return;}
+    const p=previewImport(r);
+    const title=(r.mds[0][0].includes('/')?r.mds[0][0].split('/')[0]:'')||'Imported deck';
+    dialog(`<h3>Import markdown</h3>
+      <div class="runout" style="margin-top:10px">
+        <div class="runsum"><b>${p.slides.length}</b> slides from <b>${r.mds.length}</b> file(s)
+          <span class="muted">· ${p.sections.length} section(s) · ${r.svgs.length} figure file(s)</span></div>
+        <table class="runtab">
+          ${p.sections.slice(0,10).map(g=>`<tr><td>${esc(g)}</td>
+            <td class="n">${p.slides.filter(x=>x.group===g).length}</td></tr>`).join('')}
+          ${p.sections.length>10?`<tr><td class="muted">… and ${p.sections.length-10} more</td><td></td></tr>`:''}
+        </table>
+      </div>
+      <p class="tip" style="margin-top:10px">${
+        p.ours&&!p.generic ? 'Read as this tool\'s own format — tags, figures and notes came across.'
+        : !p.ours ? 'Read as ordinary markdown: a slide per <code>##</code> heading, images become figures.'
+        : `${p.ours} file(s) in this tool\'s format, ${p.generic} as ordinary markdown.`}</p>
+      ${p.missing.length?`<p class="tip" style="color:var(--b)">${p.missing.length} figure(s) are referenced
+        but not among the files: ${esc(p.missing.slice(0,4).join(', '))}${p.missing.length>4?'…':''}.
+        Drop the .svg files in too, or add them later.</p>`:''}
+      <div class="fld" style="margin-top:12px"><label>Deck title</label>
+        <input id="iwTitle" value="${esc(title)}"></div>
+      <div class="rw" style="margin-top:12px">
+        <button class="b p" id="iwGo">Import ${p.slides.length} slides</button>
+        <button class="b" id="iwNo">Cancel</button></div>`,'tall');
+    document.getElementById('iwNo').onclick=closeDialog;
+    document.getElementById('iwGo').onclick=async()=>{
+      if(dirty&&S.slides.length&&
+         !confirm('The open deck has unsaved changes. Replace it with the import?'))return;
+      const t=document.getElementById('iwTitle').value.trim()||'Imported deck';
+      S={id:t.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||'deck',
+         title:t,slides:p.slides,figs:{...(S.figs||{})},meta:S.meta||{},style:S.style||{}};
+      r.svgs.forEach(([id,svg])=>{S.figs[id]=svg;});
+      normalise();cur=0;fileHandle=null;fileName=null;
+      document.getElementById('welcome').classList.add('hidden');
+      closeDialog();await persist();paint();
+      toast(`${S.slides.length} slides · ${Object.keys(S.figs).length} figures`);
+      if(canFile())setTimeout(()=>banner('Imported. Save it somewhere you own.',
+        'Save to a file',()=>saveDeckAs()),700);
+    };
+  };
+  if(read)return show(read);
+  document.getElementById('picker2').click();
+}
+async function ingest(files){ return importWizard(files); }
 
-/* ---------- nav ---------- */
-/* the speaker needs position, not a taxonomy label */
-function where(s){
-  const i=S.slides.indexOf(s),g=s.group||'';
-  let a=i;while(a>0&&(S.slides[a-1].group||'')===g)a--;
-  let b=i;while(b<S.slides.length-1&&(S.slides[b+1].group||'')===g)b++;
-  return{sec:g,at:i-a+1,of:b-a+1,n:i+1,total:S.slides.length,left:S.slides.length-i-1};
-}
-function hdrHtml(s){
-  const mode=style('header');
-  if(mode==='none')return '';
-  const w=where(s);
-  const path=[w.sec,s.sub].filter(Boolean).map(esc).join(' › ');
-  if(mode==='section')
-    return `<span>${path||'—'}</span><span class="ix"></span>`;
-  return `<span class="hpath">${path||'—'}
-      <span class="pos">${w.at} / ${w.of}</span></span>
-    <span class="ix">${w.n} / ${w.total}</span>`;
+function paintNav(){
+  const el=document.getElementById('nav');el.innerHTML='';let g=null,sb=null;
+  S.slides.forEach((s,i)=>{
+    if(s.group!==g){g=s.group;sb=null;const h=document.createElement('div');h.className='grp';h.textContent=g||'—';
+      h.dataset.i=i;h.title='Double-click to rename';
+      h.ondragover=dragOver;h.ondragleave=dragOff;h.ondrop=dropAt;
+      renameable(h,'group',g);el.appendChild(h);}
+    if((s.sub||null)!==sb){sb=s.sub||null;
+      if(sb){const h=document.createElement('div');h.className='sub';h.textContent=sb;
+        h.dataset.i=i;h.title='Double-click to rename';
+        h.ondragover=dragOver;h.ondragleave=dragOff;h.ondrop=dropAt;
+        renameable(h,'sub',sb);el.appendChild(h);}}
+    const d=document.createElement('div');
+    d.className='item'+(i===cur?' on':'')+(s.skip?' skipped':'');d.draggable=true;d.dataset.i=i;
+    d.innerHTML=`<span class="ix">${String(s.n).padStart(3,'0')}</span>
+      <span class="pip" style="background:${KINDS[slideKind(s)][1]}"
+        title="${KINDS[slideKind(s)][0]}"></span>
+      <span class="tt">${esc(s.title)}${s.flags.includes('ours')?'<span class="own" title="Our own work">·</span>':''}</span>
+      <button class="eye" title="${s.skip?'Hidden — click to show':'Hide this slide'}"
+        data-skip="${i}">${s.skip?'⊘':'◉'}</button>`;
+    d.onclick=e=>{
+      const st=e.target.closest('[data-skip]');
+      if(st){e.stopPropagation();return toggleSkip(+st.dataset.skip);}
+      cur=i;paint();};
+    d.ondragstart=e=>{e.dataTransfer.setData('i',i);e.dataTransfer.effectAllowed='move';d.classList.add('dragging');};
+    d.ondragend=()=>{d.classList.remove('dragging');dragOff.call(d);};
+    d.ondragover=dragOver;d.ondragleave=dragOff;d.ondrop=dropAt;
+    el.appendChild(d);
+  });
+  el.querySelector('.item.on')?.scrollIntoView({block:'nearest'});
 }
 /* Hiding a slide is the familiar gesture — every slide tool has it — so that is
    what this is. A hidden slide stays in the file and in the list, greyed, and the
@@ -891,36 +1075,25 @@ function toggleSkip(i){
   if(showing)paintDeck();
 }
 
-function paintNav(){
-  const el=document.getElementById('nav');el.innerHTML='';let g=null,sb=null;
-  S.slides.forEach((s,i)=>{
-    if(s.group!==g){g=s.group;sb=null;const h=document.createElement('div');h.className='grp';h.textContent=g||'—';
-      h.dataset.i=i;h.title='Double-click to rename';
-      h.ondragover=dragOver;h.ondragleave=dragOff;h.ondrop=dropAt;
-      renameable(h,'group',g);el.appendChild(h);}
-    if((s.sub||null)!==sb){sb=s.sub||null;
-      if(sb){const h=document.createElement('div');h.className='sub';h.textContent=sb;
-        h.dataset.i=i;h.title='Double-click to rename';
-        h.ondragover=dragOver;h.ondragleave=dragOff;h.ondrop=dropAt;
-        renameable(h,'sub',sb);el.appendChild(h);}}
-    const d=document.createElement('div');
-    d.className='item'+(i===cur?' on':'')+(s.skip?' hidden':'');d.draggable=true;d.dataset.i=i;
-    d.innerHTML=`<span class="ix">${String(s.n).padStart(3,'0')}</span>
-      <span class="pip" style="background:${TAGS[s.tag][1]}"></span>
-      <span class="tt">${esc(s.title)}${s.flags.includes('ours')?'<span class="own" title="Our own work">·</span>':''}</span>
-      <button class="eye" title="${s.skip?'Hidden — click to show':'Hide this slide'}"
-        data-skip="${i}">${s.skip?'⊘':'◉'}</button>`;
-    d.onclick=e=>{
-      const st=e.target.closest('[data-skip]');
-      if(st){e.stopPropagation();return toggleSkip(+st.dataset.skip);}
-      cur=i;paint();};
-    d.ondragstart=e=>{e.dataTransfer.setData('i',i);e.dataTransfer.effectAllowed='move';d.classList.add('dragging');};
-    d.ondragend=()=>{d.classList.remove('dragging');dragOff.call(d);};
-    d.ondragover=dragOver;d.ondragleave=dragOff;d.ondrop=dropAt;
-    el.appendChild(d);
-  });
-  el.querySelector('.item.on')?.scrollIntoView({block:'nearest'});
+/* the speaker needs position, not a taxonomy label */
+function where(s){
+  const i=S.slides.indexOf(s),g=s.group||'';
+  let a=i;while(a>0&&(S.slides[a-1].group||'')===g)a--;
+  let b=i;while(b<S.slides.length-1&&(S.slides[b+1].group||'')===g)b++;
+  return{sec:g,at:i-a+1,of:b-a+1,n:i+1,total:S.slides.length,left:S.slides.length-i-1};
 }
+function hdrHtml(s){
+  const mode=style('header');
+  if(mode==='none')return '';
+  const w=where(s);
+  const path=[w.sec,s.sub].filter(Boolean).map(esc).join(' › ');
+  if(mode==='section')
+    return `<span>${path||'—'}</span><span class="ix"></span>`;
+  return `<span class="hpath">${path||'—'}
+      <span class="pos">${w.at} / ${w.of}</span></span>
+    <span class="ix">${w.n} / ${w.total}</span>`;
+}
+
 /* Rename a section where you read it. Every slide under that heading follows. */
 function renameable(h,field,was){
   h.ondblclick=e=>{
@@ -2846,8 +3019,11 @@ function tidyAllDialog(){
 function shortcuts(){
   const R=[['↑ ↓','previous / next slide'],['Alt + ↑ ↓','move this slide in the deck'],
    ['drag in the list','move it anywhere, section and all'],
-   ['Ctrl + D','duplicate'],['Ctrl + Enter','new slide below'],['Ctrl + S','save now'],['Ctrl + Z','undo the last change'],
+   ['Ctrl + D','duplicate'],['Ctrl + Enter','new slide below'],['Ctrl + S','save now'],['Ctrl + Shift + S','save to a file'],['Ctrl + Z','undo the last change'],
    ['P','present, full screen'],['H','hide this slide, or show it again'],['?','this list'],
+   ['§the dot beside each slide',''],
+   ['green','words alone'],['blue','words and a picture'],['purple','a picture alone'],
+   ['amber','it has a table'],['grey','nothing on it yet'],
    ['§while presenting',''],
    ['H','walk through the hidden ones too, for a rehearsal'],
    ['N','speaker notes'],['O','the overview grid'],
@@ -3312,7 +3488,7 @@ function paintGrid(){
   const el=document.getElementById('grid');el.innerHTML='';
   S.slides.forEach((s,i)=>{
     if(s.skip&&!showHidden)return;
-    const c=document.createElement('div');c.className='gcell'+(s.skip?' hidden':'');
+    const c=document.createElement('div');c.className='gcell'+(s.skip?' skipped':'');
     c.style.borderColor=i===cur?'var(--b)':'transparent';
     c.innerHTML=`<div class="ix">${String(s.n).padStart(3,'0')}${s.skip?' ⊘':''}</div>
       <div class="tt">${esc(s.title)}</div>`;
@@ -3353,7 +3529,9 @@ document.addEventListener('keydown',e=>{
     if(e.altKey&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();moveSlide(e.key==='ArrowDown'?1:-1);}
     else if(mod&&e.key==='d'){e.preventDefault();document.getElementById('bDup').click();}
     else if(mod&&e.key==='Enter'){e.preventDefault();document.getElementById('bNew').click();}
-    else if(mod&&e.key==='s'){e.preventDefault();persist().then(()=>toast('Saved'));}
+    else if(mod&&e.key==='s'){e.preventDefault();
+      if(e.shiftKey)saveDeckAs();
+      else persist().then(()=>toast(fileName?'Saved to '+fileName:'Saved in this browser'));}
     else if(mod&&e.key==='z'){e.preventDefault();undo();}
     else if(e.key==='ArrowDown'||e.key==='j'){e.preventDefault();cur=Math.min(S.slides.length-1,cur+1);paint();}
     else if(e.key==='ArrowUp'||e.key==='k'){e.preventDefault();cur=Math.max(0,cur-1);paint();}
@@ -3424,7 +3602,9 @@ document.getElementById('bUndo').onclick=undo;
 document.getElementById('bSaveNow').onclick=()=>{
   const b=document.getElementById('bSaveNow');b.disabled=true;
   persist().then(()=>{b.disabled=false;toast(saveErr?'Could not save — '+saveErr:'Saved');});};
-document.getElementById('bOpen').onclick=()=>document.getElementById('picker2').click();
+document.getElementById('bOpen').onclick=openDeckFile;
+document.getElementById('bSaveAs').onclick=saveDeckAs;
+document.getElementById('bImport').onclick=()=>importWizard(null);
 document.getElementById('wOpen').onclick=()=>document.getElementById('picker2').click();
 document.getElementById('picker2').onchange=e=>ingest([...e.target.files]);
 document.getElementById('picker').onchange=e=>ingest([...e.target.files]);
@@ -3471,22 +3651,76 @@ async function paintRecent(){
     lastSaved=new Date();setStatus('ok');paint();});
 }
 
-/* a deck.json sitting next to this file loads by itself when served over http */
-(async()=>{
+/* ---------- what to open at startup ----------------------------------------
+   In order: the file you last saved to, then a deck.json served beside this
+   page, and if the browser holds a copy newer than that file, that copy wins —
+   silently loading the older one is how an evening of edits disappears. There
+   is no dialog: nothing is discarded, and the pill says where the deck is.
+--------------------------------------------------------------------------- */
+async function boot(){
   setStatus('none');paintRecent();
+
+  const load=b=>{
+    S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
+       meta:b.meta||{},style:b.style||{}};
+    normalise();cur=0;dirty=false;
+    document.getElementById('welcome').classList.add('hidden');
+    lastSaved=new Date();setStatus('ok');paint();
+  };
+
+  /* 1. the file this browser was last saving to */
+  const remembered=await recallHandle();
+  if(remembered&&await handleOK(remembered.h,false)){
+    try{
+      const b=JSON.parse(await (await remembered.h.getFile()).text());
+      if(b.slides){load(b);return;}
+    }catch(e){ fileHandle=null;fileName=null; }
+  }
+  if(remembered)fileName=remembered.name;    /* known, but not yet permitted */
+
   if(location.protocol==='file:')return;
-  try{const r=await fetch('deck.json');if(!r.ok)return;
-    const b=await r.json();
-    const stored=await get('deck:'+(b.id||'deck'));
-    if(stored&&stored.slides&&stored.slides.length&&
-       !confirm(`This browser holds edits to "${stored.title||b.title}".\n\nOK = load the file from disk (your edits stay in History).\nCancel = continue with your edited version.`)){
-      S=stored;lastSaved=new Date();
-    } else {
-      S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-        meta:b.meta||{},style:b.style||{}};
+
+  /* 2. a deck.json beside the page, unless this browser holds something newer */
+  let file=null,fileAt=0;
+  try{
+    const r=await fetch('deck.json');
+    if(r.ok){
+      file=await r.json();
+      const lm=r.headers.get('last-modified');
+      fileAt=lm?Date.parse(lm):0;
     }
-    normalise();document.getElementById('welcome').classList.add('hidden');
-    setStatus(dirty?'warn':'ok');paint();
   }catch(e){}
-})();
+  if(!file)return;
+
+  let mine=null,mineAt=0;
+  try{
+    const ix=await IDB.get('index:'+(file.id||'deck'));
+    if(ix&&ix.at){mineAt=ix.at;mine=await get('deck:'+(file.id||'deck'));}
+  }catch(e){}
+
+  if(mine&&mine.slides&&mine.slides.length&&mineAt>fileAt+1000){
+    load(mine);
+    dirty=true;setStatus('warn');
+    toast('Continuing with your edits — newer than the file on disk');
+    setTimeout(()=>{
+      if(!fileHandle)banner('These edits live in this browser only.',
+        'Save to a file',()=>saveDeckAs());
+    },900);
+    return;
+  }
+  load(file);
+  if(!fileHandle&&canFile())setTimeout(()=>banner(
+    'Editing a copy in this browser. Point it at the file to save straight to disk.',
+    'Choose the file',()=>saveDeckAs()),1200);
+}
+function banner(text,label,fn){
+  let el=document.getElementById('nudge');
+  if(!el){el=document.createElement('div');el.id='nudge';document.body.appendChild(el);}
+  el.innerHTML=`<span>${esc(text)}</span><button id="nudgeGo">${esc(label)}</button>`+
+    `<button id="nudgeNo" title="Dismiss">✕</button>`;
+  el.classList.add('on');
+  document.getElementById('nudgeGo').onclick=()=>{el.classList.remove('on');fn();};
+  document.getElementById('nudgeNo').onclick=()=>el.classList.remove('on');
+}
+boot();
 </script></body></html>

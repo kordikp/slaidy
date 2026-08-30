@@ -3,7 +3,7 @@
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
- const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
   // pick a slide with a figure AND body text — the case that used to differ
   const i=w.S.slides.findIndex(x=>x.fig&&x.layout==='figure'&&(x.body||'').trim().length>40);

@@ -3,7 +3,7 @@
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
- const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
   // this test page is served by a plain file server — exactly the failing case
   let msg='';

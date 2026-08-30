@@ -3,7 +3,7 @@
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
- const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
   // a slide with room, then push it over the edge with a picture
   // a slide that fits, has words, and carries no picture of its own yet

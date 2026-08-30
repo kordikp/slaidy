@@ -3,14 +3,26 @@
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
- const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
   ok('nothing is hidden to begin with',w.liveStats().hidden===0,w.liveStats().hidden+'');
 
   // --- hiding one slide ---
   w.toggleSkip(5);await wait(100);
   ok('hiding one works',w.S.slides[5].skip&&w.liveStats().hidden===1);
-  ok('the list greys it',!!d.querySelector('#nav .item.hidden')&&!!d.querySelector('#nav .eye'));
+  const row=d.querySelector('#nav .item.skipped');
+  ok('the list greys it rather than losing it',!!row&&!!d.querySelector('#nav .eye'));
+  ok('it is still on screen',!!row&&row.getBoundingClientRect().height>4,
+     row?Math.round(row.getBoundingClientRect().height)+'px tall':'gone');
+  ok('and struck through',getComputedStyle(row.querySelector('.tt')).textDecorationLine.includes('line-through'));
+  ok('every slide is still listed',d.querySelectorAll('#nav .item').length===w.S.slides.length,
+     d.querySelectorAll('#nav .item').length+' of '+w.S.slides.length);
+
+  // the dot says what is on the slide
+  const kinds=new Set(w.S.slides.map(x=>w.slideKind(x)));
+  ok('the dot has a meaning per slide',[...kinds].every(k=>!!w.KINDS[k]),[...kinds].join(', '));
+  const pip=d.querySelector('#nav .item .pip');
+  ok('and it is spelled out on hover',!!pip&&pip.title.length>4,pip&&pip.title);
   ok('it round-trips through markdown',/\*Skip:\* yes/.test(w.slideMd(w.S.slides[5])));
   const back=w.importMarkdown('x.md','# A\n\n'+w.slideMd(w.S.slides[5]));
   ok('and comes back',back[0].skip===true);

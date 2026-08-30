@@ -25,7 +25,7 @@ cp tests/*.html "$WORK/"
 python3 - "$WORK/index.html" <<'PY'
 import sys
 p = sys.argv[1]; s = open(p, encoding="utf-8").read()
-i = s.rfind("\n})();")
+i = s.rindex("</script>")
 hook = """
 window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feUnnest,feDel,feResolve,feHtml,
   feUndo,feDup,feAdd,feBounds,feResize,feParentScale,feZoom,feRect,feBox,feDown,feMarquee,
@@ -35,10 +35,14 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   fig,measureStage,toggleSkip,liveIdx,liveStats,planTrim,scoreSlide,trimDialog,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},
-  pickFigure,figRef,figMark,notesHtml,tidyAllDialog,askSummary,
+  pickFigure,figRef,figMark,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
   srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v}};"""
-open(p, "w", encoding="utf-8").write(s[:i] + hook + s[i:])
+ready = """
+window.__ready=new Promise(r=>{const t=setInterval(()=>{
+  try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}
+},40);setTimeout(()=>{clearInterval(t);r();},9000);});"""
+open(p, "w", encoding="utf-8").write(s[:i] + hook + ready + "\n" + s[i:])
 PY
 
 # exec, so $SRV is the server itself — killing the subshell leaves the child
@@ -50,7 +54,11 @@ FILES=("$@")
 [ ${#FILES[@]} -eq 0 ] && FILES=($(cd tests && ls [0-9]*.html | sed 's/\.html$//'))
 pass=0; fail=0
 for t in "${FILES[@]}"; do
+  # a fresh profile per test: the app now prefers what the browser already holds,
+  # which is right for a person and wrong for a suite that must start from the file
+  prof="$WORK/prof-$t"
   out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=30000 \
+        --user-data-dir="$prof" \
         --dump-dom "http://localhost:$PORT/$t.html" 2>/dev/null \
         | sed -n '/<pre id="out">/,/<\/pre>/p' | sed 's/<[^>]*>//g')
   p=$(grep -cE '^PASS' <<<"$out"); f=$(grep -cE '^(FAIL|ERROR)' <<<"$out")

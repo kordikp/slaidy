@@ -86,6 +86,11 @@ python3 scripts/build_bundle.py --src example/slides --figs example/images \
 
 ## What it does
 
+**The list.** Each slide shows a dot for what is on it — words alone, words and a picture,
+a picture alone, or a table — which is the thing worth seeing when you are scanning two
+hundred of them. A hidden slide stays in the list, greyed and struck through, rather than
+disappearing.
+
 **Editing.** Click the title on the slide to change it. Speaker notes sit under the slide and
 render as text, so a link to the paper behind the slide is clickable while you write and
 while you present; click the text to edit it. Hover a paragraph for move and
@@ -205,19 +210,32 @@ rejects anything unreadable at projection size.
 
 ---
 
-## Storage, and what to trust
+## Where the deck lives
 
-While you edit, the deck lives in the browser's IndexedDB, with localStorage as a
-fallback and a timeout on every call so blocked storage cannot hang the app. The status
-pill in the toolbar tells the truth: `saved 20:51`, or `saved · local storage`, or a red
-`⚠ NOT saved` that downloads a backup when you click it. Version snapshots are kept
-under `⋯ → Version history`.
+**The deck file is the document.** One `.json` holding the slides, the figures and the
+settings — you open it, you edit it, you save it, the way any editor works.
 
-**Keep `Export → Deck bundle` for anything you care about.** Browser storage is tied to
-the address you opened the app from, and disappears with a cleared cache. Always start
-the app the same way.
+In Chrome the app holds a handle to that file and every save writes to it. The status pill
+in the toolbar names it: `saved 20:51 → my-talk.json`. It remembers the file between
+sessions, so reopening the app reopens the deck.
 
----
+Where there is no handle — a browser without the File System Access API, or a page opened
+straight off disk — the deck lives in the browser's own storage instead, and the pill says
+`in this browser only` rather than pretending otherwise. `⋯ → Save to a file` attaches it
+to a real file at any point.
+
+Markdown is how a deck comes **in** and goes **out**, not where it lives. `⋯ → Import
+markdown` reads a folder of `.md` files, says what it found — how many slides, which
+sections, which figures are referenced but missing — and only then imports. Export writes
+the files back in the same shape.
+
+At startup the app opens, in order: the file it last saved to; a `deck.json` served beside
+it; and if the browser holds a copy **newer** than that file, that copy, with a line saying
+so. Nothing is discarded and nothing asks you to arbitrate — a dialog whose *OK* threw away
+an evening of edits is how this used to work.
+
+Browser storage also keeps version snapshots (`⋯ → Version history`) and a crash copy. It
+is a safety net under the file, not a second version of the truth.
 
 ## Development
 

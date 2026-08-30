@@ -100,8 +100,10 @@ button{cursor:pointer;background:none;border:none}
 .stage .stack{flex:1;min-height:0;display:flex;gap:30px}
 .stage .stack.col{flex-direction:column}
 .stage .stack.rev{flex-direction:row-reverse}
-.stage .fg{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
-.stage .fg svg{width:100%;height:100%;display:block}
+.stage .fg{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;
+ --fs:100%}
+.stage .fg svg{width:var(--fs);height:var(--fs);display:block}
+.stage .stack:not(.col)>.fg{align-items:flex-start}
 .stage .tx{flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C}
 .stage .tx.under{flex:none;max-height:46%;margin-top:20px}
 .stage.bgfig .bgl{position:absolute;inset:0;opacity:.12;display:flex;align-items:center;justify-content:center}
@@ -128,7 +130,7 @@ button{cursor:pointer;background:none;border:none}
 /* editing affordances live on the same stage, so nothing shifts when you present */
 .stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .stage .hero:hover{outline:1px dashed #CFD3DA;border-radius:6px}
-.stage .hero svg{width:100%;height:100%;display:block}
+.stage .hero svg{width:var(--fs);height:var(--fs);display:block}
 .stage .hero .empty{color:var(--faint);font-size:16px;padding:28px;border:1px dashed var(--line);
  border-radius:10px;text-align:center}
 .figtools{position:absolute;top:6px;right:6px;display:none;gap:5px;z-index:2}
@@ -331,12 +333,14 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .bkt button{width:22px;height:16px;border-radius:3px;color:var(--faint);font-size:10px;line-height:1;
  display:grid;place-items:center;background:#fff;border:1px solid var(--line)}
 .bkt button:hover{color:var(--acc);border-color:var(--acc)}
-.item .star{color:var(--line);font-size:11px;line-height:1;flex:none;padding:0 2px;opacity:0;transition:.12s}
-.item:hover .star,.item .star.on{opacity:1}
-.item .star.on{color:var(--b)}
-.item .star:hover{color:var(--b);transform:scale(1.2)}
-.item.picked .ix{color:var(--b)}
-.gcell.picked{box-shadow:inset 0 0 0 2px var(--b)}
+.item .eye{color:var(--line);font-size:10.5px;line-height:1;flex:none;padding:0 2px;opacity:0;transition:.12s}
+.item:hover .eye{opacity:1}
+.item.hidden .eye{opacity:1;color:var(--faint)}
+.item .eye:hover{color:var(--acc)}
+.item.hidden{opacity:.45}
+.item.hidden .tt{text-decoration:line-through;text-decoration-color:var(--faint)}
+.item .own{color:var(--acc);font-weight:700;margin-left:5px}
+.gcell.hidden{opacity:.4;box-shadow:inset 0 0 0 1px var(--faint)}
 .runsum{font-size:13px;margin-bottom:9px}
 .runsum b{font-size:15px}
 .muted{color:var(--faint)}
@@ -380,7 +384,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bOpen">Open a deck…</button>
       <button id="bHist">Version history</button>
       <button id="bSave">Export…</button>
-      <button id="bRun">The short run…</button>
+      <button id="bRun">Trim to length…</button>
       <button id="bDeck">Deck settings…</button>
       <button id="bCfg2">AI endpoint…</button>
     </div>
@@ -596,9 +600,16 @@ function scopeSvg(svg,uid){
   });
 }
 let uidN=0;
-function fig(id){
+function fig(id,align){
   const svg=S.figs[id];
-  return svg?scopeSvg(svg,'f'+(++uidN)):'';
+  if(!svg)return '';
+  const out=scopeSvg(svg,'f'+(++uidN));
+  /* Beside text, pin the drawing to the top of its box. The element fills the
+     column, so by default preserveAspectRatio centres the drawing inside it —
+     which is why a figure next to text sat lower than the text it belongs to. */
+  return align==='top'&&!/preserveAspectRatio=/.test(out.slice(0,400))
+    ? out.replace('<svg','<svg preserveAspectRatio="xMidYMin meet"')
+    : out;
 }
 
 /* ---------- markdown ---------- */
@@ -661,16 +672,18 @@ function importMarkdown(name,text){
     hits.forEach((m,i)=>{
       const end=i+1<hits.length?hits[i+1].index:text.length;
       let bd=text.slice(m.index+m[0].length,end);
-      const f=bd.match(/^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*(?:·[ \t]*([a-z-]+))?[^\n]*$/m);
+      const f=bd.match(/^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*(?:·[ \t]*([a-z-]+))?[ \t]*(?:·[ \t]*(\d{2,3})%)?[^\n]*$/m);
       const nt=[...bd.matchAll(/^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$/gm)].map(x=>x[1]).join(' ');
       const sm=bd.match(/^\*Summary:\*\s*(.+)$/m);
-      const pk=/^\*Bestseller:\*\s*(?:yes|true|1|ano)\b/mi.test(bd);
-      bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Bestseller:\*.*$/gm,'')
+      const sk=/^\*Skip:\*\s*(?:yes|true|1|ano)\b/mi.test(bd);
+      const flm=bd.match(/^\*Flags:\*\s*(.+)$/m);
+      const fl=flm?flm[1].split(',').map(x=>x.trim()).filter(Boolean):[];
+      bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
            .replace(/^\*\*Figure:\*\*.*$/gm,'').replace(/^\*(?:Delivery note|Transition)[^:]*:\*.*$/gm,'')
            .replace(/^---\s*$/gm,'').replace(/^#{1,6}\s+.*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
       slides.push({tag:m[2],group:act,sub:subAt(m.index),title:m[3],fig:f?f[1]:null,
                    layout:f?(LAYOUTS.includes(f[2])?f[2]:'figure'):'text',body:bd,notes:nt,
-                   summary:sm?sm[1].trim():'',pick:pk});
+                   figScale:f&&f[3]?+f[3]:100,summary:sm?sm[1].trim():'',skip:sk,flags:fl});
     });
     return slides;
   }
@@ -698,7 +711,7 @@ function importMarkdown(name,text){
   });
   return slides;
 }
-function normalise(){ S.slides.forEach((s,i)=>{s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.pick=!!s.pick;}); }
+function normalise(){ S.slides.forEach((s,i)=>{s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;}); }
 
 async function ingest(files){
   const mds=[],svgs=[];let bundle=null;
@@ -751,22 +764,22 @@ function hdrHtml(s){
       <span class="pos">${w.at} / ${w.of}</span></span>
     <span class="ix">${w.n} / ${w.total}</span>`;
 }
-/* The deck cannot be personalised — it is projected to everyone at once. So the
-   fallback every recommender falls back to is the one offered here: the popular
-   path. A short run through the slides that carry the argument on their own. */
-let runOnly=false;
-const runIdx=()=>{
-  const p=S.slides.map((s,i)=>s.pick?i:-1).filter(i=>i>=0);
-  return runOnly&&p.length?p:S.slides.map((s,i)=>i);
+/* Hiding a slide is the familiar gesture — every slide tool has it — so that is
+   what this is. A hidden slide stays in the file and in the list, greyed, and the
+   presentation walks past it. "Trim to length" is the same thing in bulk. */
+let showHidden=false;
+const liveIdx=()=>{
+  const v=S.slides.map((s,i)=>(showHidden||!s.skip)?i:-1).filter(i=>i>=0);
+  return v.length?v:S.slides.map((s,i)=>i);
 };
-function runStats(){
-  const p=S.slides.filter(s=>s.pick);
-  return{n:p.length,secs:p.reduce((a,s)=>a+stats(s).secs,0)};
+function liveStats(){
+  const v=S.slides.filter(s=>!s.skip);
+  return{n:v.length,hidden:S.slides.length-v.length,secs:v.reduce((a,s)=>a+stats(s).secs,0)};
 }
-function togglePick(i){
+function toggleSkip(i){
   const s=S.slides[i];if(!s)return;
-  snap(s.pick?'drop from the run':'add to the run');
-  s.pick=!s.pick;touch();paintNav();paintSide();
+  snap(s.skip?'show slide':'hide slide');
+  s.skip=!s.skip;touch();paintNav();paintSide();
   if(showing)paintDeck();
 }
 
@@ -783,15 +796,15 @@ function paintNav(){
         h.ondragover=dragOver;h.ondragleave=dragOff;h.ondrop=dropAt;
         renameable(h,'sub',sb);el.appendChild(h);}}
     const d=document.createElement('div');
-    d.className='item'+(i===cur?' on':'')+(s.pick?' picked':'');d.draggable=true;d.dataset.i=i;
+    d.className='item'+(i===cur?' on':'')+(s.skip?' hidden':'');d.draggable=true;d.dataset.i=i;
     d.innerHTML=`<span class="ix">${String(s.n).padStart(3,'0')}</span>
       <span class="pip" style="background:${TAGS[s.tag][1]}"></span>
-      <span class="tt">${esc(s.title)}</span>
-      <button class="star${s.pick?' on':''}" title="${s.pick?'In the short run':'Add to the short run'}"
-        data-star="${i}">${s.pick?'★':'☆'}</button>`;
+      <span class="tt">${esc(s.title)}${s.flags.includes('ours')?'<span class="own" title="Our own work">·</span>':''}</span>
+      <button class="eye" title="${s.skip?'Hidden — click to show':'Hide this slide'}"
+        data-skip="${i}">${s.skip?'⊘':'◉'}</button>`;
     d.onclick=e=>{
-      const st=e.target.closest('[data-star]');
-      if(st){e.stopPropagation();return togglePick(+st.dataset.star);}
+      const st=e.target.closest('[data-skip]');
+      if(st){e.stopPropagation();return toggleSkip(+st.dataset.skip);}
       cur=i;paint();};
     d.ondragstart=e=>{e.dataTransfer.setData('i',i);e.dataTransfer.effectAllowed='move';d.classList.add('dragging');};
     d.ondragend=()=>{d.classList.remove('dragging');dragOff.call(d);};
@@ -866,18 +879,19 @@ function moveSlide(d){
    so what you arrange is what the room sees. */
 function stageHtml(s,edit){
   const has=s.fig&&S.figs[s.fig];
-  const split=s.layout==='split-l'||s.layout==='split-r';
-  const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig):'');
+  const beside=s.layout==='split-l'||s.layout==='split-r';
+  const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig,beside?'top':null):'');
+  const fsz=s.figScale&&s.figScale!==100?` style="--fs:${s.figScale}%"`:'';
   const bodyHtml=edit?'<div id="bd"></div>':body2html(s.body);
   const hasBody=edit||(s.body||'').trim();
   let stack;
   if(s.layout==='background'&&has)
     stack=`<div class="bgl">${figHtml}</div><div class="stack col"><div class="tx">${bodyHtml}</div></div>`;
-  else if(split&&has)
-    stack=`<div class="stack${s.layout==='split-r'?' rev':''}"><div class="fg">${figHtml}</div>`+
+  else if(beside&&has)
+    stack=`<div class="stack${s.layout==='split-r'?' rev':''}"><div class="fg"${fsz}>${figHtml}</div>`+
           `<div class="tx">${bodyHtml}</div></div>`;
   else if(has&&s.layout!=='text')
-    stack=`<div class="stack col"><div class="fg">${figHtml}</div>`+
+    stack=`<div class="stack col"><div class="fg"${fsz}>${figHtml}</div>`+
           (hasBody?`<div class="tx under">${bodyHtml}</div>`:'')+`</div>`;
   else
     stack=`<div class="stack col"><div class="tx">${bodyHtml}</div></div>`;
@@ -936,7 +950,8 @@ function checkFit(){
 }
 function paintHero(s){
   const el=document.getElementById('hero');if(!el)return;
-  el.innerHTML=(s.fig&&S.figs[s.fig]?fig(s.fig):'<div class="empty">no figure — click to choose</div>')+
+  const beside=s.layout==='split-l'||s.layout==='split-r';
+  el.innerHTML=(s.fig&&S.figs[s.fig]?fig(s.fig,beside?'top':null):'<div class="empty">no figure — click to choose</div>')+
    `<div class="figtools"><button data-a="pick">Change</button>${s.fig?'<button data-a="ai">Edit</button><button data-a="x">Remove</button>':''}</div>`;
   el.onclick=e=>{const a=e.target.dataset?.a;
     if(a==='x'){snap('remove figure');s.fig=null;s.layout='text';touch();paint();return;}
@@ -1058,6 +1073,7 @@ function clock(sec){
 function paintSide(){
   const s=S.slides[cur],el=document.getElementById('side');
   if(!s){el.innerHTML='';return;}
+  const has=s.fig&&S.figs[s.fig];
   const deckSecs=S.slides.reduce((a,x)=>a+stats(x).secs,0);
 
   el.innerHTML=`
@@ -1075,6 +1091,9 @@ function paintSide(){
       ${LAYOUTS.map(l=>`<button data-v="${l}" class="${s.layout===l?'on':''}" title="${LAYHINT[l]}"
         style="${s.layout===l?'background:var(--ink)':''}">${LAYNAME[l]}</button>`).join('')}
     </div>
+    ${has?`<div class="fld" style="margin-top:10px"><label>Figure size
+        <span class="pos" id="fsLab">${s.figScale||100} %</span></label>
+      <input id="fSize" type="range" min="40" max="100" step="5" value="${s.figScale||100}"></div>`:''}
   </div>
 
   <div class="sec"><div class="sect">Ask AI</div>
@@ -1090,14 +1109,23 @@ function paintSide(){
 
   <div class="sec">
     <button class="b" id="bMd" style="width:100%">Edit as markdown</button>
-    <button class="b" id="bPick" style="width:100%;margin-top:5px">${s.pick?'★ In the short run':'☆ Add to the short run'}</button>
-    <div class="foot">${clock(stats(s).secs)} on this slide · ${clock(deckSecs)} for the whole deck${
-      runStats().n?` · short run ${runStats().n} slides, ${clock(runStats().secs)}`:''}</div>
+    <button class="b" id="bSkip" style="width:100%;margin-top:5px">${s.skip?'⊘ Hidden — show it':'Hide this slide'}</button>
+    <div class="foot">${clock(stats(s).secs)} on this slide · ${
+      liveStats().hidden
+        ? `${liveStats().n} shown, ${clock(liveStats().secs)} · ${liveStats().hidden} hidden`
+        : `${clock(deckSecs)} for the whole deck`}</div>
   </div>`;
 
   const sum=el.querySelector('#fSum');
   sum.onfocus=()=>snap('summary');
   sum.oninput=()=>{s.summary=sum.value;touch();};
+  const fz=el.querySelector('#fSize');
+  if(fz){
+    fz.oninput=()=>{document.getElementById('fsLab').textContent=fz.value+' %';
+      s.figScale=+fz.value;
+      document.querySelectorAll('#sheet .fg').forEach(x=>x.style.setProperty('--fs',fz.value+'%'));};
+    fz.onchange=()=>{snap('figure size');touch();paint();};
+  }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
     if(s.layout!=='text'&&!s.fig)gallery(id=>{s.fig=id;touch();paint();});else{touch();paint();}});
@@ -1110,7 +1138,7 @@ function paintSide(){
   el.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>ask(AI_ACTS[+b.dataset.i].p));
   el.querySelector('#bAsk').onclick=()=>ask(document.getElementById('aiIn').value.trim());
   el.querySelector('#bMd').onclick=editMarkdown;
-  el.querySelector('#bPick').onclick=()=>togglePick(cur);
+  el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
 }
 
 async function askSummary(){
@@ -2097,82 +2125,87 @@ function deckSettings(){
   document.getElementById('dsOk').onclick=closeDialog;
 }
 /* A slide earns its place by carrying the argument alone: it opens something,
-   it lands a line, it shows evidence. Asides go first — that is what an aside is. */
-function scorePick(s,i){
+   it lands a line, it shows evidence. Asides go first — that is what an aside is.
+   Anything flagged `keep` is never hidden automatically. */
+function scoreSlide(s,i){
+  if(s.flags&&s.flags.includes('keep'))return 99;
   let v=0;
   if(/^>/m.test(s.body||''))v+=3;
   if(s.tag==='E')v+=2; else if(s.tag==='D')v+=1; else if(s.tag==='B')v-=4;
   if(s.fig&&S.figs[s.fig])v+=1;
   const prev=S.slides[i-1];
   if(!prev||(prev.sub||'')!==(s.sub||''))v+=2;          // opens a subsection
-  if(!prev||(prev.group||'')!==(s.group||''))v+=3;      // opens an act
+  if(!prev||(prev.group||'')!==(s.group||''))v+=3;      // opens a section
   if(i===0||i>=S.slides.length-3)v+=8;                  // the framing has to stay
   if((s.summary||'').trim())v+=1;
   return v;
 }
-function suggestRun(minutes){
-  /* Share the budget between the acts in proportion to their length, so each act
+function planTrim(minutes){
+  /* Share the budget between the sections in proportion to their length, so each
      is compressed by the same factor and the talk keeps its shape. Greedy across
-     the whole deck gave one act 14 of 26 slides and another 1 of 48. */
+     the whole deck gave one section 14 of 26 slides and another 1 of 48. */
   const budget=minutes*60;
   const secs=S.slides.map(x=>stats(x).secs);
   const total=secs.reduce((a,b)=>a+b,0)||1;
-  const take=new Set(); let t=0;
+  const keep=new Set(); let t=0;
   [...new Set(S.slides.map(x=>x.group))].forEach(g=>{
     const idx=S.slides.map((x,i)=>x.group===g?i:-1).filter(i=>i>=0);
     const share=budget*idx.reduce((a,i)=>a+secs[i],0)/total;
     let used=0;
-    idx.map(i=>({i,v:scorePick(S.slides[i],i),t:secs[i]}))
+    idx.map(i=>({i,v:scoreSlide(S.slides[i],i),t:secs[i]}))
        .sort((a,b)=>b.v-a.v||a.t-b.t)
-       .forEach(x=>{ if(used+x.t>share&&used>0)return; take.add(x.i); used+=x.t; });
+       .forEach(x=>{ if(used+x.t>share&&used>0)return; keep.add(x.i); used+=x.t; });
     t+=used;
   });
-  return{take,t};
+  return{keep,t};
 }
-function runDialog(){
-  const acts=[...new Set(S.slides.map(s=>s.group||'—'))];
-  dialog(`<h3>The short run</h3>
-   <p class="tip">The deck is projected to everyone, so it cannot be personalised. This is the
-    fallback every recommender falls back to: the popular path. Star slides in the list, or start
-    from a suggestion. Press <kbd>B</kbd> while presenting to switch between the run and the whole deck.</p>
-   <div class="fld" style="margin-top:14px"><label>Aim for <b id="rnM">45</b> minutes</label>
-     <input id="rnR" type="range" min="10" max="150" step="5" value="45"></div>
-   <div id="rnOut" class="runout"></div>
+function trimDialog(){
+  const secsAll=S.slides.reduce((a,x)=>a+stats(x).secs,0);
+  const sections=[...new Set(S.slides.map(s=>s.group||'—'))];
+  dialog(`<h3>Trim to length</h3>
+   <p class="tip">Hides the slides that do the least work, section by section, until the deck fits.
+    Nothing is deleted — hidden slides stay in the file and in the list, and
+    <kbd>H</kbd> shows them again. Slides marked <b>keep</b> are never hidden.</p>
+   <div class="fld" style="margin-top:14px"><label>Aim for <b id="tmM">45</b> minutes
+     <span class="pos">· the whole deck is ${clock(secsAll)}</span></label>
+     <input id="tmR" type="range" min="10" max="${Math.max(20,Math.round(secsAll/60))}" step="5" value="45"></div>
+   <div id="tmOut" class="runout"></div>
    <div class="rw" style="margin-top:12px">
-     <button class="b p" id="rnApply">Use this run</button>
-     <button class="b" id="rnKeep">Keep what is starred</button>
-     <button class="b" id="rnClear">Clear all stars</button></div>`,'tall');
-  const R=document.getElementById('rnR'),out=document.getElementById('rnOut'),lab=document.getElementById('rnM');
-  let pending=null;
+     <button class="b p" id="tmGo">Hide the rest</button>
+     <button class="b" id="tmNo">Cancel</button>
+     <button class="b" id="tmAll">Show everything</button></div>`,'tall');
+  const R=document.getElementById('tmR'),out=document.getElementById('tmOut'),lab=document.getElementById('tmM');
+  let plan=null;
   const draw=()=>{
     const m=+R.value;lab.textContent=m;
-    pending=suggestRun(m);
-    const per=acts.map(a=>{
-      const all=S.slides.filter(s=>(s.group||'—')===a);
-      const got=all.filter((s)=>pending.take.has(S.slides.indexOf(s)));
-      return`<tr><td>${esc(a)}</td><td class="n">${got.length}</td><td class="n muted">of ${all.length}</td></tr>`;
+    plan=planTrim(m);
+    const per=sections.map(g=>{
+      const all=S.slides.filter(s=>(s.group||'—')===g);
+      const got=all.filter(s=>plan.keep.has(S.slides.indexOf(s)));
+      return`<tr><td>${esc(g)}</td><td class="n">${got.length}</td><td class="n muted">of ${all.length}</td></tr>`;
     }).join('');
-    const now=runStats();
-    out.innerHTML=`<div class="runsum"><b>${pending.take.size}</b> slides · <b>${clock(pending.t)}</b>
-      <span class="muted">· starred right now: ${now.n} (${clock(now.secs)})</span></div>
+    const now=liveStats();
+    out.innerHTML=`<div class="runsum"><b>${plan.keep.size}</b> slides shown · <b>${clock(plan.t)}</b>
+      <span class="muted">· ${S.slides.length-plan.keep.size} hidden · right now ${now.n} shown, ${now.hidden} hidden</span></div>
       <table class="runtab">${per}</table>`;
   };
   R.oninput=draw;draw();
-  document.getElementById('rnApply').onclick=()=>{
-    snap('short run');
-    S.slides.forEach((s,i)=>s.pick=pending.take.has(i));
-    touch();closeDialog();paint();toast(`Short run · ${pending.take.size} slides`);};
-  document.getElementById('rnKeep').onclick=closeDialog;
-  document.getElementById('rnClear').onclick=()=>{
-    snap('short run');S.slides.forEach(s=>s.pick=false);touch();closeDialog();paint();toast('Stars cleared');};
+  document.getElementById('tmGo').onclick=()=>{
+    snap('trim');
+    S.slides.forEach((s,i)=>s.skip=!plan.keep.has(i));
+    touch();closeDialog();paint();
+    toast(`${S.slides.length-plan.keep.size} slides hidden · ${clock(plan.t)}`);};
+  document.getElementById('tmNo').onclick=closeDialog;
+  document.getElementById('tmAll').onclick=()=>{
+    snap('show all');S.slides.forEach(s=>s.skip=false);touch();closeDialog();paint();toast('Nothing hidden');};
 }
 function shortcuts(){
   const R=[['↑ ↓','previous / next slide'],['Alt + ↑ ↓','move this slide in the deck'],
    ['drag in the list','move it anywhere, section and all'],
    ['Ctrl + D','duplicate'],['Ctrl + Enter','new slide below'],['Ctrl + S','save now'],['Ctrl + Z','undo the last change'],
-   ['P','present, full screen'],['B','put this slide in the short run'],['?','this list'],
+   ['P','present, full screen'],['H','hide this slide, or show it again'],['?','this list'],
    ['§while presenting',''],
-   ['B','switch between the short run and the whole deck'],
+   ['H','walk through the hidden ones too, for a rehearsal'],
    ['N','speaker notes'],['O','the overview grid'],
    ['§in the figure editor',''],
    ['click','select the whole object'],['double-click','step inside it'],['drag','move what is selected'],
@@ -2210,9 +2243,11 @@ document.getElementById('veil').onclick=e=>{if(e.target.id==='veil')closeDialog(
 /* ---------- export ---------- */
 function slideMd(s){
   let m=`### ${s.n}. \`[${s.tag}]\` ${s.title}\n\n`;
-  if(s.fig)m+=`**Figure:** \`${s.fig}\`${s.layout&&s.layout!=='figure'?' · '+s.layout:''}\n\n`;
+  if(s.fig)m+=`**Figure:** \`${s.fig}\`${s.layout&&s.layout!=='figure'?' · '+s.layout:''}${
+    s.figScale&&s.figScale!==100?' · '+s.figScale+'%':''}\n\n`;
   if((s.summary||'').trim())m+=`*Summary:* ${s.summary.trim()}\n\n`;
-  if(s.pick)m+=`*Bestseller:* yes\n\n`;
+  if(s.flags&&s.flags.length)m+=`*Flags:* ${s.flags.join(', ')}\n\n`;
+  if(s.skip)m+=`*Skip:* yes\n\n`;
   m+=(s.body||'').trim()+'\n';
   if((s.notes||'').trim())m+=`\n*Delivery note:* ${s.notes.trim()}\n`;
   return m;
@@ -2288,10 +2323,10 @@ function paintDeck(){
   const d=document.getElementById('deck');
   d.className=stageClass(s);
   d.innerHTML=stageHtml(s,false);
-  const R=runIdx(),at=R.indexOf(cur);
+  const R=liveIdx(),at=R.indexOf(cur);
   document.querySelector('#prog i').style.width=(((at<0?0:at)+1)/R.length*100)+'%';
   document.getElementById('count').textContent=
-    `${(at<0?cur:at)+1} / ${R.length}${runOnly?' · short run':''}`;
+    `${(at<0?cur:at)+1} / ${R.length}${s.skip?' · hidden':''}`;
   const has=s.fig&&S.figs[s.fig];
   const n=(s.notes||'').trim()||(has?String(s.body||'').replace(/[#*`>|]/g,'').slice(0,900):'—');
   document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${esc(n)}`;
@@ -2311,12 +2346,11 @@ async function present(on){
 }
 function paintGrid(){
   const el=document.getElementById('grid');el.innerHTML='';
-  const R=runIdx();
   S.slides.forEach((s,i)=>{
-    if(runOnly&&!R.includes(i))return;
-    const c=document.createElement('div');c.className='gcell'+(s.pick?' picked':'');
+    if(s.skip&&!showHidden)return;
+    const c=document.createElement('div');c.className='gcell'+(s.skip?' hidden':'');
     c.style.borderColor=i===cur?'var(--b)':'transparent';
-    c.innerHTML=`<div class="ix">${String(s.n).padStart(3,'0')}${s.pick?' ★':''}</div>
+    c.innerHTML=`<div class="ix">${String(s.n).padStart(3,'0')}${s.skip?' ⊘':''}</div>
       <div class="tt">${esc(s.title)}</div>`;
     c.onclick=()=>{cur=i;gridOn=false;el.classList.remove('on');paintDeck();};el.appendChild(c);});
 }
@@ -2335,19 +2369,18 @@ document.addEventListener('keydown',e=>{
   }
   if(typing||!S.slides.length)return;
   if(showing){
-    const R=runIdx(),at=Math.max(0,R.findIndex(i=>i>=cur));
+    const R=liveIdx(),at=Math.max(0,R.findIndex(i=>i>=cur));
     if(['ArrowRight',' ','PageDown','j'].includes(e.key)){e.preventDefault();
       cur=R[Math.min(R.length-1,(R[at]===cur?at:at-1)+1)]??cur;paintDeck();}
     else if(['ArrowLeft','PageUp','k'].includes(e.key)){e.preventDefault();
       cur=R[Math.max(0,at-1)]??cur;paintDeck();}
     else if(e.key==='Home'){cur=R[0];paintDeck();}
     else if(e.key==='End'){cur=R[R.length-1];paintDeck();}
-    else if(e.key==='b'||e.key==='B'){
-      const p=S.slides.filter(x=>x.pick).length;
-      if(!p){toast('Nothing is in the short run yet — star some slides, or ask for a suggestion');return;}
-      runOnly=!runOnly;
-      if(runOnly&&!S.slides[cur].pick)cur=runIdx()[0];
-      paintDeck();toast(runOnly?`Short run · ${p} slides`:'Full deck');}
+    else if(e.key==='h'||e.key==='H'){
+      const h=S.slides.filter(x=>x.skip).length;
+      if(!h){toast('No slides are hidden');return;}
+      showHidden=!showHidden;paintDeck();
+      toast(showHidden?`Showing all ${S.slides.length}, hidden included`:`${h} hidden`);}
     else if(e.key==='n'||e.key==='N'){notesOn=!notesOn;document.getElementById('notes').classList.toggle('on',notesOn);fit();}
     else if(e.key==='o'||e.key==='O'){gridOn=!gridOn;document.getElementById('grid').classList.toggle('on',gridOn);if(gridOn)paintGrid();}
     else if(e.key==='f'||e.key==='F'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(x){}}
@@ -2362,7 +2395,7 @@ document.addEventListener('keydown',e=>{
     else if(e.key==='ArrowUp'||e.key==='k'){e.preventDefault();cur=Math.max(0,cur-1);paint();}
     else if(e.key==='p'||e.key==='P')present(true);
     else if(e.key==='?'){e.preventDefault();shortcuts();}
-    else if(e.key==='*'||e.key==='b'||e.key==='B'){e.preventDefault();togglePick(cur);}
+    else if(e.key==='h'||e.key==='H'){e.preventDefault();toggleSkip(cur);}
   }
 });
 window.addEventListener('resize',()=>{showing?fit():scaleStage();});
@@ -2418,7 +2451,7 @@ document.getElementById('bMore').onclick=e=>{e.stopPropagation();pop.classList.t
 document.addEventListener('click',()=>pop.classList.remove('on'));
 pop.onclick=e=>e.stopPropagation();
 pop.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>pop.classList.remove('on')));
-document.getElementById('bRun').onclick=runDialog;
+document.getElementById('bRun').onclick=trimDialog;
 document.getElementById('bDeck').onclick=deckSettings;
 document.getElementById('bCfg2').onclick=configure;
 document.getElementById('bHelp').onclick=shortcuts;

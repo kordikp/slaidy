@@ -66,6 +66,33 @@ addEventListener('load',async()=>{
      boardFs[1]+' vs '+fs(dk.querySelector('h2')));
   await w.present(false);await wait(150);
 
+  // --- a figure beside text starts where the text starts ---
+  const si=w.S.slides.findIndex(x=>x.layout==='split-r'&&x.fig&&(x.body||'').trim());
+  ok('found a slide with a figure beside text',si>=0,'slide '+(si+1));
+  w.cur=si;w.paint();await wait(250);
+  const s2=d.querySelector('#sheet .stage'), p2=s2.getBoundingClientRect(), k2=p2.width/1280;
+  const drawn=el=>{ let y=1e9;
+    el.querySelectorAll('rect,text,path,circle,line,polygon').forEach(e=>{
+      const r=e.getBoundingClientRect(); if(r.width||r.height) y=Math.min(y,r.top); });
+    return y; };
+  const fy=(drawn(s2.querySelector('.fg svg'))-p2.top)/k2;
+  const ty=(s2.querySelector('.tx').getBoundingClientRect().top-p2.top)/k2;
+  ok('the drawing starts level with the text',Math.abs(fy-ty)<6,
+     'figure '+fy.toFixed(0)+', text '+ty.toFixed(0));
+
+  // --- figure size ---
+  const w0=s2.querySelector('.fg svg').getBoundingClientRect().width;
+  w.S.slides[si].figScale=60;w.paint();await wait(200);
+  const s3=d.querySelector('#sheet .stage');
+  const w1=s3.querySelector('.fg svg').getBoundingClientRect().width;
+  ok('figure size shrinks it',w1<w0*0.75,Math.round(w0)+' → '+Math.round(w1));
+  ok('and it survives markdown',/· 60%/.test(w.slideMd(w.S.slides[si])),
+     (w.slideMd(w.S.slides[si]).match(/^\*\*Figure:.*$/m)||[''])[0]);
+  const rt2=w.importMarkdown('x.md','# A\n\n'+w.slideMd(w.S.slides[si]));
+  ok('and comes back',rt2[0].figScale===60&&rt2[0].layout==='split-r',
+     rt2[0].figScale+'% '+rt2[0].layout);
+  w.S.slides[si].figScale=100;w.paint();await wait(150);
+
   // the PDF draws the same stage
   const tmp=d.createElement('div');tmp.innerHTML=w.printSlide(w.S.slides[i],false);
   ok('print uses the stage as well',!!tmp.querySelector('.psl .stage'));

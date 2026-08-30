@@ -31,10 +31,10 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   feUndo,feDup,feAdd,feBounds,feResize,feParentScale,feZoom,feRect,feBox,feDown,feMarquee,
   present,paint,moveSlide,checkFit,shortcuts,snap,undo,insertBlock,insertMenu,blocks,where,slideMd,
   importMarkdown,deckSettings,applyStyle,style,hdrHtml,paintNav,paintBody,paintSide,editMarkdown,stats,
-  mdParse,mdPreview,mdNormalise,llm,stageHtml,stageClass,scaleStage,printSlide,paintDeck,
-  togglePick,runIdx,runStats,suggestRun,scorePick,runDialog,clock,paintGrid,
+  mdParse,mdPreview,mdNormalise,llm,stageHtml,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
+  fig,toggleSkip,liveIdx,liveStats,planTrim,scoreSlide,trimDialog,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
-  get UNDO(){return UNDO},get runOnly(){return runOnly},set runOnly(v){runOnly=v}};"""
+  get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v}};"""
 open(p, "w", encoding="utf-8").write(s[:i] + hook + s[i:])
 PY
 

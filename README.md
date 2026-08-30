@@ -105,14 +105,26 @@ the screen. Inside a frame they cannot reach the page at all.
 **Presenting.** `P` goes full screen. `N` shows notes, `O` an overview grid, `B`
 switches between the whole deck and the short run.
 
-**The short run.** A talk projected to a room cannot be personalised, so the deck
-carries the fallback every recommender falls back to: the popular path. Star slides in
-the list, or ask for a suggestion at a target length. The budget is shared between
-sections in proportion to their length, so the talk keeps its shape.
+**Hiding slides.** Hide a slide and the presentation walks past it; it stays in the file
+and in the list, greyed. `H` hides the current one, and `H` while presenting walks the
+hidden ones too, for a rehearsal. `⋯ → Trim to length` does it in bulk: it hides the
+slides that do the least work until the deck fits, sharing the budget between sections in
+proportion to their length so the talk keeps its shape. Slides flagged `keep` are never
+hidden automatically.
 
 ```bash
 python3 scripts/short_run.py --minutes 45 --dry-run
 ```
+
+**Checking the figures.** `scripts/check_figures.sh` renders every figure and looks for text
+that collides with something: a label running past the canvas edge, two labels on top of
+each other, a connector crossing the words. Animated labels are skipped in the collision
+check — two that alternate share a spot on purpose, and a static measurement cannot tell.
+
+**Removing what the figure already says.** `scripts/dedupe.py` compares each block of a
+slide against the labels in its figure and moves the repeats into the speaker notes. Key
+lines are never touched: a good one names what the picture shows and then says what it
+means, and word overlap cannot tell that apart from an echo.
 
 **Fitting.** `scripts/fit_slides.py` separates what is shown from what is said —
 lists, tables and key lines stay on the slide, prose moves to the speaker notes — and

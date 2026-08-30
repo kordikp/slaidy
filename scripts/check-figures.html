@@ -1,0 +1,104 @@
+<!doctype html><meta charset=utf-8><style>html,body{margin:0}iframe{width:900px;height:520px;border:0}</style>
+<iframe id=fr></iframe>
+<script>
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const out=[];
+function check(id,doc){
+  const svg=doc.querySelector('svg'); if(!svg) return {id,err:'no svg'};
+  const vb=(svg.getAttribute('viewBox')||'0 0 800 450').split(/[\s,]+/).map(Number);
+  const W=vb[2],H=vb[3];
+  const M=svg.getScreenCTM().inverse();
+  const box=el=>{const r=el.getBoundingClientRect();
+    const p1=svg.createSVGPoint(),p2=svg.createSVGPoint();
+    p1.x=r.left;p1.y=r.top;p2.x=r.right;p2.y=r.bottom;
+    const a=p1.matrixTransform(M),b=p2.matrixTransform(M);
+    return {x:a.x,y:a.y,w:b.x-a.x,h:b.y-a.y,r:{l:a.x,t:a.y,rr:b.x,b:b.y}};};
+  // measure tspans where a label has them: a multi-line <text> reports the union
+  // of its lines, which makes two neighbouring labels look like they collide
+  const units=[];
+  [...svg.querySelectorAll('text')].forEach(t=>{
+    if(t.closest('defs'))return;
+    const sp=[...t.querySelectorAll('tspan')].filter(x=>x.textContent.trim()&&!x.querySelector('tspan'));
+    if(sp.length) sp.forEach(x=>units.push(x)); else if(t.textContent.trim()) units.push(t);
+  });
+  const issues=[];
+  const B=el=>box(el).r;
+  // 1. a label leaving the canvas, or crowding its edge
+  units.forEach(t=>{const b=B(t);
+    if(b.l<6||b.t<4||b.rr>W-6||b.b>H-4)
+      issues.push({kind:'edge',t:t.textContent.trim().slice(0,34),
+        at:`${Math.round(b.l)},${Math.round(b.t)}–${Math.round(b.rr)},${Math.round(b.b)}`});});
+  // 2. two labels on top of each other
+  // an animated label alternates in time, not in space — two of them sharing a
+  // spot is the design, not a collision
+  const moving=el=>{for(let n=el;n&&n.tagName!=='svg';n=n.parentElement){
+    const a=getComputedStyle(n).animationName; if(a&&a!=='none')return true;} return false;};
+  for(let i=0;i<units.length;i++)for(let j=i+1;j<units.length;j++){
+    if(units[i].parentElement===units[j].parentElement&&units[i].tagName==='tspan')continue;
+    if(moving(units[i])||moving(units[j]))continue;
+    const A=B(units[i]),C=B(units[j]);
+    const ox=Math.min(A.rr,C.rr)-Math.max(A.l,C.l), oy=Math.min(A.b,C.b)-Math.max(A.t,C.t);
+    if(ox>1.5&&oy>1.5){
+      const area=ox*oy, small=Math.min((A.rr-A.l)*(A.b-A.t),(C.rr-C.l)*(C.b-C.t));
+      if(area/Math.max(1,small)>0.18)
+        issues.push({kind:'text-text',t:units[i].textContent.trim().slice(0,22)+' ✕ '+units[j].textContent.trim().slice(0,22),
+          at:`${Math.round(area)}px², ${Math.round(area/small*100)}% of the smaller`});}}
+  // 3. a connector crossing the middle of a label — a line touching its edge is
+  //    a box border and is fine; a line through the words is not
+  const geo=[...svg.querySelectorAll('line,polyline,path')].filter(g=>{
+    if(g.closest('defs'))return false;
+    const st=getComputedStyle(g);
+    return st.stroke&&st.stroke!=='none'&&(st.fill==='none'||!st.fill);});
+  units.forEach(t=>{const b=B(t);
+    const midT=b.t+(b.b-b.t)*0.35, midB=b.t+(b.b-b.t)*0.65;
+    const pts=[];
+    for(let px=1;px<=5;px++)for(const y of [midT,(midT+midB)/2,midB])
+      pts.push([b.l+(b.rr-b.l)*px/6, y]);
+    for(const g of geo){
+      let hit=0;
+      for(const [x,y] of pts){
+        const p=svg.createSVGPoint();p.x=x;p.y=y;
+        try{ if(g.isPointInStroke(p)) hit++; }catch(e){}
+      }
+      if(hit<3) continue;
+      // is something opaque painted over the line, under the words? then it is fine
+      const c=box(t).r, cx=(c.l+c.rr)/2, cy=(c.t+c.b)/2;
+      const sp=svg.createSVGPoint(); sp.x=cx; sp.y=cy;
+      const scr=sp.matrixTransform(svg.getScreenCTM());
+      const stack=doc.elementsFromPoint(scr.x,scr.y);
+      const gi=stack.indexOf(g);
+      const covered=stack.some((el,ix)=>{
+        if(ix>=gi&&gi>=0)return false;                       // painted below the line
+        if(el===t||el.contains(t)||t.contains(el))return false;
+        const st=getComputedStyle(el);
+        return st.fill&&st.fill!=='none'&&!/rgba\(0, 0, 0, 0\)/.test(st.fill);
+      });
+      if(covered) continue;
+      issues.push({kind:'on-line',t:t.textContent.trim().slice(0,34),at:hit+'/15 through the middle'});break;
+    }});
+  return {id,issues,texts:units.length};
+}
+addEventListener('load',async()=>{
+  const deck=await (await fetch('deck.json')).json();
+  const ids=Object.keys(deck.figs).sort();
+  const fr=document.getElementById('fr');
+  for(const id of ids){
+    fr.srcdoc='<!doctype html><meta charset=utf-8><style>html,body{margin:0;width:900px;height:506px}'
+      +'svg{width:100%;height:100%}</style>'+deck.figs[id];
+    await new Promise(r=>{fr.onload=r;});
+    await wait(30);
+    try{ out.push(check(id,fr.contentDocument)); }catch(e){ out.push({id,err:e.message}); }
+  }
+  const bad=out.filter(o=>o.issues&&o.issues.length);
+  const lines=[`${out.length} figures checked · ${bad.length} with findings`];
+  const byKind={};
+  bad.forEach(o=>o.issues.forEach(i=>byKind[i.kind]=(byKind[i.kind]||0)+1));
+  lines.push('  '+JSON.stringify(byKind));
+  bad.slice(0,40).forEach(o=>{
+    lines.push(`\n${o.id}  (${o.texts} labels)`);
+    o.issues.slice(0,4).forEach(i=>lines.push(`   ${i.kind.padEnd(10)} ${i.t}   ${i.at}`));
+  });
+  if(bad.length>40) lines.push(`\n… and ${bad.length-40} more`);
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+lines.join('\n').replace(/</g,'&lt;')+'</pre>');
+});
+</script>

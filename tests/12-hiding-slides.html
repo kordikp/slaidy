@@ -1,0 +1,85 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  ok('nothing is hidden to begin with',w.liveStats().hidden===0,w.liveStats().hidden+'');
+
+  // --- hiding one slide ---
+  w.toggleSkip(5);await wait(100);
+  ok('hiding one works',w.S.slides[5].skip&&w.liveStats().hidden===1);
+  ok('the list greys it',!!d.querySelector('#nav .item.hidden')&&!!d.querySelector('#nav .eye'));
+  ok('it round-trips through markdown',/\*Skip:\* yes/.test(w.slideMd(w.S.slides[5])));
+  const back=w.importMarkdown('x.md','# A\n\n'+w.slideMd(w.S.slides[5]));
+  ok('and comes back',back[0].skip===true);
+  ok('and does not leak into the body',!/Skip:/.test(back[0].body));
+  w.undo();await wait(120);
+  ok('undo shows it again',!w.S.slides[5].skip);
+
+  // --- flags survive the round trip too ---
+  const fl=w.S.slides.find(x=>x.flags&&x.flags.length);
+  if(fl){
+    const r2=w.importMarkdown('x.md','# A\n\n'+w.slideMd(fl));
+    ok('flags round-trip',JSON.stringify(r2[0].flags)===JSON.stringify(fl.flags),fl.flags.join(','));
+    ok('and stay out of the body',!/Flags:/.test(r2[0].body));
+  } else { ok('flags round-trip','skipped — fixture has none'); }
+
+  // --- trimming to a length ---
+  const total=w.S.slides.reduce((a,x)=>a+w.stats(x).secs,0);
+  const TARGET=Math.max(2,Math.round(total/60/3));
+  const plan=w.planTrim(TARGET);
+  ok('the plan fits its budget',plan.t<=TARGET*60,w.clock(plan.t)+' for '+TARGET+' min');
+  ok('and it is a real selection',plan.keep.size>3&&plan.keep.size<w.S.slides.length,
+     plan.keep.size+' of '+w.S.slides.length);
+  ok('it keeps the opening',plan.keep.has(0));
+  const last=Math.max(...plan.keep);
+  ok('and ends in the last section',
+     w.S.slides[last].group===w.S.slides[w.S.slides.length-1].group,w.S.slides[last].group);
+  const secs=new Set([...plan.keep].map(i=>w.S.slides[i].group));
+  ok('every section survives',secs.size===4,secs.size+' sections');
+  const asides=[...plan.keep].filter(i=>w.S.slides[i].tag==='B').length;
+  const allAsides=w.S.slides.filter(s=>s.tag==='B').length;
+  ok('asides are cut hardest',asides/Math.max(1,allAsides)<plan.keep.size/w.S.slides.length,
+     `${asides}/${allAsides} asides vs ${plan.keep.size}/${w.S.slides.length} overall`);
+  const shorter=w.planTrim(Math.max(1,Math.floor(TARGET/2)));
+  ok('a shorter target keeps fewer',shorter.keep.size<plan.keep.size,
+     plan.keep.size+' → '+shorter.keep.size);
+
+  // a slide flagged keep is never dropped
+  const ki=w.S.slides.findIndex(x=>x.tag==='B');
+  w.S.slides[ki].flags=['keep'];
+  ok('a slide flagged keep survives any budget',w.planTrim(1).keep.has(ki));
+  w.S.slides[ki].flags=[];
+
+  // --- presenting walks past the hidden ones ---
+  w.S.slides.forEach((s,i)=>s.skip=!plan.keep.has(i));
+  const R=[...plan.keep].sort((a,b)=>a-b);
+  ok('the live list is the shown ones',w.liveIdx().length===R.length,w.liveIdx().length+'');
+  w.cur=R[0];await w.present(true);await wait(300);
+  const before=w.cur;
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));await wait(150);
+  ok('forward lands on the next shown slide',!w.S.slides[w.cur].skip&&w.cur>before,before+' → '+w.cur);
+  ok('it is exactly the next one',w.cur===R.find(i=>i>before));
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));await wait(150);
+  ok('back goes back',w.cur===before,String(w.cur));
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'End',bubbles:true}));await wait(150);
+  ok('End is the last shown slide',w.cur===R[R.length-1],String(w.cur));
+
+  // H walks the hidden ones too, for a rehearsal
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'h',bubbles:true}));await wait(200);
+  ok('H reveals the hidden ones',w.showHidden&&w.liveIdx().length===w.S.slides.length,
+     w.liveIdx().length+'');
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'h',bubbles:true}));await wait(200);
+  ok('and hides them again',!w.showHidden&&w.liveIdx().length===R.length);
+
+  // --- the overview grid ---
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'o',bubbles:true}));await wait(300);
+  ok('the grid leaves hidden slides out',d.querySelectorAll('#grid .gcell').length===R.length,
+     d.querySelectorAll('#grid .gcell').length+' of '+R.length);
+  await w.present(false);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

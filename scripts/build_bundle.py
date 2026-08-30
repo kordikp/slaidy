@@ -15,14 +15,18 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SLIDE_RE = re.compile(r"^### (\d+)\.\s*`\[([SDEB])\]`\s*(.+?)\s*$", re.M)
 SUB_RE = re.compile(r"^##\s+(?!#)(.+?)\s*$", re.M)          # subsection inside an act
-FIG_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*(?:·[ \t]*([a-z-]+))?[^\n]*$", re.M)
+FIG_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*"
+                    r"(?:·[ \t]*([a-z-]+))?[ \t]*(?:·[ \t]*(\d{2,3})%)?[^\n]*$", re.M)
 LAYOUTS = {"figure", "split-l", "split-r", "background", "text"}
 FIG_NONE_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:none|žádná).*$", re.M | re.I)
 NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$", re.M)
 SUM_RE = re.compile(r"^\*Summary:\*\s*(.+)$", re.M)
-PICK_RE = re.compile(r"^\*Bestseller:\*\s*(\S+)[^\n]*$", re.M)   # in the short run through the deck      # what the slide is for, in one or two lines
+SKIP_RE = re.compile(r"^\*Skip:\*\s*(\S+)[^\n]*$", re.M)      # hidden when presenting
+FLAGS_RE = re.compile(r"^\*Flags:\*\s*([^\n]+)$", re.M)        # keep = never auto-hide, ours = our own work      # what the slide is for, in one or two lines
 FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
+# A section name per file. Anything not listed here is derived from the filename,
+# so "04-how-it-works.md" becomes "How It Works".
 # A section name per file. Anything not listed here is derived from the filename,
 # so "04-how-it-works.md" becomes "How It Works".
 GROUPS = {}
@@ -45,9 +49,11 @@ def parse_slides(text, group):
         f = FIG_RE.search(body)
         notes = " ".join(x.strip() for x in NOTE_RE.findall(body))
         sm = SUM_RE.search(body)
-        pk = PICK_RE.search(body)
+        sk = SKIP_RE.search(body)
+        fl = FLAGS_RE.search(body)
         body = SUM_RE.sub("", body)
-        body = PICK_RE.sub("", body)
+        body = SKIP_RE.sub("", body)
+        body = FLAGS_RE.sub("", body)
         body = FIG_RE.sub("", body)
         body = FIG_NONE_RE.sub("", body)
         body = NOTE_RE.sub("", body)
@@ -57,8 +63,10 @@ def parse_slides(text, group):
                        "title": payload.group(3).strip(),
                        "fig": f.group(1) if f else None,
                        "layout": (f.group(2) if f and f.group(2) in LAYOUTS else "figure") if f else "text",
+                       "figScale": int(f.group(3)) if f and f.group(3) else 100,
                        "body": body, "notes": notes, "summary": sm.group(1).strip() if sm else "",
-                       "pick": bool(pk) and pk.group(1).lower() in ("yes", "true", "1", "ano")})
+                       "skip": bool(sk) and sk.group(1).lower() in ("yes", "true", "1", "ano"),
+                       "flags": [x.strip() for x in fl.group(1).split(",") if x.strip()] if fl else []})
     return slides
 
 

@@ -102,10 +102,36 @@ addEventListener('load',async()=>{
   d.getElementById('cC').click();await wait(150);
 
 
-  // renaming the project must not orphan what people already have stored
-  ok('the database keeps its old name',
-     /indexedDB\.open\('slide-studio'/.test(W.document.documentElement.innerHTML),
-     'a storage key is not a brand');
+  // ---------- renaming the store carries what was in the old one ----------
+  // Driving the real migration would mean deleting the database this page has
+  // open, and deleteDatabase blocks while it is — the browser will not do it and
+  // the test hangs rather than failing. So this checks the contract at the source,
+  // and the behaviour it guards is: the old store is read, only an empty new one
+  // is written, and the old one is left where it is.
+  const src=W.document.documentElement.innerHTML;
+  ok('the app opens the store under the new name',/indexedDB\.open\('slaidy'/.test(src));
+  ok('and still knows the old one',/indexedDB\.open\('slide-studio'/.test(src),
+     'so a rename does not orphan what people have stored');
+  ok('it only adopts into an empty store',
+     /if\(has\.result&&has\.result\.length\)return done\(\)/.test(src),
+     'adopting twice would overwrite newer work with older');
+  ok('it copies rather than moves',!/deleteDatabase\('slide-studio'\)/.test(src),
+     'copying is reversible; moving is not');
+  ok('and it cannot wedge the app if the old store is not there',
+     /o\.onerror=o\.onblocked=\(\)=>done\(\)/.test(src));
+  ok('nor if another tab is holding it',/setTimeout\(done,1500\)/.test(src));
+  ok('it never opens the old store just to look',
+     /indexedDB\.databases\(\)\.then/.test(src),
+     'opening one that does not exist creates it, and rolling that back stalls the origin');
+  ok('and it runs after boot, not in front of the first read',
+     /IDB\.adopt\(\);/.test(src)&&!/adopt\(db\)\.then/.test(src),
+     'a save that waits on a migration is a save that can time out');
+
+  // what does run: a deck and a snapshot written to the live store come back
+  await w.put('deck:rename-probe',{id:'rename-probe',slides:[{title:'after the rename'}]});
+  const back=await w.get('deck:rename-probe');
+  ok('the store the app is using works',back&&back.slides[0].title==='after the rename',
+     JSON.stringify(back&&back.slides));
 
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  W.fetch=realFetch;

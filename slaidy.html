@@ -713,14 +713,56 @@ const IDB=(()=>{
   let db=null,dead=false;
   const open=()=>new Promise((res,rej)=>{
     if(db)return res(db); if(dead)return rej(new Error('IndexedDB unavailable'));
-    /* The database keeps its old name on purpose. It holds every deck, every
-       version snapshot and every remembered file handle in this browser;
-       renaming it to match the project would orphan the lot. A storage key is
-       not a brand. */
-    let r; try{r=indexedDB.open('slide-studio',1);}catch(e){dead=true;return rej(e);}
+    let r; try{r=indexedDB.open('slaidy',1);}catch(e){dead=true;return rej(e);}
     r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv');};
     r.onsuccess=()=>{db=r.result;res(db);};
     r.onerror=()=>{dead=true;rej(r.error||new Error('IndexedDB blocked'));};
+  });
+  /* The store used to be called slide-studio. This carries what is in it across
+     — once, only into an empty new store, and the old one is left where it is.
+
+     It runs ONLY when indexedDB.databases() confirms the old store exists.
+     Probing by opening it is what the first version did, and opening a database
+     that does not exist creates it, fires onupgradeneeded, and the abort that
+     rolls it back stalls the whole origin's IndexedDB queue: measured, the next
+     read took the full four-second timeout and came back undefined, which marks
+     storage dead for the session. A migration is a nicety; it may not cost that.
+     Where databases() is missing (Firefox) adoption is simply skipped.
+
+     And it runs AFTER boot, never in front of a read. Putting it inside open()
+     is what broke the first attempt: the very first save then waited on it, and
+     a save that waits is a save that can time out. */
+  const adopt=d=>new Promise(done0=>{
+    let over=false;
+    const done=()=>{if(!over){over=true;done0();}};
+    setTimeout(done,1500);                       /* bounded, always */
+    if(!indexedDB.databases)return done();
+    const has=d.transaction('kv','readonly').objectStore('kv').getAllKeys();
+    has.onerror=()=>done();
+    has.onsuccess=()=>{
+      if(has.result&&has.result.length)return done();   /* already lived in */
+      indexedDB.databases().then(list=>{
+        if(!(list||[]).some(x=>x.name==='slide-studio'))return done();
+        let o; try{o=indexedDB.open('slide-studio');}catch(e){return done();}  /* no version: never upgrades */
+        o.onerror=o.onblocked=()=>done();
+        o.onsuccess=()=>{
+          const old=o.result;
+          if(!old.objectStoreNames.contains('kv')){old.close();return done();}
+          const rs=old.transaction('kv','readonly').objectStore('kv');
+          const ks=rs.getAllKeys(),vs=rs.getAll();
+          rs.transaction.oncomplete=()=>{
+            const t=d.transaction('kv','readwrite'),st=t.objectStore('kv');
+            (ks.result||[]).forEach((k,i)=>{try{st.put((vs.result||[])[i],k);}catch(e){}});
+            t.oncomplete=()=>{old.close();
+              if((ks.result||[]).length)setTimeout(()=>toast(
+                `Carried ${ks.result.length} things over from the old store`),1500);
+              done();};
+            t.onerror=()=>{old.close();done();};
+          };
+          rs.transaction.onerror=()=>{old.close();done();};
+        };
+      },()=>done());
+    };
   });
   const tx=async(mode,fn)=>{const d=await open();return new Promise((res,rej)=>{
     const t=d.transaction('kv',mode),q=fn(t.objectStore('kv'));
@@ -729,7 +771,8 @@ const IDB=(()=>{
   const cap=(p,ms=2500)=>Promise.race([p,new Promise((_,rej)=>setTimeout(
     ()=>{dead=true;rej(new Error('IndexedDB timed out'));},ms))]);
   return{get:k=>cap(tx('readonly',o=>o.get(k))),put:(k,v)=>cap(tx('readwrite',o=>o.put(v,k))),
-         del:k=>cap(tx('readwrite',o=>o.delete(k))),keys:()=>cap(tx('readonly',o=>o.getAllKeys()))};
+         del:k=>cap(tx('readwrite',o=>o.delete(k))),keys:()=>cap(tx('readonly',o=>o.getAllKeys())),
+         adopt:()=>open().then(adopt).catch(()=>{})};
 })();
 async function put(k,v){
   try{await IDB.put(k,v);return 'browser storage';}
@@ -1508,9 +1551,7 @@ async function copySlides(){
   const ix=picked(),list=ix.map(i=>structuredClone(S.slides[i]));
   if(!list.length)return;
   const md=list.map(slideMd).join('\n');
-  /* likewise the clipboard marker: a copy taken before the rename must still
-     paste after it */
-  const payload={kind:'slide-studio/slides',at:Date.now(),from:S.title||S.id,
+  const payload={kind:'slaidy/slides',at:Date.now(),from:S.title||S.id,
                  md,slides:list,figs:figsOf(list)};
   /* Two places, and it used to claim success if neither worked. The browser copy
      is what carries the figures; the clipboard is what carries them off this
@@ -5271,6 +5312,7 @@ async function paintRecent(){
 --------------------------------------------------------------------------- */
 async function boot(){
   setStatus('none');paintRecent();
+  IDB.adopt();                       /* once, in the background, out of the way */
 
   const load=b=>{
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},

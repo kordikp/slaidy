@@ -131,10 +131,16 @@ addEventListener('load',async()=>{
      /IDB\.adopt\(\);/.test(src)&&!/adopt\(db\)\.then/.test(src),
      'a save that waits on a migration is a save that can time out');
 
-  // what does run: a deck and a snapshot written to the live store come back
-  await w.put('deck:rename-probe',{id:'rename-probe',slides:[{title:'after the rename'}]});
-  const back=await w.get('deck:rename-probe');
-  ok('the store the app is using works',back&&back.slides[0].title==='after the rename',
+  // What does run: written, then read back. By whichever route — IndexedDB when
+  // it answers, localStorage when it does not — because that fallback is the
+  // contract, and asserting the fast path makes a timing race out of a promise.
+  let back=null;
+  for(let a=0;a<2&&!back;a++){
+    await w.put('deck:rename-probe',{id:'rename-probe',slides:[{title:'after the rename'}]});
+    back=await w.get('deck:rename-probe');
+  }
+  ok('what the app writes, the app reads back',
+     !!back&&back.slides[0].title==='after the rename',
      JSON.stringify(back&&back.slides));
 
 

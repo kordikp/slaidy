@@ -493,6 +493,34 @@ Requirements: Python 3 for the scripts, Chrome or Chromium for the tests. Nothin
 
 ---
 
+## Why there are no bitmaps
+
+A figure here is SVG, and only SVG. You cannot drop a PNG on a slide and have it become the
+picture. That is not an omission.
+
+The whole deck is text — markdown for the words, SVG for the drawings — because **both of you
+have to be able to read it**. You, when you come back to a talk a year later and want to know
+what a diagram claims. Git, when it shows you what changed. And the AI, when you ask it to make
+a figure sparser or to swap two boxes: it can only do that to a drawing it can read. A bitmap is
+opaque to all three. It can be shown and it can be scaled, and that is all — nobody can edit it,
+nobody can diff it, and asking a model to change it means asking it to draw a new one from
+scratch and hope.
+
+The compactness follows from the same choice rather than being a separate feature:
+
+| | |
+|---|---|
+| a 237-slide deck, 180 figures | **1.0 MB**, everything included |
+| the median figure | 3.7 kB |
+| the same deck exported as `.pptx` | 33.8 MB — **33× larger** |
+| the editor itself | 289 kB, one file |
+
+This is the same bet [**pbook**](https://github.com/kordikp/recsys-pbook)
+([live](https://recsys-pbook.vercel.app)) makes, and the reason the two projects feel related: a
+book whose concepts, contracts and diagrams are all readable text, so a reader and a model can
+both extend it, and neither has to take the other's word for what is there. Different artefact,
+same principle — **the material has to be legible to everyone working on it, human or not.**
+
 ## Thanks
 
 The AI here runs on capacity from **[CESNET e-INFRA CZ](https://www.e-infra.cz/en)**, free to anyone

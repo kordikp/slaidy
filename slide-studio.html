@@ -130,8 +130,20 @@ button{cursor:pointer;background:none;border:none}
 #sheet .stage .tx::-webkit-scrollbar{width:0;height:0}
 .stage .txin{min-height:0}
 .stage .tx.under{flex:none;max-height:46%;margin-top:20px}
-.stage.bgfig .bgl{position:absolute;inset:0;opacity:.12;display:flex;align-items:center;justify-content:center}
-.stage.bgfig .bgl svg{width:118%;height:auto}
+/* The backdrop honours the figure size like every other layout. It did not: the
+   width was written into the stylesheet, so the slider moved and nothing
+   happened. 118% is what "100%" means here — a backdrop is meant to bleed a
+   little past the edges — and overflow is hidden so enlarging it crops at the
+   slide rather than spilling over the application. */
+.stage.bgfig .bgl{position:absolute;inset:0;opacity:.12;overflow:hidden;
+ display:flex;align-items:center;justify-content:center}
+.stage.bgfig .bgl svg{width:calc(118%*var(--fsn,1));height:auto;flex:none}
+/* In the editor a figure is wrapped in .hero > .figbox, which sizes itself from
+   a container query — so the backdrop came out a different size in the editor
+   than on the projector, which is the one thing this stage is not allowed to
+   do. Behind the text, the box constrains nothing; the rule above is the size. */
+.stage.bgfig .bgl .hero,.stage.bgfig .bgl .figbox{
+ width:auto;height:auto;max-width:none;aspect-ratio:auto;display:contents}
 .stage.bgfig .hero{width:100%;height:100%}
 
 /* body typography, at stage scale — shared by every surface */
@@ -1784,7 +1796,7 @@ function stageHtml(s,edit){
   const mid=(s.flags||[]).includes('center')?' mid':'';
   let stack;
   if(s.layout==='background'&&has)
-    stack=`<div class="bgl">${figHtml}</div><div class="stack col${mid}"><div class="tx">${bodyHtml}</div></div>`;
+    stack=`<div class="bgl"${fsz}>${figHtml}</div><div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
   else if(beside&&has)
     stack=`<div class="stack${s.layout==='split-r'?' rev':''}${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
           `<div class="tx"${tsz}>${bodyHtml}</div></div>`;
@@ -1927,7 +1939,7 @@ function figChrome(box,api){
     box.classList.add('sizing');pct.textContent=p0+' %';
     const move=ev=>{
       const w=Math.max(24,w0+(ev.clientX-x0)/k);
-      const n=Math.min(100,Math.max(20,Math.round(p0*w/w0/5)*5));
+      const n=Math.min(200,Math.max(20,Math.round(p0*w/w0/5)*5));
       pct.textContent=n+' %';
       (box.parentElement||box).style.setProperty('--fsn',n/100);
       box.style.setProperty('--fsn',n/100);
@@ -2557,7 +2569,8 @@ function paintSide(){
     </div>
     ${has?`<div class="fld" style="margin-top:10px"><label>Figure size
         <span class="pos" id="fsLab">${s.figScale||100} %</span></label>
-      <input id="fSize" type="range" min="40" max="100" step="5" value="${s.figScale||100}"></div>`:''}
+      <input id="fSize" type="range" min="40" max="200" step="5" value="${s.figScale||100}"
+        title="100% is as large as fits. Past that it is deliberately bigger than the frame — a backdrop bleeds, a figure crops."></div>`:''}
     <div class="fld" style="margin-top:10px"><label>Text size
         <span class="pos" id="tsLab">${s.textScale||100} %</span></label>
       <input id="tSize" type="range" min="60" max="130" step="2" value="${s.textScale||100}"
@@ -2618,7 +2631,11 @@ function paintSide(){
   if(fz){
     fz.oninput=()=>{document.getElementById('fsLab').textContent=fz.value+' %';
       s.figScale=+fz.value;
-      document.querySelectorAll('#sheet .fg').forEach(x=>x.style.setProperty('--fs',fz.value+'%'));};
+      /* --fsn is the one the stylesheet reads; this used to set --fs, which
+         nothing does, so the preview while dragging never moved — on any
+         layout. And it only looked at .fg, so the backdrop was never touched. */
+      document.querySelectorAll('#sheet .fg,#sheet .bgl').forEach(x=>
+        x.style.setProperty('--fsn',+fz.value/100));};
     fz.onchange=()=>{snap('figure size');touch();paint();};
   }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{

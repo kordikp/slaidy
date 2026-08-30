@@ -194,6 +194,16 @@ them. For one slide, the panel's **Text size** slider is a percentage of that bo
 always been in the file as `*Text:* 82%` and Tidy has always set it, but until now there was no way
 to reach it by hand.
 
+**Figure size goes to 200%.** `100%` means *as large as fits*; past that it is deliberately bigger
+than the frame — a backdrop bleeds, a figure crops. The slider and the on-slide grip both reach it.
+
+The **Behind** layout ignored the size entirely: its width was written into the stylesheet, so the
+slider moved and nothing happened, and the figure size was never passed to the backdrop in the
+first place. It was also drawn at a *different size in the editor than on the projector*, because
+in the editor a figure is wrapped in a box that sizes itself from a container query. Both fixed,
+and the suite now asserts the two surfaces agree. While there: the slider's live preview set a
+custom property nothing reads, so dragging it never moved anything on any layout until you let go.
+
 **Figures never take more room than the slide has.** A figure among text is contained on both
 axes, the way the hero figure always was. It used to be width only, and that is how a figure ate a
 slide: asked for at 85% of a 1168-wide column it took 993 × 558 in a column 540 tall — taller than

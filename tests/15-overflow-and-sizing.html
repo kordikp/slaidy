@@ -126,6 +126,52 @@ addEventListener('load',async()=>{
   ok('a percentage is still of the largest that fits',Math.abs(half-fw/2)<4,
      Math.round(half)+' vs half of '+Math.round(fw));
 
+
+  // ---------- the backdrop resizes, and to more than 100% ----------
+  const bi2=w.S.slides.findIndex(x=>x.fig&&w.S.figs[x.fig]);
+  w.cur=bi2;w.S.slides[bi2].layout='background';w.S.slides[bi2].figScale=100;
+  w.paint();await wait(400);
+  const stg=()=>d.getElementById('stage');
+  const kk=()=>stg().getBoundingClientRect().width/1280;
+  const bw=()=>{const v=stg().querySelector('.bgl svg');
+    return v?Math.round(v.getBoundingClientRect().width/kk()):0;};
+  ok('Behind puts the figure under the text',!!stg().querySelector('.bgl'));
+  const base=bw();
+  ok('and a backdrop bleeds a little past the slide',base>1280&&base<1700,base+'px on a 1280 stage');
+
+  const sl=d.getElementById('fSize');
+  ok('the slider reaches 200%',+sl.max===200,sl.max);
+  sl.value='200';sl.dispatchEvent(new W.Event('input'));await wait(250);
+  ok('dragging it moves the backdrop as you drag',Math.abs(bw()-base*2)<8,
+     bw()+' want '+(base*2)+' — it used to set a variable nothing reads');
+  sl.dispatchEvent(new W.Event('change'));await wait(400);
+  ok('and letting go keeps it',Math.abs(bw()-base*2)<8,bw()+'px');
+  ok('which is on the slide, not just on screen',w.S.slides[bi2].figScale===200,
+     String(w.S.slides[bi2].figScale));
+  ok('an enlarged backdrop crops at the slide edge',
+     W.getComputedStyle(stg().querySelector('.bgl')).overflow==='hidden');
+
+  const sl2=d.getElementById('fSize');
+  sl2.value='50';sl2.dispatchEvent(new W.Event('input'));await wait(250);
+  ok('and it shrinks the same way',Math.abs(bw()-base*0.5)<8,bw()+' want '+(base*0.5));
+  sl2.dispatchEvent(new W.Event('change'));await wait(300);
+
+  // the editor and the projector have to agree about it
+  w.S.slides[bi2].figScale=100;w.paint();await wait(400);
+  const inEditor=bw();
+  const html=w.stageHtml(w.S.slides[bi2],false);
+  const probe=d.createElement('div');
+  probe.className=w.stageClass(w.S.slides[bi2]);
+  probe.style.cssText='position:fixed;left:-4000px;top:0;width:1280px;height:720px';
+  probe.innerHTML=html;d.body.appendChild(probe);
+  await wait(150);
+  const sv=probe.querySelector('.bgl svg');
+  const asShown=sv?Math.round(sv.getBoundingClientRect().width):0;
+  probe.remove();
+  ok('the backdrop is the same size in the editor and on the projector',
+     Math.abs(asShown-inEditor)<8,inEditor+' vs '+asShown);
+  w.S.slides[bi2].layout='figure';w.S.slides[bi2].figScale=100;w.paint();await wait(200);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

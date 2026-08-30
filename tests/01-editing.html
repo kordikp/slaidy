@@ -8,7 +8,7 @@ addEventListener('load',async()=>{
  await wait(3500);
  const w=W.__api;
  try{
-  ok('deck loaded',w.S.slides.length===34,w.S.slides.length+' slides');
+  ok('deck loaded',w.S.slides.length>30,w.S.slides.length+' slides');
   ok('figures loaded',Object.keys(w.S.figs).length===6,Object.keys(w.S.figs).length+'');
 
   // --- reorder by drag ---

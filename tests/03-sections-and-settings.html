@@ -5,7 +5,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
  try{
-  ok('deck loaded',w.S.slides.length===34);
+  ok('deck loaded',w.S.slides.length>30,w.S.slides.length+' slides');
   ok('subsections in the bundle',
      new Set(w.S.slides.map(x=>x.sub).filter(Boolean)).size===5,
      new Set(w.S.slides.map(x=>x.sub).filter(Boolean)).size+' distinct');

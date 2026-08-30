@@ -131,7 +131,7 @@ def main():
     for s in slides:
         if s["fig"]:
             used.add(s["fig"])
-        used |= set(re.findall(r"!\[\[([a-zA-Z0-9._-]+)\]\]", s["body"] or ""))
+        used |= set(re.findall(r"!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]", s["body"] or ""))
 
     figs, seen = {}, set()
     for d in figdirs:

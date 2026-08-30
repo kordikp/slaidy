@@ -86,13 +86,20 @@ python3 scripts/build_bundle.py --src example/slides --figs example/images \
 
 ## What it does
 
-**Editing.** Click the title on the slide to change it. Hover a paragraph for move and
+**Editing.** Click the title on the slide to change it. Speaker notes sit under the slide and
+render as text, so a link to the paper behind the slide is clickable while you write and
+while you present; click the text to edit it. Hover a paragraph for move and
 delete; the icon row inserts text, lists, tables, a divider, a spacer or a figure.
 Double-click a section heading in the list to rename it on every slide under it. Drag a
 slide anywhere and it adopts the section it lands in. `Ctrl-Z` covers the last forty
 changes — one snapshot per gesture, not per keystroke.
 
-**Figures.** Click takes the whole object, double-click steps inside, `Esc` steps back
+**Figures.** A click on a picture opens its editor — editing is what you almost always
+want; swapping it is a separate button. Adding one asks which you meant: pick from the
+library, or describe what it should show and have it drawn to the same rules as the rest.
+Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
+
+Inside the editor: click takes the whole object, double-click steps inside, `Esc` steps back
 out. Drag empty space to lasso what you enclose (`Alt` for what you touch). Handles
 resize about the opposite corner, corners keeping proportions. `Ctrl-G` groups,
 `Ctrl-Shift-G` ungroups, `Ctrl-E` lifts an element out of its group carrying the
@@ -130,11 +137,18 @@ means, and word overlap cannot tell that apart from an echo.
 lists, tables and key lines stay on the slide, prose moves to the speaker notes — and
 picks the layout from what is left.
 
+**Design with AI.** One line saying what the slide is for, which doubles as the instruction.
+The panel walks you through it: an empty slide says so and offers nothing; a slide with
+content offers **Summarise**; once there is a line it becomes editable, and **Update the
+slide** only wakes up when you have actually changed it. Inside the figure editor the same
+idea applies to one selected element rather than the whole slide.
+
 **Tidy.** Layout is arranged by measuring, not by guessing: the slide is drawn into a hidden
 stage at full size once per candidate arrangement, and the one that fills the frame without
 clipping anything wins. The dials are the layout, the size of the figure, whether the slide
 sits in the middle, and — only to rescue an overflow — the body size. **It never changes a
-word.** One button does the slide, another does the deck; one undo reverses either.
+word.** The panel tidies the slide in front of you; `⋯ → Tidy every slide` does the deck.
+One undo reverses either.
 
 **Export.** PDF through the browser's own print engine (nothing is uploaded), markdown
 in the shape you started with, one `.json` bundle carrying slides and figures, or the deck

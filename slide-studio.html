@@ -139,8 +139,8 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx a{color:var(--e);text-decoration:none}
 .stage .tx .gap{height:34px}
 .stage .tx .rule{border:0;border-top:1px solid var(--line);margin:20px 0}
-.stage .tx .inlinefig{margin:12px 0;text-align:center}
-.stage .tx .inlinefig svg{max-width:100%;height:auto}
+.stage .tx .inlinefig{margin:12px 0;text-align:center;--fs:100%}
+.stage .tx .inlinefig svg{width:var(--fs);max-width:100%;height:auto;display:inline-block}
 
 /* editing affordances live on the same stage, so nothing shifts when you present */
 .stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;justify-content:center}
@@ -182,12 +182,16 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
  padding:12px 17px 14px}
 .offstage .lbl{font:650 9.5px/1 system-ui;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);
  margin-bottom:8px}
-.offstage.notes textarea{width:100%;border:1px solid transparent;border-radius:var(--r6);padding:6px 8px;
- margin:-6px -8px;font:13.5px/1.55 system-ui;color:#3A404C;background:transparent;resize:none;outline:none;
- overflow:hidden;min-height:58px}
-.offstage.notes textarea:hover{background:#F6F7F9}
-.offstage.notes textarea:focus{background:#fff;border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg);
- margin:0;width:100%}
+.offstage.notes textarea{width:100%;border:1px solid var(--acc);border-radius:var(--r6);padding:6px 8px;
+ font:13.5px/1.55 system-ui;color:#3A404C;background:#fff;resize:none;outline:none;overflow:hidden;
+ min-height:58px;box-shadow:0 0 0 3px var(--accbg)}
+.noteview{font:13.5px/1.55 system-ui;color:#3A404C;padding:6px 8px;margin:-6px -8px;border-radius:var(--r6);
+ min-height:46px;cursor:text}
+.noteview:hover{background:#F6F7F9}
+.noteview .ph{color:var(--faint)}
+.noteview a,#notes a,.psl .pn a{color:var(--e);text-decoration:underline;text-underline-offset:2px}
+.noteview a:hover{text-decoration-thickness:2px}
+#notes a{color:#7FC4FF}
 
 /* ---------- inspector ---------- */
 .sec{padding:12px 13px;border-bottom:1px solid var(--hair)}
@@ -401,6 +405,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bOpen">Open a deck…</button>
       <button id="bHist">Version history</button>
       <button id="bSave">Export…</button>
+      <button id="bTidyAll">Tidy every slide…</button>
       <button id="bRun">Trim to length…</button>
       <button id="bDeck">Deck settings…</button>
       <button id="bCfg2">AI endpoint…</button>
@@ -624,9 +629,18 @@ function fig(id){
 
 /* ---------- markdown ---------- */
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* Notes carry links to the papers behind the slide. They have to be clickable
+   while presenting, and while writing — so the field renders as text until you
+   click into it. A bare URL counts as a link too. */
+function notesHtml(t){
+  let h=inl(t||'');
+  h=h.replace(/(^|[\s(])((?:https?:\/\/)[^\s<)]+[^\s<).,;:])/g,
+    (m,pre,u)=>pre+`<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//,'')}</a>`);
+  return h;
+}
 function inl(s){
   s=esc(s);
-  s=s.replace(/!\[\[([a-zA-Z0-9._-]+)\]\]/g,'');           // inline figures handled at block level
+  s=s.replace(/!\[\[([a-zA-Z0-9._-]+)(\|\d{2,3}%)?\]\]/g,''); // inline figures handled at block level
   s=s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
   s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   s=s.replace(/(^|[^\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/g,'$1<em>$2</em>');
@@ -634,12 +648,19 @@ function inl(s){
   s=s.replace(/\$\$(.+?)\$\$/g,'<code>$1</code>');
   return s;
 }
+/* ![[fig-id]] or ![[fig-id|70%]] — the size rides with the reference, so each
+   picture on a slide can be sized on its own */
+const figRef=src=>{
+  const m=String(src).match(/^!\[\[([a-zA-Z0-9._-]+)(?:\|(\d{2,3})%)?\]\]$/);
+  return m?{id:m[1],size:m[2]?+m[2]:100}:{id:String(src).replace(/^!\[\[|\]\]$/g,''),size:100};
+};
+const figMark=(id,size)=>`![[${id}${size&&size!==100?'|'+size+'%':''}]]`;
 function blocks(md){
   const out=[];let buf=[],kind=null;
   const flush=()=>{if(buf.length){out.push({kind,src:buf.join('\n')});buf=[];kind=null;}};
   for(const raw of String(md||'').split('\n')){
     const l=raw.replace(/\s+$/,''),t=l.trim();
-    if(/^!\[\[[a-zA-Z0-9._-]+\]\]$/.test(t)){flush();out.push({kind:'fig',src:t});continue;}
+    if(/^!\[\[[a-zA-Z0-9._-]+(\|\d{2,3}%)?\]\]$/.test(t)){flush();out.push({kind:'fig',src:t});continue;}
     /* an HTML comment renders as nothing everywhere else, so the markdown stays clean */
     if(/^<!--\s*gap\s*-->$/.test(t)){flush();out.push({kind:'gap',src:'<!-- gap -->'});continue;}
     if(/^\*\*\*+$/.test(t)){flush();out.push({kind:'rule',src:'***'});continue;}
@@ -654,7 +675,10 @@ function block(b){
   if(b.kind==='gap')return '<div class="gap"></div>';
   if(b.kind==='rule')return '<hr class="rule">';
   const L=b.src.split('\n');
-  if(b.kind==='fig'){const id=b.src.replace(/^!\[\[|\]\]$/g,'');return `<div class="inlinefig">${fig(id)||'<span style="color:var(--faint)">missing figure '+esc(id)+'</span>'}</div>`;}
+  if(b.kind==='fig'){
+    const{id,size}=figRef(b.src);
+    return `<div class="inlinefig"${size!==100?` style="--fs:${size}%"`:''}>${
+      fig(id)||'<span style="color:var(--faint)">missing figure '+esc(id)+'</span>'}</div>`;}
   if(b.kind==='table'){
     const r=L.map(l=>l.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
     const body=r.slice(1).filter(x=>!x.every(c=>/^[-: ]*$/.test(c)));
@@ -928,8 +952,10 @@ function paintBoard(){
       `<button data-k="${k}" title="${SNIP[k].l}" aria-label="${SNIP[k].l}">${ico(k)}</button>`).join('')}</div>
     <div id="overflag">the text runs past the slide — cut it, or move some into the notes</div>
     <div class="offstage notes"><div class="lbl">Speaker notes · not projected</div>
-      <textarea id="fNote" placeholder="What to say, what to emphasise, what to skip when time is short."
-        >${esc(s.notes||'')}</textarea></div>`;
+      <div class="noteview" id="noteView">${(s.notes||'').trim()
+        ? notesHtml(s.notes)
+        : '<span class="ph">What to say, what to emphasise, what to skip when time is short.</span>'}</div>
+      <textarea id="fNote" class="hidden">${esc(s.notes||'')}</textarea></div>`;
   const h=sh.querySelector('.hd');h.textContent=s.title;
   h.onfocus=()=>{h.dataset.was=h.textContent;};
   h.onblur=()=>{const v=h.textContent.trim();
@@ -939,10 +965,20 @@ function paintBoard(){
   paintBody(s);
   scaleStage();
   setTimeout(checkFit,0);
-  const nt=document.getElementById('fNote');
-  nt.onfocus=()=>snap('speaker notes');
-  nt.oninput=()=>{s.notes=nt.value;touch();clearTimeout(nt.t);nt.t=setTimeout(()=>{if(!proposal)paintSide();},500);};
-  nt.style.height='auto';nt.style.height=Math.max(58,nt.scrollHeight)+'px';
+  const nt=document.getElementById('fNote'),nv=document.getElementById('noteView');
+  const grow=()=>{nt.style.height='auto';nt.style.height=Math.max(58,nt.scrollHeight)+'px';};
+  nv.onclick=e=>{
+    if(e.target.closest('a'))return;          /* let a link be a link */
+    nv.classList.add('hidden');nt.classList.remove('hidden');grow();nt.focus();
+    snap('speaker notes');
+  };
+  nt.oninput=()=>{s.notes=nt.value;touch();grow();
+    clearTimeout(nt.t);nt.t=setTimeout(()=>{if(!proposal)paintSide();},500);};
+  nt.onblur=()=>{
+    nt.classList.add('hidden');nv.classList.remove('hidden');
+    nv.innerHTML=(s.notes||'').trim()?notesHtml(s.notes)
+      :'<span class="ph">What to say, what to emphasise, what to skip when time is short.</span>';
+  };
   document.getElementById('plus').onclick=e=>{
     const k=e.target.closest('button')?.dataset?.k;if(k)insertBlock(k,blocks(s.body).length);
   };
@@ -965,12 +1001,24 @@ function checkFit(){
 }
 function paintHero(s){
   const el=document.getElementById('hero');if(!el)return;
-  el.innerHTML=(s.fig&&S.figs[s.fig]?fig(s.fig):'<div class="empty">no figure — click to choose</div>')+
-   `<div class="figtools"><button data-a="pick">Change</button>${s.fig?'<button data-a="ai">Edit</button><button data-a="x">Remove</button>':''}</div>`;
-  el.onclick=e=>{const a=e.target.dataset?.a;
+  const on=s.fig&&S.figs[s.fig];
+  el.innerHTML=(on?fig(s.fig):'<div class="empty">no figure yet — click to add one</div>')+
+   (on?`<div class="figtools">
+      <button data-a="sm" title="Smaller">−</button>
+      <button data-a="bg" title="Bigger">+</button>
+      <button data-a="sw" title="Swap for another">⇄</button>
+      <button data-a="x" title="Remove">✕</button></div>`:'');
+  el.onclick=e=>{
+    const a=e.target.dataset?.a;
     if(a==='x'){snap('remove figure');s.fig=null;s.layout='text';touch();paint();return;}
-    if(a==='ai'){figEdit(s);return;}
-    gallery(id=>{s.fig=id;if(s.layout==='text')s.layout='figure';touch();paint();});};
+    if(a==='sw'){pickFigure(id=>{snap('figure');s.fig=id;touch();paint();});return;}
+    if(a==='sm'||a==='bg'){snap('figure size');
+      s.figScale=Math.min(100,Math.max(30,(s.figScale||100)+(a==='bg'?10:-10)));
+      touch();paint();return;}
+    if(!on)return pickFigure(id=>{snap('figure');s.fig=id;
+      if(s.layout==='text')s.layout='figure';touch();paint();});
+    figEdit(s);                       /* a click on the picture means edit it */
+  };
 }
 const ICO={
   para :'<path d="M2 3.5h10M2 7h10M2 10.5h6.5"/>',
@@ -1004,7 +1052,7 @@ function insertBlock(kind,at){
     const a=blocks(s.body);a.splice(at,0,{kind,src});
     s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();
     if(kind==='para')setTimeout(()=>document.querySelectorAll('#bd .bk')[at]?.click(),30);};
-  if(kind==='fig')gallery(id=>put('![['+id+']]'));else put(SNIP[kind].src);
+  if(kind==='fig')pickFigure(id=>put(figMark(id,100)));else put(SNIP[kind].src);
 }
 function insertMenu(anchor,at){
   document.querySelector('.inspop')?.remove();
@@ -1026,7 +1074,9 @@ function paintBody(s){
     const d=document.createElement('div');d.className='bk';
     const isFig=b.kind==='fig';
     d.innerHTML=block(b)+`<div class="bkt">
-      ${isFig?'<button data-m="fed" title="Edit this figure">✎</button>'+
+      ${isFig?'<button data-m="fsm" title="Smaller">−</button>'+
+              '<button data-m="fbg" title="Bigger">+</button>'+
+              '<button data-m="fed" title="Edit this figure">✎</button>'+
               '<button data-m="fsw" title="Swap for another">⇄</button>':''}
       <button data-m="add" title="Insert below">＋</button>
       <button data-m="up" title="Move up">▲</button>
@@ -1035,14 +1085,16 @@ function paintBody(s){
     d.onclick=ev=>{
       const m=ev.target.dataset?.m;
       if(m==='add'){ev.stopPropagation();return insertMenu(ev.target,bi+1);}
-      if(m==='fed'||m==='fsw'){
+      if(m&&/^f/.test(m)){
         ev.stopPropagation();
-        const id=b.src.replace(/^!\[\[|\]\]$/g,'');
-        const swap=nid=>{snap('figure');
-          const a=blocks(s.body);a[bi]={kind:'fig',src:'![['+nid+']]'};
+        const{id,size}=figRef(b.src);
+        const put=(nid,nsz)=>{snap('figure');
+          const a=blocks(s.body);a[bi]={kind:'fig',src:figMark(nid??id,nsz??size)};
           s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);};
-        if(m==='fsw')return gallery(swap);
-        return figEdit(s,id,swap);
+        if(m==='fsw')return pickFigure(nid=>put(nid,null));
+        if(m==='fsm')return put(null,Math.max(30,size-10));
+        if(m==='fbg')return put(null,Math.min(100,size+10));
+        if(m==='fed')return figEdit(s,id,nid=>put(nid,null));
       }
       if(m){ev.stopPropagation();snap(m==='rm'?'delete paragraph':'move paragraph');const a=blocks(s.body);
         if(m==='rm')a.splice(bi,1);
@@ -1052,9 +1104,9 @@ function paintBody(s){
       if(ev.target.closest('svg')){
         if(!isFig)return;
         ev.stopPropagation();
-        const id=b.src.replace(/^!\[\[|\]\]$/g,'');
+        const{id,size}=figRef(b.src);
         return figEdit(s,id,nid=>{snap('figure');
-          const a=blocks(s.body);a[bi]={kind:'fig',src:'![['+nid+']]'};
+          const a=blocks(s.body);a[bi]={kind:'fig',src:figMark(nid,size)};
           s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);});
       }
       snap('text');
@@ -1175,16 +1227,25 @@ function paintSide(){
   const s=S.slides[cur],el=document.getElementById('side');
   if(!s){el.innerHTML='';return;}
   const has=s.fig&&S.figs[s.fig];
+  const empty=!has&&!(s.body||'').trim()&&!(s.notes||'').trim();
   const deckSecs=S.slides.reduce((a,x)=>a+stats(x).secs,0);
 
   el.innerHTML=`
-  <div class="sec"><div class="sect">What this slide is for</div>
-    <textarea id="fSum" rows="3" placeholder="One or two lines. Edit it, then ask AI to make the slide match."
-      >${esc(s.summary||'')}</textarea>
-    <div class="rw" style="margin-top:6px">
-      <button class="b" id="bSum" title="Read the slide and write this line for me">Summarise</button>
-      <button class="b p" id="bMatch" title="Rewrite the slide so it delivers exactly this">Make it match</button>
-    </div>
+  <div class="sec"><div class="sect">Design with AI</div>
+    ${empty
+      ? `<div class="tip">Nothing on this slide yet. Give it a title and something in the body —
+          or add a figure — and AI can take it from there.</div>`
+      : !(s.summary||'').trim()
+        ? `<div class="tip">Have AI read the slide and say, in one line, what it is for.
+             Edit that line and it will rewrite the slide to match.</div>
+           <button class="b p" id="bSum" style="width:100%;margin-top:8px">Summarise this slide</button>`
+        : `<textarea id="fSum" rows="3">${esc(s.summary)}</textarea>
+           <div class="rw" style="margin-top:6px">
+             <button class="b p" id="bMatch" disabled title="Edit the line first">Update the slide</button>
+             <button class="b" id="bSum" title="Read the slide again">↻</button>
+           </div>
+           <div class="tip" id="sumHint">Change the line, then update. One <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+             puts the slide back.</div>`}
   </div>
 
   <div class="sec"><div class="sect">Layout</div>
@@ -1209,10 +1270,9 @@ function paintSide(){
   </div>
 
   <div class="sec"><div class="sect">Tidy</div>
-    <button class="b p" id="bTidy" style="width:100%">Tidy this slide</button>
-    <button class="b" id="bTidyAll" style="width:100%;margin-top:5px">Tidy every slide…</button>
+    <button class="b" id="bTidy" style="width:100%">Tidy this slide</button>
     <div class="tip">Arranges the layout, the size of the figure and the type by measuring what fits.
-      It never changes a word.</div>
+      It never changes a word. For the whole deck, see <b>⋯ → Tidy every slide</b>.</div>
   </div>
 
   <div class="sec">
@@ -1225,8 +1285,20 @@ function paintSide(){
   </div>`;
 
   const sum=el.querySelector('#fSum');
-  sum.onfocus=()=>snap('summary');
-  sum.oninput=()=>{s.summary=sum.value;touch();};
+  if(sum){
+    const original=sum.value;
+    sum.onfocus=()=>snap('summary');
+    sum.oninput=()=>{
+      s.summary=sum.value;touch();
+      const btn=el.querySelector('#bMatch');
+      const changed=sum.value.trim()&&sum.value.trim()!==original.trim();
+      btn.disabled=!changed;
+      btn.title=changed?'Rewrite the slide to deliver this':'Edit the line first';
+      el.querySelector('#sumHint').textContent=changed
+        ? 'Ready — this will rewrite the body and the title to match.'
+        : 'Change the line, then update.';
+    };
+  }
   const fz=el.querySelector('#fSize');
   if(fz){
     fz.oninput=()=>{document.getElementById('fsLab').textContent=fz.value+' %';
@@ -1236,13 +1308,13 @@ function paintSide(){
   }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
-    if(s.layout!=='text'&&!s.fig)gallery(id=>{s.fig=id;touch();paint();});else{touch();paint();}});
-  el.querySelector('#bSum').onclick=askSummary;
-  el.querySelector('#bMatch').onclick=()=>{
+    if(s.layout!=='text'&&!s.fig)pickFigure(id=>{s.fig=id;touch();paint();});else{touch();paint();}});
+  el.querySelector('#bSum')?.addEventListener('click',askSummary);
+  el.querySelector('#bMatch')?.addEventListener('click',()=>{
     const v=sum.value.trim();
-    if(!v){toast('Write what the slide is for first');sum.focus();return;}
+    if(!v)return;
     ask(`Rewrite this slide so it delivers exactly this, and nothing else: "${v}"`);
-  };
+  });
   el.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>ask(AI_ACTS[+b.dataset.i].p));
   el.querySelector('#bAsk').onclick=()=>ask(document.getElementById('aiIn').value.trim());
   el.querySelector('#bMd').onclick=editMarkdown;
@@ -1252,7 +1324,7 @@ function paintSide(){
     touch();paint();
     toast(changed?`Tidied — ${LAYNAME[S.slides[cur].layout]}, figure ${S.slides[cur].figScale} %`
                  :'Already as good as it gets');};
-  el.querySelector('#bTidyAll').onclick=tidyAllDialog;
+
   el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
 }
 
@@ -1351,17 +1423,70 @@ function editMarkdown(){
 }
 
 /* ---------- gallery ---------- */
-function gallery(pick){
+/* Adding a picture is two different wishes: one you already have, or one that
+   does not exist yet. Both live here so the choice is in front of you. */
+function pickFigure(pick){
   const ids=Object.keys(S.figs).sort();
-  dialog(`<h3>Figures</h3><input id="q" placeholder="filter…" style="width:100%;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px">
-    <div class="gal" id="gal"></div>${ids.length?'':'<p class="tip">No figures loaded. Drop .svg files onto the window.</p>'}`);
-  const g=document.getElementById('gal');
-  const draw=q=>{g.innerHTML='';ids.filter(i=>!q||i.includes(q)).slice(0,240).forEach(id=>{
-    const c=document.createElement('div');c.className='c';
-    c.innerHTML=scopeSvg(S.figs[id],'g'+(++uidN))+`<span>${id}</span>`;
-    c.onclick=()=>{closeDialog();pick(id);};g.appendChild(c);});};
-  draw('');document.getElementById('q').oninput=e=>draw(e.target.value.trim().toLowerCase());
+  dialog(`<div class="fehead">
+      <h3>Add a figure</h3>
+      <div class="fetabs"><button data-t="lib" class="on">From the library</button>
+        <button data-t="new">Draw a new one</button></div>
+      <span style="flex:1"></span>
+      <button class="b" id="pfNo">Cancel</button></div>
+    <div id="pfBody" style="padding:14px 16px;overflow:auto;max-height:70vh"></div>`,'wide2');
+  const body=document.getElementById('pfBody');
+  const lib=()=>{
+    body.innerHTML=`<input id="q" placeholder="filter…" class="pffilter">
+      <div class="gal" id="gal"></div>
+      ${ids.length?'':'<p class="tip">Nothing here yet. Drop .svg files onto the window, or draw one.</p>'}`;
+    const g=document.getElementById('gal');
+    const draw=q=>{g.innerHTML='';ids.filter(i=>!q||i.includes(q)).slice(0,240).forEach(id=>{
+      const c=document.createElement('div');c.className='c';
+      c.innerHTML=scopeSvg(S.figs[id],'g'+(++uidN))+`<span>${esc(id)}</span>`;
+      c.onclick=()=>{closeDialog();pick(id);};g.appendChild(c);});};
+    draw('');document.getElementById('q').oninput=e=>draw(e.target.value.trim().toLowerCase());
+  };
+  const make=()=>{
+    body.innerHTML=`<div class="fld"><label>What should it show?</label>
+      <textarea id="nfWhat" rows="4" placeholder="e.g. a funnel from a catalogue of 100 million items down to ten, with the cost per candidate rising left to right"></textarea></div>
+     <div class="fld"><label>Name</label><input id="nfId" placeholder="fig-my-diagram"></div>
+     <div class="rw"><button class="b p" id="nfGo">Draw it</button></div>
+     <div class="tip">Drawn to the same rules as the rest: an 800 × 450 canvas, the locked palette,
+      CSS keyframes, legible at projection size.</div>
+     <div id="nfOut" class="hidden" style="margin-top:12px"></div>`;
+    document.getElementById('nfGo').onclick=async()=>{
+      const what=document.getElementById('nfWhat').value.trim();
+      if(!what){toast('Say what it should show');return;}
+      const out=document.getElementById('nfOut');out.classList.remove('hidden');
+      out.innerHTML='<span class="spin"></span> drawing…';
+      try{
+        const t=await llm(FIG_SYS,`Draw a new figure.\n\nWHAT IT MUST SHOW: ${what}\n\n`+
+          `SLIDE: ${S.slides[cur]?S.slides[cur].title:''}`,20000);
+        const c=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+        const a=c.indexOf('<svg'),b2=c.lastIndexOf('</svg>');
+        if(a<0||b2<0){out.textContent='The model did not return an SVG.';return;}
+        const svg=c.slice(a,b2+6),bad=checkSvg(svg);
+        out.innerHTML=`<div class="fepv">${scopeSvg(svg,'n'+(++uidN))}</div>
+          ${bad.length?`<p class="tip" style="color:var(--b)">Warnings: ${esc(bad.join('; '))}</p>`:''}
+          <div class="rw" style="margin-top:8px"><button class="b p" id="nfUse">Use it</button>
+            <button class="b" id="nfAgain">Draw another</button></div>`;
+        document.getElementById('nfUse').onclick=()=>{
+          let id=(document.getElementById('nfId').value.trim()||
+            'fig-'+what.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,32).replace(/^-|-$/g,''));
+          if(!/^fig-/.test(id))id='fig-'+id;
+          let n=id;for(let k=2;S.figs[n];k++)n=id+'-'+k;
+          snap('new figure');S.figs[n]=svg;touch();closeDialog();pick(n);};
+        document.getElementById('nfAgain').onclick=()=>out.classList.add('hidden');
+      }catch(e){out.textContent='Failed: '+e.message;}
+    };
+  };
+  document.querySelectorAll('.dlg .fetabs button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('.dlg .fetabs button').forEach(x=>x.classList.toggle('on',x===b));
+    (b.dataset.t==='lib'?lib:make)();});
+  document.getElementById('pfNo').onclick=closeDialog;
+  lib();
 }
+
 
 /* ---------- AI ---------- */
 const cfg=()=>{try{return JSON.parse(localStorage.getItem('studio:cfg')||'{}');}catch(e){return{};}};
@@ -1452,7 +1577,7 @@ let FE=null;
 function figEdit(s,figId,onRename){
   const id=figId||s.fig;
   if(!id||!S.figs[id]){
-    gallery(x=>{s.fig=x;if(s.layout==='text')s.layout='figure';touch();paint();figEdit(s);});return;}
+    pickFigure(x=>{s.fig=x;if(s.layout==='text')s.layout='figure';touch();paint();figEdit(s);});return;}
   FE={slide:s,id,src:S.figs[id],onRename:onRename||null,sel:null,sels:[],hist:[],tab:'design'};
   dialog(`<div class="fehead">
       <h3>${esc(id)}</h3>
@@ -2462,9 +2587,7 @@ function articleMd(){
     if(notes)out+=notes+'\n\n';
     quote.forEach(b=>{out+=b.src+'\n\n';});
     rest.forEach(b=>{
-      out+=(b.kind==='fig'
-        ? `![](images/${b.src.replace(/^!\[\[|\]\]$/g,'')}.svg)`
-        : b.src)+'\n\n';});
+      out+=(b.kind==='fig'?`![](images/${figRef(b.src).id}.svg)`:b.src)+'\n\n';});
   });
   return out.replace(/\n{3,}/g,'\n\n');
 }
@@ -2545,7 +2668,7 @@ function save(){
    own print engine, so there is no dependency and no upload. */
 function printSlide(s,withNotes){
   const notes=withNotes&&(s.notes||'').trim()
-    ?`<div class="pn"><b>Notes.</b> ${esc(s.notes.trim())}</div>`:'';
+    ?`<div class="pn"><b>Notes.</b> ${notesHtml(s.notes.trim())}</div>`:'';
   return `<section class="psl${withNotes?' withnotes':''}">
     <div class="${stageClass(s)}">${stageHtml(s,false)}</div>${notes}</section>`;
 }
@@ -2576,7 +2699,7 @@ function paintDeck(){
     `${(at<0?cur:at)+1} / ${R.length}${s.skip?' · hidden':''}`;
   const has=s.fig&&S.figs[s.fig];
   const n=(s.notes||'').trim()||(has?String(s.body||'').replace(/[#*`>|]/g,'').slice(0,900):'—');
-  document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${esc(n)}`;
+  document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${notesHtml(n)}`;
   fit();
 }
 
@@ -2698,6 +2821,7 @@ document.getElementById('bMore').onclick=e=>{e.stopPropagation();pop.classList.t
 document.addEventListener('click',()=>pop.classList.remove('on'));
 pop.onclick=e=>e.stopPropagation();
 pop.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>pop.classList.remove('on')));
+document.getElementById('bTidyAll').onclick=tidyAllDialog;
 document.getElementById('bRun').onclick=trimDialog;
 document.getElementById('bDeck').onclick=deckSettings;
 document.getElementById('bCfg2').onclick=configure;

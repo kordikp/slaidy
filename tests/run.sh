@@ -34,7 +34,8 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   mdParse,mdPreview,mdNormalise,llm,stageHtml,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
   fig,toggleSkip,liveIdx,liveStats,planTrim,scoreSlide,trimDialog,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
-  get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v}};"""
+  get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},
+  pickFigure,figRef,figMark,notesHtml,tidyAllDialog,askSummary};"""
 open(p, "w", encoding="utf-8").write(s[:i] + hook + s[i:])
 PY
 

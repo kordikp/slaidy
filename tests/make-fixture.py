@@ -83,9 +83,17 @@ def main():
                     "pick": False,
                 })
     # one slide places a figure inside the body, the way ![[fig-id]] does
-    slides[1]["body"] = "A line before the mark.\n\n![[fig-marks]]\n\nAnd a line after it."
+    slides[1]["body"] = ("A line before the mark.\n\n![[fig-marks]]\n\n"
+                        "![[fig-panel-2|60%]]\n\nAnd a line after it.")
     slides[1]["fig"] = None
     slides[1]["layout"] = "text"
+
+    # one slide with nothing on it at all, for the empty-slide path
+    slides.append({"n": len(slides) + 1, "tag": "S", "group": SECTIONS[-1][0], "sub": None,
+                   "title": "An empty slide", "fig": None, "layout": "text",
+                   "body": "", "notes": "", "summary": "", "pick": False})
+    # and one whose notes carry a link
+    slides[2]["notes"] = "Background: https://arxiv.org/abs/2409.10309 and [the paper](https://example.org/p)."
 
     figs = {"fig-marks": marks()}
     figs.update({f"fig-panel-{i}": panel(i) for i in range(1, 6)})

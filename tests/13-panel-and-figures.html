@@ -1,0 +1,92 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await wait(3500); const w=W.__api;
+ try{
+  // ---------- the staged AI panel ----------
+  const ei=w.S.slides.findIndex(x=>!x.fig&&!(x.body||'').trim()&&!(x.notes||'').trim());
+  ok('fixture has an empty slide',ei>=0,'slide '+(ei+1));
+  w.cur=ei;w.paint();await wait(150);
+  ok('empty slide offers no Summarise',!d.getElementById('bSum'));
+  ok('and says why',/Nothing on this slide yet/i.test(d.getElementById('side').textContent));
+
+  const ni=w.S.slides.findIndex(x=>(x.body||'').trim()&&!(x.summary||'').trim());
+  w.cur=ni;w.paint();await wait(150);
+  ok('a slide with content offers Summarise',!!d.getElementById('bSum'));
+  ok('and shows no text box yet',!d.getElementById('fSum'));
+  ok('nor an Update button',!d.getElementById('bMatch'));
+
+  const si=w.S.slides.findIndex(x=>(x.summary||'').trim());
+  w.cur=si;w.paint();await wait(150);
+  const box=d.getElementById('fSum'),upd=d.getElementById('bMatch');
+  ok('with a summary, the text box appears',!!box,box&&box.value.slice(0,26));
+  ok('Update starts disabled',!!upd&&upd.disabled);
+  box.value=box.value+' and then some.';
+  box.dispatchEvent(new W.Event('input'));await wait(80);
+  ok('editing enables Update',!d.getElementById('bMatch').disabled);
+  ok('and the hint changes',/Ready/i.test(d.getElementById('sumHint').textContent),
+     d.getElementById('sumHint').textContent.slice(0,30));
+  box.value=w.S.slides[si].summary=box.value.replace(' and then some.','');
+  box.dispatchEvent(new W.Event('input'));await wait(80);
+  ok('putting it back disables Update again',d.getElementById('bMatch').disabled);
+
+  // ---------- tidy every slide moved out of the panel ----------
+  ok('the panel tidies only this slide',!!d.querySelector('#side #bTidy')&&!d.querySelector('#side #bTidyAll'));
+  ok('the deck-wide one is in the menu',!!d.querySelector('#pop #bTidyAll'));
+
+  // ---------- per-figure size ----------
+  const ii=w.S.slides.findIndex(x=>/!\[\[fig-panel-2\|60%\]\]/.test(x.body||''));
+  ok('fixture has a sized inline figure',ii>=0,'slide '+(ii+1));
+  w.cur=ii;w.paint();await wait(250);
+  const figs=[...d.querySelectorAll('#bd .inlinefig')];
+  ok('both inline figures render',figs.length===2,figs.length+'');
+  const wide=figs[0].querySelector('svg').getBoundingClientRect().width;
+  const narrow=figs[1].querySelector('svg').getBoundingClientRect().width;
+  ok('the sized one is smaller',narrow<wide*0.75,Math.round(wide)+' vs '+Math.round(narrow));
+  ok('the size survives markdown',/!\[\[fig-panel-2\|60%\]\]/.test(w.slideMd(w.S.slides[ii])));
+  const rt=w.importMarkdown('x.md','# A\n\n'+w.slideMd(w.S.slides[ii]));
+  ok('and comes back',/!\[\[fig-panel-2\|60%\]\]/.test(rt[0].body));
+  // the − button steps it down
+  const bk=[...d.querySelectorAll('#bd .bk')].find(x=>/fig-panel-2/.test(
+    w.blocks(w.S.slides[ii].body)[[...d.querySelectorAll('#bd .bk')].indexOf(x)]?.src||''));
+  const minus=bk&&bk.querySelector('[data-m="fsm"]');
+  ok('an inline figure has a size control',!!minus);
+  minus.click();await wait(150);
+  ok('minus makes it smaller',/!\[\[fig-panel-2\|50%\]\]/.test(w.S.slides[ii].body),
+     (w.S.slides[ii].body.match(/!\[\[fig-panel-2[^\]]*\]\]/)||[''])[0]);
+  w.undo();await wait(120);
+
+  // ---------- clicking a figure edits it ----------
+  const hi=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');
+  w.cur=hi;w.paint();await wait(250);
+  const svg=d.querySelector('#sheet .hero svg');
+  ok('the slide shows its figure',!!svg);
+  svg.dispatchEvent(new W.MouseEvent('click',{bubbles:true}));await wait(900);
+  ok('clicking it opens the editor, not a picker',!!d.getElementById('fefr')&&
+     !d.querySelector('.dlg.wide2'),d.getElementById('fefr')?'editor':'something else');
+  d.getElementById('feCancel').click();await wait(150);
+  // and the swap button does open the picker
+  d.querySelector('.hero [data-a="sw"]').click();await wait(250);
+  ok('the swap button opens the picker',!!d.querySelector('.dlg.wide2'));
+  ok('the picker offers to draw a new one',/Draw a new one/.test(d.querySelector('.dlg').textContent));
+  d.getElementById('pfNo').click();await wait(120);
+
+  // ---------- links in the notes ----------
+  const li=w.S.slides.findIndex(x=>/https?:\/\//.test(x.notes||''));
+  ok('fixture has notes with a link',li>=0,'slide '+(li+1));
+  w.cur=li;w.paint();await wait(200);
+  const nv=d.getElementById('noteView');
+  ok('notes render as text, not a raw box',!!nv&&d.getElementById('fNote').classList.contains('hidden'));
+  const as=nv.querySelectorAll('a[href^="https"]');
+  ok('and the links are clickable',as.length===2,as.length+' links');
+  ok('they open in a new tab',[...as].every(a=>a.target==='_blank'));
+  nv.click();await wait(120);
+  ok('clicking the text opens the editor',!d.getElementById('fNote').classList.contains('hidden'));
+  d.getElementById('fNote').blur();await wait(120);
+  ok('and blurring renders it again',!!d.getElementById('noteView').querySelector('a'));
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

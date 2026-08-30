@@ -116,8 +116,15 @@ use it. Fenced code keeps its lines and labels its language.
 
 **Editing.** Click the title on the slide to change it. Speaker notes sit under the slide and
 render as text, so a link to the paper behind the slide is clickable while you write and
-while you present; click the text to edit it. Hover a paragraph for move and
-delete; the icon row inserts text, lists, tables, a divider, a spacer or a figure.
+while you present; click the text to edit it. **Reordering what is on a slide.** Hover a paragraph and its own controls appear in its top-right
+corner: a grip to **drag it anywhere on the slide**, ＋ to insert a block **directly below it**, ▲ ▼
+to move it a step, ✕ to delete. A line shows where a dragged block would land, and one undo puts
+the order back. The icon row along the bottom appends instead.
+
+These controls existed before and nobody could see them: they were positioned in a gutter at
+`left:-34px`, outside the text column, which scrolls — so they were clipped away on every slide.
+There is no gutter to have, because the column *is* the slide. (Two copies of the same CSS rule had
+also drifted apart, and the later one was quietly winning.)
 Double-click a section heading in the list to rename it on every slide under it. Drag a
 slide anywhere and it adopts the section it lands in. `Ctrl-Z` covers the last forty
 changes — one snapshot per gesture, not per keystroke.

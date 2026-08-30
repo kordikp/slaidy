@@ -219,11 +219,24 @@ button{cursor:pointer;background:none;border:none}
  padding:2px 7px;border-radius:20px;white-space:nowrap;display:none}
 .stage .fx.sizing .figpct{display:block}
 .stage .fx.sizing{outline:1px solid var(--acc);outline-offset:2px}
+/* The block controls used to sit in a gutter at left:-34px — outside the text
+   column, which scrolls, so they were clipped away and nobody ever saw them.
+   There is no gutter to have: the column is the slide. They ride inside the
+   block's own top-right corner instead, over the content, on hover only. */
 .bk{position:relative;border-radius:5px;padding:0 6px;margin:0 -6px}
 .bk:hover{background:#F6F7F9;cursor:text}
-.bkt{position:absolute;left:-34px;top:1px;display:none;flex-direction:column;gap:2px;z-index:3}
+.bk.dragging{opacity:.4}
+.bk.dropbefore{box-shadow:0 -2px 0 var(--acc)}
+.bk.dropafter{box-shadow:0 2px 0 var(--acc)}
+/* right:9 not 3 — the block hangs 6px past the column on each side (margin:0 -6px),
+   and the column is what clips */
+.bkt{position:absolute;right:9px;top:3px;display:none;flex-direction:row;gap:1px;z-index:3;
+ background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:6px;padding:2px;
+ box-shadow:0 1px 4px rgba(20,22,27,.09)}
 .bk:hover .bkt{display:flex}
-.bkt button{width:26px;height:19px;border-radius:4px;color:var(--faint);font-size:12px;line-height:1;
+.bkt .grip{cursor:grab}
+.bkt .grip:active{cursor:grabbing}
+.bkt button{width:23px;height:18px;border-radius:4px;color:var(--faint);font-size:11px;line-height:1;
  display:grid;place-items:center;background:#fff;border:1px solid var(--line)}
 .bkt button:hover{color:var(--acc);border-color:var(--acc)}
 textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9px 12px;
@@ -512,13 +525,6 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .fepv svg{width:100%;height:auto}
 .fepanel .sec:first-child{padding-top:13px}
 
-/* block handles on the board */
-.bk{position:relative}
-.bkt{position:absolute;left:-30px;top:1px;display:none;flex-direction:column;gap:1px;z-index:3}
-.bk:hover .bkt{display:flex}
-.bkt button{width:22px;height:16px;border-radius:3px;color:var(--faint);font-size:10px;line-height:1;
- display:grid;place-items:center;background:#fff;border:1px solid var(--line)}
-.bkt button:hover{color:var(--acc);border-color:var(--acc)}
 .item .eye{color:var(--line);font-size:10.5px;line-height:1;flex:none;padding:0 2px;opacity:0;transition:.12s}
 .item:hover .eye{opacity:1}
 .item.skipped .eye{opacity:1;color:var(--faint)}
@@ -1922,13 +1928,14 @@ function paintBody(s){
     const d=document.createElement('div');d.className='bk';
     const isFig=b.kind==='fig';
     d.innerHTML=block(b)+`<div class="bkt">
-
+      <button class="grip" data-m="grip" title="Drag to reorder">⠿</button>
       <button data-m="add" title="Insert below">＋</button>
       <button data-m="up" title="Move up">▲</button>
       <button data-m="dn" title="Move down">▼</button>
       <button data-m="rm" title="Delete">✕</button></div>`;
     d.onclick=ev=>{
       const m=ev.target.dataset?.m;
+      if(m==='grip'){ev.stopPropagation();return;}
       if(m==='add'){ev.stopPropagation();return insertMenu(ev.target,bi+1);}
 
       if(m){ev.stopPropagation();snap(m==='rm'?'delete paragraph':'move paragraph');const a=blocks(s.body);
@@ -1952,6 +1959,37 @@ function paintBody(s){
       ta.onblur=done;
       ta.onkeydown=e=>{if(e.key==='Escape'){ta.onblur=null;paintBody(s);}
         if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))ta.blur();};
+    };
+    /* Drag from the grip, not from the block — otherwise selecting a word in a
+       paragraph starts a drag instead. */
+    d.querySelector('.grip').onmousedown=()=>{d.draggable=true;};
+    d.onmouseup=()=>{d.draggable=false;};
+    d.ondragstart=e=>{
+      e.dataTransfer.setData('bk',String(bi));e.dataTransfer.effectAllowed='move';
+      d.classList.add('dragging');
+    };
+    d.ondragend=()=>{d.draggable=false;d.classList.remove('dragging');
+      w.querySelectorAll('.bk').forEach(x=>x.classList.remove('dropbefore','dropafter'));};
+    d.ondragover=e=>{
+      if(!e.dataTransfer.types.includes('bk'))return;
+      e.preventDefault();e.dataTransfer.dropEffect='move';
+      const r=d.getBoundingClientRect(),after=e.clientY>r.top+r.height/2;
+      w.querySelectorAll('.bk').forEach(x=>x.classList.remove('dropbefore','dropafter'));
+      d.classList.add(after?'dropafter':'dropbefore');
+    };
+    d.ondragleave=()=>d.classList.remove('dropbefore','dropafter');
+    d.ondrop=e=>{
+      const from=+e.dataTransfer.getData('bk');
+      if(!isFinite(from))return;
+      e.preventDefault();e.stopPropagation();
+      const r=d.getBoundingClientRect(),after=e.clientY>r.top+r.height/2;
+      let to=bi+(after?1:0);
+      if(from===to||from===to-1)return paintBody(s);
+      snap('move paragraph');
+      const a=blocks(s.body);const[m]=a.splice(from,1);
+      if(from<to)to--;
+      a.splice(to,0,m);
+      write(a);
     };
     w.appendChild(d);
     if(b.kind==='fig'){

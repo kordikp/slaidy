@@ -121,6 +121,74 @@ addEventListener('load',async()=>{
   ok('deck rendered',!!d.querySelector('#deck h2'));
   await w.present(false); await wait(100);
   ok('back to editing',!d.getElementById('show').classList.contains('on'));
+
+  // ---------- reordering paragraphs on a slide ----------
+  const bi=w.S.slides.findIndex(x=>w.blocks(x.body||'').length>=3&&x.layout==='text');
+  w.cur=bi>=0?bi:0;
+  if(bi<0)w.S.slides[0].body='First para.\n\nSecond para.\n\nThird para.';
+  w.paint();await wait(300);
+  const blk=()=>d.querySelectorAll('#bd .bk');
+  ok('each paragraph has its own controls',blk().length>=3&&!!blk()[0].querySelector('.bkt'),
+     blk().length+' blocks');
+  const bar=blk()[0].querySelector('.bkt');
+  bar.style.display='flex';
+  const col=d.getElementById('stage').querySelector('.tx');
+  const R=e=>e.getBoundingClientRect();
+  ok('and they are inside the slide, not clipped off it',
+     R(bar).left>=R(col).left&&R(bar).right<=R(col).right+1,
+     Math.round(R(bar).left)+'..'+Math.round(R(bar).right)+' in '+
+     Math.round(R(col).left)+'..'+Math.round(R(col).right));
+  ok('with a grip to drag by',!!blk()[0].querySelector('.grip'));
+  ok('and insert, move and delete',
+     [...bar.querySelectorAll('button')].map(b=>b.dataset.m).join()==='grip,add,up,dn,rm',
+     [...bar.querySelectorAll('button')].map(b=>b.dataset.m).join());
+
+  const src0=w.blocks(w.S.slides[w.cur].body).map(x=>x.src);
+  // the arrows still work
+  blk()[1].querySelector('[data-m="up"]').dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  await wait(250);
+  const up=w.blocks(w.S.slides[w.cur].body).map(x=>x.src);
+  ok('the up arrow swaps with the one above',up[0]===src0[1]&&up[1]===src0[0],
+     JSON.stringify(up.slice(0,2).map(x=>x.slice(0,14))));
+  w.undo();await wait(250);
+  ok('and undoes',w.blocks(w.S.slides[w.cur].body)[0].src===src0[0]);
+
+  // drag the first block below the third
+  const dt=new W.DataTransfer();
+  const first=blk()[0],third=blk()[2];
+  first.querySelector('.grip').dispatchEvent(new W.MouseEvent('mousedown',{bubbles:true}));
+  first.dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dt}));
+  ok('dragging marks the block',first.classList.contains('dragging'));
+  const r3=R(third);
+  third.dispatchEvent(new W.DragEvent('dragover',
+    {bubbles:true,cancelable:true,dataTransfer:dt,clientY:r3.bottom-2}));
+  await wait(60);
+  ok('the drop line shows where it would land',third.classList.contains('dropafter'),
+     third.className);
+  third.dispatchEvent(new W.DragEvent('drop',
+    {bubbles:true,cancelable:true,dataTransfer:dt,clientY:r3.bottom-2}));
+  await wait(300);
+  const moved=w.blocks(w.S.slides[w.cur].body).map(x=>x.src);
+  ok('dropping moves the paragraph there',moved[2]===src0[0],
+     JSON.stringify(moved.slice(0,3).map(x=>x.slice(0,14))));
+  ok('and the others close the gap',moved[0]===src0[1]&&moved[1]===src0[2]);
+  ok('nothing was lost',moved.length===src0.length,moved.length+' of '+src0.length);
+  w.undo();await wait(250);
+  ok('one undo puts the order back',
+     w.blocks(w.S.slides[w.cur].body).map(x=>x.src).join('|')===src0.join('|'));
+
+  // and ＋ inserts right below the block you pressed it on
+  blk()[0].querySelector('[data-m="add"]').dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  await wait(150);
+  const pop2=d.querySelector('.inspop');
+  ok('the plus opens the block menu',!!pop2);
+  pop2.querySelector('[data-k="quote"]').dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  await wait(300);
+  const after=w.blocks(w.S.slides[w.cur].body);
+  ok('and inserts below that one, not at the end',after[1].kind==='quote',
+     after.map(x=>x.kind).join(','));
+  w.undo();await wait(200);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.title=L.filter(x=>x.startsWith('FAIL')||x.startsWith('ERROR')).length+' problems';
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

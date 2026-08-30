@@ -3044,6 +3044,76 @@ function feToParent(el,x,y){
   }catch(e){return{x,y};}
 }
 /* the selection's outline, in drawing coordinates */
+/* ---------- the canvas, and why shrinking the drawing did nothing ----------
+   A figure gets exactly the room its viewBox asks for: fig() reads the viewBox
+   and the slide's box takes that aspect ratio. So making the drawing smaller
+   inside the editor changed nothing on the slide — the canvas was still
+   800 × 450, and the smaller drawing simply sat in the middle of it with the
+   empty margin holding the space. The canvas has to be able to follow the
+   drawing, so here it can.
+--------------------------------------------------------------------------- */
+function feContentBox(){
+  const svg=FE&&FE.svg;if(!svg)return null;
+  const vb=(svg.getAttribute('viewBox')||'0 0 800 450').trim().split(/[\s,]+/).map(Number);
+  if(vb.length!==4||vb.some(n=>!isFinite(n)))return null;
+  const skip=/^(style|defs|title|desc|metadata|script)$/i;
+  const kids=[...svg.children].filter(el=>!skip.test(el.tagName)&&
+    !el.classList.contains('fe-mark')&&!el.classList.contains('fe-h')&&
+    !el.classList.contains('fe-band'));
+  /* whatever covers the whole canvas is the paper, not the drawing */
+  const bg=kids.find(el=>el.tagName.toLowerCase()==='rect'&&
+    Math.abs((+el.getAttribute('width')||0)-vb[2])<2&&
+    Math.abs((+el.getAttribute('height')||0)-vb[3])<2);
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  kids.forEach(el=>{
+    if(el===bg)return;
+    let r;try{r=feRect(el);}catch(e){return;}
+    if(!r||(!r.width&&!r.height))return;
+    x0=Math.min(x0,r.x);y0=Math.min(y0,r.y);
+    x1=Math.max(x1,r.x+r.width);y1=Math.max(y1,r.y+r.height);
+  });
+  if(!isFinite(x0))return null;
+  return {vb,bg,x:x0,y:y0,w:x1-x0,h:y1-y0,
+          empty:Math.max(0,1-((x1-x0)*(y1-y0))/(vb[2]*vb[3]))};
+}
+function feSetCanvas(x,y,w,h,c){
+  fePush();
+  const old=c.vb[0]+c.vb[2]/2;                  /* where "centred" used to be */
+  FE.svg.setAttribute('viewBox',`${x} ${y} ${w} ${h}`);
+  if(c.bg){c.bg.setAttribute('x',x);c.bg.setAttribute('y',y);
+           c.bg.setAttribute('width',w);c.bg.setAttribute('height',h);}
+  /* the design system centres the title and the takeaway on the canvas, so
+     whatever was centred on the old one stays centred on the new one */
+  const mid=Math.round(x+w/2);
+  FE.svg.querySelectorAll('text[text-anchor="middle"]').forEach(t=>{
+    const at=+t.getAttribute('x');
+    if(isFinite(at)&&Math.abs(at-old)<1.5){
+      t.setAttribute('x',mid);
+      t.querySelectorAll('tspan[x]').forEach(sp=>{
+        const sx=+sp.getAttribute('x');
+        if(isFinite(sx)&&Math.abs(sx-old)<1.5)sp.setAttribute('x',mid);});
+    }
+  });
+  FE.src=feHtml();feMount();
+}
+function feTrimCanvas(){
+  const c=feContentBox();
+  if(!c)return toast('Nothing on the canvas to trim to');
+  const pad=14;
+  const x=Math.round(c.x-pad),y=Math.round(c.y-pad),
+        w=Math.round(c.w+pad*2),h=Math.round(c.h+pad*2);
+  if(w<40||h<30)return toast('That would leave almost nothing');
+  if(Math.abs(w-c.vb[2])<3&&Math.abs(h-c.vb[3])<3)return toast('The drawing already fills it');
+  feSetCanvas(x,y,w,h,c);
+  toast(`Canvas is now ${w} × ${h} — the slide gives it that shape`);
+}
+function feResetCanvas(){
+  const c=feContentBox();
+  if(!c)return;
+  feSetCanvas(0,0,800,450,c);
+  toast('Canvas back to 800 × 450');
+}
+
 function feBounds(){
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
   FE.sels.forEach(el=>{
@@ -3519,6 +3589,17 @@ function fePanel(){
         <b>Drag empty space</b> to lasso, <b>Shift-click</b> to add one. <kbd>Ctrl</kbd>+<kbd>G</kbd> groups
         what is selected, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> ungroups.</div>
       </div>
+      ${(()=>{const c=feContentBox();if(!c)return '';
+        const std=Math.abs(c.vb[2]-800)<2&&Math.abs(c.vb[3]-450)<2;
+        return `<div class="sec"><div class="sect">Canvas</div>
+        <div class="ferow"><code>${Math.round(c.vb[2])} × ${Math.round(c.vb[3])}</code>
+          <span class="tip" style="margin:0">${Math.round(c.empty*100)}% of it is empty</span></div>
+        <div class="rw" style="margin-top:8px">
+          <button class="b" id="feTrim" title="Set the canvas to the drawing, so the slide stops holding the empty margin">Trim to the drawing</button>
+          ${std?'':'<button class="b" id="feReset" title="Back to the shared 800 × 450">Reset</button>'}
+        </div>
+        <div class="tip">A figure takes exactly the room its canvas asks for. Shrink the drawing and
+          the slide keeps the old box until you trim it.</div></div>`;})()}
       <div class="sec"><div class="sect">Whole figure</div>
         <div class="chips" id="feWhole">
           <button data-p="Simplify: remove the least important element and give the rest more whitespace.">Simplify</button>
@@ -3528,6 +3609,8 @@ function fePanel(){
         <div class="tip">Or open the <b>AI</b> tab to write your own instruction.</div></div>`;
     p.querySelectorAll('#feWhole button').forEach(b=>b.onclick=()=>{feTab('ai');
       document.getElementById('feAiIn').value=b.dataset.p;});
+    document.getElementById('feTrim')?.addEventListener('click',feTrimCanvas);
+    document.getElementById('feReset')?.addEventListener('click',feResetCanvas);
     return;
   }
   const tag=el.tagName.toLowerCase();
@@ -4030,8 +4113,10 @@ function checkSvg(svg){
   const p=[];
   try{const doc=new DOMParser().parseFromString(svg,'image/svg+xml');
     if(doc.querySelector('parsererror'))p.push('invalid XML');
-    const vb=doc.documentElement.getAttribute('viewBox');
-    if(vb!=='0 0 800 450')p.push('viewBox is "'+vb+'"');
+    /* 800×450 is the shared canvas, but a figure trimmed to its drawing is a
+       deliberate other shape — only an unreadable viewBox is a fault */
+    const vb=(doc.documentElement.getAttribute('viewBox')||'').trim().split(/[\s,]+/);
+    if(vb.length!==4||vb.some(n=>!isFinite(+n)))p.push('no usable viewBox');
   }catch(e){p.push('unparseable');}
   if(/<animate|SMIL/.test(svg))p.push('uses SMIL');
   if(!/@keyframes/.test(svg))p.push('no animation');

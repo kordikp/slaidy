@@ -1,0 +1,101 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const FIG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">'+
+  '<rect width="800" height="450" fill="#FAFAF7"/>'+
+  '<style>@keyframes p{to{opacity:1}}</style>'+
+  '<text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">A drawing</text>'+
+  '<rect id="body" x="300" y="180" width="200" height="90" fill="#E0F2FE"/>'+
+  '<text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">the takeaway</text></svg>';
+
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(150); const w=W.__api;
+ try{
+  // ---------- a figure takes exactly the room its canvas asks for ----------
+  w.S.figs['fig-canvas']=FIG;
+  w.S.slides[0].fig='fig-canvas';w.S.slides[0].layout='figure';w.cur=0;w.paint();await wait(250);
+  const box=d.querySelector('#sheet .figbox');
+  const ar=b=>b.getBoundingClientRect().width/b.getBoundingClientRect().height;
+  ok('the slide gives the figure its canvas shape',Math.abs(ar(box)-800/450)<0.03,ar(box).toFixed(2));
+
+  // ---------- the editor can see how much of it is empty ----------
+  w.figEdit(w.S.slides[0],'fig-canvas');await wait(600);
+  const c0=w.feContentBox();
+  ok('the content box ignores the background',!!c0&&c0.w<700,c0&&Math.round(c0.w)+'×'+Math.round(c0.h));
+  ok('and says how much is empty',c0.empty>0.5,Math.round(c0.empty*100)+'% empty');
+  ok('the panel shows the canvas',/800 × 450/.test(d.getElementById('fepanel').textContent),
+     (d.getElementById('fepanel').textContent.match(/\d+ × \d+/)||[''])[0]);
+  ok('and offers to trim it',!!d.getElementById('feTrim'));
+  ok('with nothing to reset yet',!d.getElementById('feReset'));
+
+  // ---------- trimming ----------
+  d.getElementById('feTrim').click();await wait(500);
+  const vb=w.FE.svg.getAttribute('viewBox').trim().split(/\s+/).map(Number);
+  ok('the canvas becomes the drawing plus a margin',
+     Math.abs(vb[2]-(c0.w+28))<2&&Math.abs(vb[3]-(c0.h+28))<2,
+     Math.round(vb[2])+'×'+Math.round(vb[3])+' around '+Math.round(c0.w)+'×'+Math.round(c0.h));
+  ok('so it is narrower than the shared canvas',vb[2]<790,vb[2]+' wide');
+  ok('the height stays because the title and the takeaway reach top and bottom',vb[3]>400,
+     'which is the design system doing its job, not a failure to trim');
+  const bg=w.FE.svg.querySelector('rect');
+  ok('the paper follows the canvas',Math.abs(+bg.getAttribute('width')-vb[2])<2
+     &&Math.abs(+bg.getAttribute('height')-vb[3])<2,
+     bg.getAttribute('width')+'×'+bg.getAttribute('height'));
+  const title=[...w.FE.svg.querySelectorAll('text')].find(t=>/A drawing/.test(t.textContent));
+  ok('what was centred is still centred',
+     Math.abs(+title.getAttribute('x')-(vb[0]+vb[2]/2))<2,
+     'x='+title.getAttribute('x')+' centre='+Math.round(vb[0]+vb[2]/2));
+  ok('a trimmed canvas is not reported as broken',
+     !w.checkSvg(w.FE.svg.outerHTML).some(x=>/viewBox/i.test(x)),
+     w.checkSvg(w.FE.svg.outerHTML).join('; ')||'no complaints');
+  d.getElementById('feTrim').click();await wait(400);
+  ok('trimming again changes nothing',w.FE.svg.getAttribute('viewBox').trim()===vb.join(' '),
+     w.FE.svg.getAttribute('viewBox'));
+
+  // a drawing pulled into one corner gives back both axes
+  w.FE.svg.querySelector('#body').setAttribute('height','30');
+  [...w.FE.svg.querySelectorAll('text')].forEach(t=>t.setAttribute('y',
+     Math.min(240,Math.max(200,+t.getAttribute('y')))));
+  w.FE.src=w.feHtml();
+  const c1=w.feContentBox();
+  d.getElementById('feTrim').click();await wait(500);
+  const vb1=w.FE.svg.getAttribute('viewBox').trim().split(/\s+/).map(Number);
+  ok('a drawing that really is small gives back both axes',vb1[3]<200,
+     vb1.join(' ')+' from content '+Math.round(c1.w)+'×'+Math.round(c1.h));
+  d.getElementById('feUndo').click();await wait(400);
+  d.getElementById('feUndo').click();await wait(400);
+
+  // undo inside the editor steps back
+  d.getElementById('feUndo').click();await wait(400);
+  ok('the editor can undo the trim',
+     /0 0 800 450/.test(w.FE.svg.getAttribute('viewBox')),w.FE.svg.getAttribute('viewBox'));
+  d.getElementById('feTrim').click();await wait(500);
+  ok('and reset comes back once it is not the standard canvas',!!d.getElementById('feReset'));
+  const trimmed=w.FE.svg.getAttribute('viewBox');
+
+  // ---------- save it, and the slide gives it the new shape ----------
+  d.getElementById('feSave').click();await wait(500);
+  ok('the trimmed canvas is what gets saved',
+     w.S.figs['fig-canvas'].includes('viewBox="'+trimmed+'"'),
+     (w.S.figs['fig-canvas'].match(/viewBox="[^"]*"/)||[''])[0]);
+  w.paint();await wait(300);
+  const box2=d.querySelector('#sheet .figbox');
+  const t=trimmed.split(/\s+/).map(Number);
+  ok('and the slide gives it that shape now',Math.abs(ar(box2)-t[2]/t[3])<0.05,
+     ar(box2).toFixed(2)+' want '+(t[2]/t[3]).toFixed(2));
+  ok('which is a different shape than before',Math.abs(ar(box2)-800/450)>0.05,
+     'was '+(800/450).toFixed(2)+', now '+ar(box2).toFixed(2));
+
+  // ---------- reset puts the shared canvas back ----------
+  w.figEdit(w.S.slides[0],'fig-canvas');await wait(600);
+  d.getElementById('feReset').click();await wait(500);
+  ok('reset restores the shared canvas',
+     /0 0 800 450/.test(w.FE.svg.getAttribute('viewBox')),w.FE.svg.getAttribute('viewBox'));
+  const bg2=w.FE.svg.querySelector('rect');
+  ok('and the paper with it',+bg2.getAttribute('width')===800&&+bg2.getAttribute('height')===450);
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

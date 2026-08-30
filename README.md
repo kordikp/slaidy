@@ -115,6 +115,14 @@ want; swapping it is a separate button. Adding one asks which you meant: pick fr
 library, or describe what it should show and have it drawn to the same rules as the rest.
 Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
 
+**The canvas follows the drawing.** A figure gets exactly the room its `viewBox` asks for — the
+slide reads the viewBox and takes that aspect ratio. So shrinking a drawing inside the editor used
+to change nothing on the slide: the canvas was still 800 × 450 and the smaller drawing simply sat
+in the middle of it, the empty margin holding the space. The editor's **Canvas** panel says how
+much of it is empty and offers **Trim to the drawing**, which sets the canvas to what is actually
+drawn, moves the paper with it, and keeps anything that was centred centred. **Reset** puts the
+shared 800 × 450 back. A trimmed canvas is a choice, so it is no longer reported as a fault.
+
 Inside the editor: click takes the whole object, double-click steps inside, `Esc` steps back
 out. Lines and arrows are **drawn by dragging**, from one point to any other, and a selected one
 shows a handle at each end instead of corner handles. `Ctrl-J` joins two selected objects with an

@@ -1,0 +1,6 @@
+{
+  "name": "slaidy-demo-ai",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Holds the AI key the demo cannot, and forwards to CESNET e-INFRA."
+}

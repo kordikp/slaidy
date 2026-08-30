@@ -10,3 +10,6 @@ tests/fixture.json
 __pycache__/
 *.pyc
 .DS_Store
+
+# the Vercel link, which is per-machine
+demo/vercel/.vercel/

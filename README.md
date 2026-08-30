@@ -16,16 +16,15 @@ application, and if the application disappears you still have a deck.
 ### [Try it in your browser →](https://kordikp.github.io/slaidy/)
 
 No sign-up and nothing uploaded; it is the same single file, served from GitHub Pages
-with an example deck beside it. Everything works there except the AI, which needs an
-endpoint of your own — `⋯ → AI usage` has one-click presets for **CESNET e-INFRA** and
-OpenAI, and you paste your key into the browser, where it stays.
+with an example deck beside it — **including the AI**, on capacity from CESNET e-INFRA,
+for a few calls. For more than a taste, `⋯ → AI usage` has one-click presets for e-INFRA
+and OpenAI; you paste your own key into the browser, where it stays.
 
-> **The demo cannot ship a key**, and no arrangement of environment variables changes
-> that: it is a static page, so anything it can read, so can anyone who opens it. There
-> is a way round — [`demo/proxy`](demo/proxy) is a worker that holds the key and
-> forwards to e-INFRA, rate-limited to twenty calls an hour per address and a daily
-> budget, because behind it is somebody's academic quota. Deploy it and set `DEMO_AI` to
-> turn the demo's AI on; leave it and the demo has no AI, which breaks nothing.
+> **The demo's key is not in the demo**, and no arrangement of environment variables could
+> put it there: a static page keeps no secrets. It sits in a small function on Vercel
+> ([`demo/vercel`](demo/vercel)) that forwards to e-INFRA, capped at 6 000 tokens a call
+> and a few hundred calls a day, because behind it is somebody's academic quota. Try it,
+> then run it locally with a key of your own.
 >
 > Locally, `./studio.sh` keeps the key in your shell environment — the page never sees
 > it, and it never appears on a command line where `ps` would show it.

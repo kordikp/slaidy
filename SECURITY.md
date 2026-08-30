@@ -11,11 +11,11 @@ the endpoint you named. Run it with `./studio.sh` instead and the key stays in t
 shell environment: the page never sees it, and it never appears on a command line
 where `ps` would show it.
 
-**The demo's key.** There is none in the page, and there cannot be: a static page keeps
-no secrets. If the demo has AI, it is going through [`demo/proxy`](demo/proxy), a worker
-that holds the key, answers one origin, accepts only the two fields the app sends, and
-stops at twenty calls an hour per address and a daily budget. There is an assertion in
-the suite that no key-shaped string is in the file at all.
+**The demo's key.** There is none in the page, and there cannot be: a static page keeps no
+secrets. The demo's AI goes through a small function ([`demo/vercel`](demo/vercel)) that
+holds the key in its own environment, accepts only the two fields the app sends, and caps
+tokens per call and calls per day. There is an assertion in the suite that no key-shaped
+string appears in the file at all.
 
 **The local server.** `scripts/serve.py` binds to `127.0.0.1` only, because it writes
 the deck file on request. Do not put it on a public interface.

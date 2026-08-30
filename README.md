@@ -196,6 +196,13 @@ then doubles as the instruction — edit the line and **Update the slide** rewri
 to deliver it. That button only wakes up once you have actually changed the line. Inside the
 figure editor the same idea applies to one selected element rather than the whole slide.
 
+**Redesign this slide** is on every slide, not only an empty one. Say what should change — *make
+this open the whole deck and grab the room*, *turn it into a table*, *give it a figure* — and it
+rewrites the title, the body, the notes and the figure together, with the slide as it stands in
+front of it. **Your instruction outranks the house style.** It did not, and that was the bug: ask
+for something catchy and the standing "no marketing adjectives" quietly won, so the model handed
+back what was already there and it looked as though nothing had run.
+
 **A figure that was asked for gets drawn.** When the model decides a slide wants a picture it
 writes `![[fig-something]]`, and the app then draws it — same design system, same 800×450
 canvas, same palette as everything else. It used to leave the reference dangling and the

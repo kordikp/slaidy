@@ -45,6 +45,28 @@ addEventListener('load',async()=>{
   ok('Summarise is not offered',!d.getElementById('bSum'));
   ok('nor is Ask AI, which has nothing to act on',!d.getElementById('acts'));
 
+  // ---------- and a written slide can be redesigned from the same box ----------
+  const ci0=w.S.slides.findIndex(x=>(x.body||'').trim()&&!/!\[\[/.test(x.body));
+  w.cur=ci0;w.paint();await wait(150);
+  ok('a written slide gets the box too',!!d.getElementById('deIn'),
+     'this is where "make it catchy" used to have nowhere to go');
+  ok('and the button says redesign',/Redesign this slide/.test(d.getElementById('bDesign').textContent),
+     d.getElementById('bDesign').textContent);
+  ok('the tooltip says the author wins',/win/i.test(d.getElementById('bDesign').title));
+  calls=[];replies=[JSON.stringify({title:'CATCHY',body:'Something else entirely.',notes:''})];stub();
+  d.getElementById('deIn').value='this slide opens the whole deck, make it grab the room';
+  d.getElementById('bDesign').click();await wait(500);
+  ok('redesigning actually calls the model',calls.length===1,calls.length+' calls');
+  ok('and shows it the slide it is rewriting',
+     /THE SLIDE AS IT STANDS/.test(calls[0].user||'')
+     &&(calls[0].user||'').includes(w.S.slides[ci0].title));
+  ok('with the author outranking the house style',
+     /THE AUTHOR WINS/.test(calls[0].system||''));
+  ok('the instruction is carried through',/grab the room/.test(calls[0].user||''));
+  [...d.getElementById('dsOut').querySelectorAll('button')][1].click();  // discard
+  unstub();
+  w.cur=NEW;w.paint();await wait(150);
+
   // summarising an empty slide must not reach the model at all
   calls=[];replies=['should never be used'];stub();
   await w.askSummary();await wait(120);

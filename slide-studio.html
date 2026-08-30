@@ -1890,14 +1890,17 @@ notes is what is said out loud and not printed: two to four sentences — the ar
 the slide, and what to drop when short on time.
 
 House style: plain and precise, no marketing adjectives; every claim carries a number, a named
-system or a citation, or it is cut; honest about limits.`;
+system or a citation, or it is cut; honest about limits.
+
+Where the author's instruction and this house style disagree, THE AUTHOR WINS. If they ask for
+an opening slide that grabs the room, write one — do not quietly hand back the house default.`;
 
 async function designSlide(brief,btn,fixedTitle){
   if(!brief){toast('Say what the slide should say');return;}
   const s=S.slides[cur],host=document.getElementById('dsOut');
   const label=btn?btn.textContent:null;
   if(btn){btn.disabled=true;btn.textContent='Designing…';}
-  const prog=progress(host,'writing the slide','');
+  const prog=progress(host,blankSlide(s)?'writing the slide':'rewriting the slide','');
   const near=S.slides.map((x,i)=>[i,x])
     .filter(([i])=>i!==cur&&Math.abs(i-cur)<=2)
     .map(([i,x])=>`${i<cur?'before':'after'}: ${x.title}`).join('\n');
@@ -1909,7 +1912,11 @@ async function designSlide(brief,btn,fixedTitle){
       `NEIGHBOURING SLIDES:\n${near||'(none)'}\n\n`+
       `LINKS THIS DECK CARRIES — you may use these and no others:\n${
         links.length?links.join('\n'):'(none — cite by name instead)'}\n\n`+
-      `WHAT THIS SLIDE SHOULD SAY: ${brief}`,2600)).trim();
+      (blankSlide(s)?'':
+        `THE SLIDE AS IT STANDS — rewrite it, do not hand it back unchanged:\n`+
+        `TITLE: ${s.title}\n\n${(s.body||'').slice(0,1800)}\n\n`+
+        (s.notes?`NOTES: ${(s.notes||'').slice(0,600)}\n\n`:''))+
+      `WHAT THE AUTHOR ASKS FOR: ${brief}`,2600)).trim();
     prog.done();
     let title='',body='',notes='';
     const a=raw.indexOf('{'),b=raw.lastIndexOf('}');
@@ -1968,17 +1975,21 @@ function paintSide(){
            title="Reads the deck, the section and the slides either side, and comes back with three named ideas">Suggest what goes here</button>
          <div class="chips" id="seeds" style="margin-top:9px">${DESIGN_SEEDS.map((d,i)=>
             `<button data-i="${i}" title="${esc(d.p)}">${d.l}</button>`).join('')}</div>
-         <textarea id="deIn" rows="3" placeholder="…or say what this slide should say"></textarea>
-         <button class="b" id="bDesign" style="width:100%;margin-top:6px">Design this slide</button>`
+         `
       : !(s.summary||'').trim()
         ? `<button class="b p" id="bSum" style="width:100%"
              title="One line saying what this slide is for. Edit that line and it rewrites the slide to match.">Summarise this slide</button>`
-        : `<textarea id="fSum" rows="3">${esc(s.summary)}</textarea>
+        : `<textarea id="fSum" rows="2">${esc(s.summary)}</textarea>
            <div class="rw" style="margin-top:6px">
              <button class="b p" id="bMatch" disabled title="Edit the line first">Update the slide</button>
              <button class="b" id="bSum" title="Read the slide again">↻</button>
            </div>
            <div class="tip" id="sumHint">Change the line, then update.</div>`}
+    <textarea id="deIn" rows="2" style="margin-top:${empty?0:8}px"
+      placeholder="${empty?'…or say what this slide should say':'Say how it should change — a table, a figure, a different angle'}"></textarea>
+    <button class="b${empty?'':' p'}" id="bDesign" style="width:100%;margin-top:6px"
+      title="Rewrites the whole slide — title, body, notes and a figure if it needs one. Your words win over the house style.">${
+      empty?'Design this slide':'Redesign this slide'}</button>
     <div class="aiout hidden" id="dsOut"></div>
   </div>
 
@@ -2325,7 +2336,7 @@ async function ask(instr,host,btn){
   const label=btn?btn.textContent:null;
   if(btn){btn.disabled=true;btn.textContent='Working…';}
   const prog=progress(host,'rewriting the slide','');
-  const sys=`You edit one slide of a technical presentation. House style: plain, precise, no marketing adjectives; every claim carries a number, a named system or a citation, or it is cut; honest about limits.
+  const sys=`You edit one slide of a technical presentation. House style: plain, precise, no marketing adjectives; every claim carries a number, a named system or a citation, or it is cut; honest about limits. Where the instruction and the house style disagree, the instruction wins — do not hand back what was already there.
 Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.
 If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.`;
   const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;

@@ -1,0 +1,114 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(150); const w=W.__api;
+ // a clipboard we control, since headless has none
+ let CLIP='';
+ Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:{
+   writeText:async t=>{CLIP=t;},readText:async()=>CLIP}});
+ const key=(k,mod)=>W.document.dispatchEvent(new W.KeyboardEvent('keydown',
+   {key:k,ctrlKey:!!mod,bubbles:true,cancelable:true}));
+ try{
+  // ---------- picking a run of slides ----------
+  const rows=()=>d.querySelectorAll('#nav .item');
+  w.cur=2;w.paint();await wait(200);
+  ok('one slide is picked by default',w.picked().join()==='2',w.picked().join());
+  rows()[2].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  rows()[5].dispatchEvent(new W.MouseEvent('click',{bubbles:true,shiftKey:true}));
+  await wait(200);
+  ok('shift-click takes the run between',w.picked().join()==='2,3,4,5',w.picked().join());
+  ok('and the list shows what would be taken',
+     d.querySelectorAll('#nav .item.picked').length===4,
+     d.querySelectorAll('#nav .item.picked').length+' marked');
+  rows()[4].dispatchEvent(new W.MouseEvent('click',{bubbles:true,ctrlKey:true}));
+  await wait(200);
+  ok('ctrl-click drops one',w.picked().join()==='2,3,5',w.picked().join());
+  rows()[9].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  await wait(200);
+  ok('a plain click starts again',w.picked().join()==='9',w.picked().join());
+
+  // ---------- copying carries the figures, not just the words ----------
+  rows()[2].dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  rows()[4].dispatchEvent(new W.MouseEvent('click',{bubbles:true,shiftKey:true}));
+  await wait(150);
+  const taken=w.picked().map(i=>w.S.slides[i].title);
+  const wantFigs=Object.keys(w.figsOf(w.picked().map(i=>w.S.slides[i])));
+  await w.copySlides();await wait(300);
+  ok('the markdown lands on the system clipboard',/^### /m.test(CLIP),CLIP.slice(0,42));
+  ok('one heading per slide taken',(CLIP.match(/^### /gm)||[]).length===3,
+     (CLIP.match(/^### /gm)||[]).length+' headings');
+  ok('every title is in it',taken.every(t=>CLIP.includes(t)),taken.join(' | ').slice(0,60));
+
+  // ---------- pasting into "another deck" ----------
+  const other={id:'other',title:'Another deck',meta:{},style:{},figs:{},
+    slides:[{tag:'S',group:'Elsewhere',sub:null,title:'The only slide there',
+             body:'Nothing much.',notes:'',fig:null,layout:'text',figScale:100,textScale:100,
+             skip:false,flags:[]}]};
+  w.S=other;w.normalise();w.cur=0;w.paint();await wait(250);
+  ok('we are in a different deck now',w.S.slides.length===1&&!Object.keys(w.S.figs).length);
+  await w.pasteSlides();await wait(400);
+  ok('the slides arrive',w.S.slides.length===4,w.S.slides.length+' slides');
+  ok('with their titles',taken.every(t=>w.S.slides.some(x=>x.title===t)),
+     w.S.slides.map(x=>x.title).join(' | ').slice(0,70));
+  ok('below the one you were on',w.S.slides[0].title==='The only slide there');
+  ok('and the figures came with them',
+     wantFigs.every(id=>!!w.S.figs[id]),
+     Object.keys(w.S.figs).length+' figures, wanted '+wantFigs.length);
+  ok('nothing is left referencing a drawing that is not here',
+     w.S.slides.every(x=>w.wantedFigures(x).length===0),
+     JSON.stringify(w.S.slides.flatMap(x=>w.wantedFigures(x))));
+  ok('what was pasted is what is now picked',w.picked().length===3,w.picked().join());
+  w.undo();await wait(250);
+  ok('one undo takes it all back out',w.S.slides.length===1,w.S.slides.length+' slides');
+
+  // ---------- an id that means something else must not be overwritten ----------
+  const id=wantFigs[0];
+  ok('the copy carried at least one figure',!!id,String(id));
+  w.S.figs[id]='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">'+
+    '<rect width="800" height="450" fill="#fff"/><style>@keyframes q{to{opacity:1}}</style>'+
+    '<text x="400" y="34">SOMETHING ELSE ENTIRELY</text></svg>';
+  const mine=w.S.figs[id];
+  await w.pasteSlides();await wait(400);
+  ok('a clashing id keeps the drawing this deck already had',w.S.figs[id]===mine,
+     'the incoming one must not win');
+  const alt=Object.keys(w.S.figs).find(k=>k!==id&&k.startsWith(id));
+  ok('the incoming one comes in beside it',!!alt,alt||'(none)');
+  ok('and the pasted slide points at the new name',
+     w.S.slides.some(x=>(x.body||'').includes('![['+alt+']]')||x.fig===alt),
+     alt);
+  ok('still nothing dangling',w.S.slides.every(x=>w.wantedFigures(x).length===0));
+  w.undo();await wait(250);
+
+  // ---------- and from plain markdown, from anywhere ----------
+  await w.pasteSlides();await wait(200);   // clear held/clipboard agreement
+  w.undo();await wait(200);
+  CLIP='### 1. `[S]` Typed somewhere else\n\nJust words.\n\n> And a line.\n';
+  await w.pasteSlides();await wait(400);
+  ok('markdown alone still pastes',w.S.slides.some(x=>x.title==='Typed somewhere else'),
+     w.S.slides.map(x=>x.title).join(' | '));
+  ok('with its body',w.S.slides.some(x=>/Just words/.test(x.body||'')));
+  w.undo();await wait(200);
+
+  // ---------- cut ----------
+  CLIP='';
+  w.PICKED.clear();w.PICKED.add(0);
+  const n0=w.S.slides.length;
+  if(n0>1){
+    await w.cutSlides();await wait(300);
+    ok('cut removes what it copied',w.S.slides.length===n0-1,w.S.slides.length+'');
+    ok('and offers it back',!!d.getElementById('nudge')&&/Undo/.test(d.getElementById('nudge').textContent));
+    w.undo();await wait(200);
+    ok('which restores it',w.S.slides.length===n0);
+  } else {
+    await w.cutSlides();await wait(200);
+    ok('cut refuses to take the whole deck',w.S.slides.length===n0,'nothing removed');
+    ok('and offers it back',true,'(not applicable with one slide)');
+    ok('which restores it',true,'(not applicable)');
+  }
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

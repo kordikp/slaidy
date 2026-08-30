@@ -127,6 +127,27 @@ want; swapping it is a separate button. Adding one asks which you meant: pick fr
 library, or describe what it should show and have it drawn to the same rules as the rest.
 Every picture carries its own size, inline ones included: `![[fig-id|60%]]`.
 
+**Carrying slides to another deck.** Click, `Shift`-click for a run, `Ctrl`-click for one more,
+`Ctrl-A` for all of them — the list marks what would be taken. `Ctrl-C` copies, `Ctrl-X` cuts,
+`Ctrl-V` pastes below wherever you are, in this deck or any other.
+
+The markdown goes on the **system clipboard**, so it pastes into a mail, an editor, or a deck open
+on another machine. The same slides **and every figure they reference** go into the browser's own
+store at the same moment, so a paste into another deck in that browser arrives whole — drawings
+included. Whichever is newer wins: if you copied something else since, the clipboard is what you
+meant. Pasted somewhere without the figures, the references arrive as *not drawn yet* boxes
+offering **Draw it** / **Pick one** / **Remove**.
+
+An incoming figure whose id already means something else in this deck **does not overwrite it** —
+it comes in beside it under a fresh name and the pasted slides are pointed at the new one. Identical
+drawings are shared rather than duplicated. One undo takes a whole paste back out.
+
+**Style, per slide.** The deck sets the house style; a slide keeps **only what it disagrees with**.
+`Style just this slide…` in the panel gives it its own accent, text colour, background, title size
+or header, and every control starts on *same as the deck* until you move it — so changing the deck
+still moves every slide that has not spoken up. The markdown writes only the departures
+(`*Style:* titleSize=30, accent=#0EA5E9`), and an override cleared away leaves nothing behind.
+
 **Type size.** For the whole deck, `⋯ → Deck settings` has a title size and a body size; they move
 every slide at once, apply as you drag, and are kept on the deck so an export and a rebuild keep
 them. For one slide, the panel's **Text size** slider is a percentage of that body size — it has

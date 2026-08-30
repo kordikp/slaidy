@@ -122,6 +122,54 @@ addEventListener('load',async()=>{
   body.value=String(before);body.dispatchEvent(new W.Event('input'));await wait(150);
   d.getElementById('dsOk').click();await wait(150);
 
+
+  // ---------- a slide keeps only what it disagrees with ----------
+  const si2=0;w.cur=si2;w.paint();await wait(200);
+  const s2=w.S.slides[si2];
+  delete s2.style;w.paint();await wait(150);
+  ok('a slide with nothing of its own says so',
+     /Style just this slide/.test(d.getElementById('bSlideStyle').textContent),
+     d.getElementById('bSlideStyle').textContent);
+  ok('and inherits the deck',w.sstyle(s2,'titleSize')===w.style('titleSize'),
+     String(w.sstyle(s2,'titleSize')));
+  ok('so it carries no style vars',w.styleVars(s2)==='');
+
+  w.slideStyle(si2);await wait(200);
+  const ts=d.querySelector('.dlg [data-s="titleSize"]');
+  ok('the dialog offers a title size for this slide alone',!!ts,ts&&ts.value);
+  ts.value=String(+ts.value-8);ts.dispatchEvent(new W.Event('input'));await wait(250);
+  ok('setting one stores just that key',
+     Object.keys(w.S.slides[si2].style).join()==='titleSize',
+     JSON.stringify(w.S.slides[si2].style));
+  ok('the stage carries it as a variable',
+     /--d-title/.test(w.styleVars(w.S.slides[si2])),w.styleVars(w.S.slides[si2]));
+  const h2=d.getElementById('stage').querySelector('h2');
+  ok('and the slide is drawn with it',
+     Math.round(parseFloat(W.getComputedStyle(h2).fontSize))===+ts.value,
+     W.getComputedStyle(h2).fontSize+' want '+ts.value+'px');
+  ok('the panel button says it has departed',
+     /Styled apart from the deck/.test(d.getElementById('bSlideStyle').textContent),
+     d.getElementById('bSlideStyle').textContent);
+
+  // it survives the markdown, and only what differs is written
+  const md2=w.slideMd(w.S.slides[si2]);
+  ok('the markdown carries the override',/^\*Style:\* titleSize=/m.test(md2),
+     (md2.match(/^\*Style:\*.*$/m)||[''])[0]);
+  ok('and nothing it did not set',!/accent|paper|ink/.test((md2.match(/^\*Style:\*.*$/m)||[''])[0]));
+  const back2=w.importMarkdown('x.md','# G\n\n'+md2);
+  ok('reading it back recovers it',
+     back2[0].style&&back2[0].style.titleSize===+ts.value,JSON.stringify(back2[0].style));
+  ok('and nothing else',Object.keys(back2[0].style||{}).join()==='titleSize');
+
+  w.slideStyle(si2);await wait(200);
+  d.querySelector('.dlg [data-clear="titleSize"]').click();await wait(250);
+  ok('one click gives it back to the deck',!w.S.slides[si2].style||!w.S.slides[si2].style.titleSize,
+     JSON.stringify(w.S.slides[si2].style||{}));
+  d.getElementById('ssOk')?.click();await wait(150);
+  w.normalise();
+  ok('and an empty override is dropped, not left as {}',!w.S.slides[si2].style,
+     JSON.stringify(w.S.slides[si2].style));
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

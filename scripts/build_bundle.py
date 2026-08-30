@@ -23,7 +23,27 @@ NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$", re.M)
 SUM_RE = re.compile(r"^\*Summary:\*\s*(.+)$", re.M)
 SKIP_RE = re.compile(r"^\*Skip:\*\s*(\S+)[^\n]*$", re.M)      # hidden when presenting
 FLAGS_RE = re.compile(r"^\*Flags:\*\s*([^\n]+)$", re.M)        # keep = never auto-hide, ours = our own work
-TEXT_RE = re.compile(r"^\*Text:\*\s*(\d{2,3})%[^\n]*$", re.M)   # body size, as a percentage      # what the slide is for, in one or two lines
+TEXT_RE = re.compile(r"^\*Text:\*\s*(\d{2,3})%[^\n]*$", re.M)   # body size, as a percentage
+# A slide keeps only what it disagrees with; everything else follows the deck.
+STYLE_RE = re.compile(r"^\*Style:\*\s*([^\n]+)$", re.M)
+STYLE_KEYS = ("accent", "ink", "paper", "titleSize", "bodySize", "header")
+
+
+def parse_style(text):
+    out = {}
+    for pair in (text or "").split(","):
+        k, _, v = pair.partition("=")
+        k, v = k.strip(), v.strip()
+        if k not in STYLE_KEYS or not v:
+            continue
+        if k.endswith("Size"):
+            try:
+                out[k] = int(v)
+            except ValueError:
+                continue
+        else:
+            out[k] = v
+    return out
 FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
 # A section name per file. Anything not listed here is derived from the filename,
@@ -62,10 +82,12 @@ def parse_slides(text, group):
         sk = SKIP_RE.search(body)
         fl = FLAGS_RE.search(body)
         ts = TEXT_RE.search(body)
+        st = STYLE_RE.search(body)
         body = SUM_RE.sub("", body)
         body = SKIP_RE.sub("", body)
         body = FLAGS_RE.sub("", body)
         body = TEXT_RE.sub("", body)
+        body = STYLE_RE.sub("", body)
         body = FIG_RE.sub("", body)
         body = FIG_NONE_RE.sub("", body)
         body = NOTE_RE.sub("", body)
@@ -79,6 +101,7 @@ def parse_slides(text, group):
                        "textScale": int(ts.group(1)) if ts else 100,
                        "body": body, "notes": notes, "summary": sm.group(1).strip() if sm else "",
                        "skip": bool(sk) and sk.group(1).lower() in ("yes", "true", "1", "ano"),
+                       **({"style": parse_style(st.group(1))} if st and parse_style(st.group(1)) else {}),
                        "flags": [x.strip() for x in fl.group(1).split(",") if x.strip()] if fl else []})
     return slides
 

@@ -376,6 +376,12 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .bp{width:100%;margin-top:5px;border:1px solid transparent;border-radius:5px;padding:4px 6px;
  font:11.5px/1.5 system-ui;color:var(--gray);background:#FCFCFD;resize:none;overflow:hidden;outline:none}
 .bp:focus{border-color:var(--acc);background:#fff;color:var(--ink)}
+/* an override is visibly a departure, and can be taken back in one click */
+.dlg .ovr label{display:flex;align-items:center;gap:8px}
+.dlg .ovrx{font:600 9.5px/1 system-ui;letter-spacing:.06em;color:var(--acc);padding:2px 5px;
+ border-radius:4px;text-transform:none}
+.dlg .ovrx:hover{background:var(--accbg)}
+.dlg .ovr.on>label{color:var(--acc)}
 .pvbad{background:#FDF0F0;border:1px solid #F0B4B7;border-radius:var(--r6);padding:11px 13px;
  font-size:12.5px;color:#B4232A}
 
@@ -520,6 +526,9 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .item.skipped{opacity:.5}
 .item.skipped .tt{text-decoration:line-through;text-decoration-color:var(--faint)}
 .item.skipped .pip{opacity:.35}
+/* what Ctrl-C would take */
+.item.picked{background:var(--accbg);box-shadow:inset 2px 0 0 var(--acc)}
+.item.picked.on{background:var(--accbg)}
 .item .own{color:var(--acc);font-weight:700;margin-left:5px}
 .gcell.skipped{opacity:.4;box-shadow:inset 0 0 0 1px var(--faint)}
 .runsum{font-size:13px;margin-bottom:9px}
@@ -566,6 +575,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
     <div class="pop" id="pop">
       <button id="bOpen">Open a deck…</button>
       <button id="bSaveAs">Save to a file…</button>
+      <button id="bCopy">Copy slides…</button>
+      <button id="bPaste">Paste slides</button>
       <button id="bImport">Import markdown…</button>
       <button id="bBrief">New deck from a brief…</button>
       <button id="bHist">Version history</button>
@@ -859,7 +870,22 @@ function undo(){
   touch();paint();toast('Undone — '+u.label);
 }
 const DEFSTYLE={accent:'#7C3AED',ink:'#1E1B4B',paper:'#FFFFFF',titleSize:38,bodySize:19,header:'position'};
+const STYLE_KEYS=Object.keys(DEFSTYLE);
 function style(k){return (S.style&&S.style[k]!=null)?S.style[k]:DEFSTYLE[k];}
+/* A slide carries only what it disagrees with. Everything else it inherits from
+   the deck, so changing the deck still moves every slide that has not said
+   otherwise — which is the whole point of having a deck style at all. */
+function sstyle(s,k){return (s&&s.style&&s.style[k]!=null)?s.style[k]:style(k);}
+function styleVars(s){
+  if(!s||!s.style)return '';
+  const v=[];
+  if(s.style.accent!=null)v.push(`--d-accent:${s.style.accent}`);
+  if(s.style.ink!=null)v.push(`--d-ink:${s.style.ink}`);
+  if(s.style.paper!=null)v.push(`--d-paper:${s.style.paper}`);
+  if(s.style.titleSize!=null)v.push(`--d-title:${s.style.titleSize}px`);
+  if(s.style.bodySize!=null)v.push(`--d-body:${s.style.bodySize}px`);
+  return v.join(';');
+}
 function applyStyle(){
   const r=document.documentElement.style;
   r.setProperty('--d-accent',style('accent'));
@@ -1206,6 +1232,19 @@ const body2html=md=>blocks(md).map(block).join('');
 
 /* ---------- importers ---------- */
 const KEYNOTE_RE=/^###\s+(\d+)\.\s*`\[([SDEB])\]`\s*(.+?)\s*$/gm;
+/* "titleSize=30, accent=#0EA5E9" → {titleSize:30, accent:'#0EA5E9'}. Anything
+   that is not a key the deck knows is dropped rather than carried as junk. */
+function parseStyle(str){
+  const out={};
+  String(str||'').split(',').forEach(pair=>{
+    const i=pair.indexOf('=');if(i<0)return;
+    const k=pair.slice(0,i).trim(),v=pair.slice(i+1).trim();
+    if(!STYLE_KEYS.includes(k)||!v)return;
+    out[k]=/Size$/.test(k)?+v:v;
+    if(/Size$/.test(k)&&!isFinite(out[k]))delete out[k];
+  });
+  return Object.keys(out).length?out:undefined;
+}
 function importMarkdown(name,text){
   const slides=[];
   const act=(text.match(/^#\s+(.+)$/m)||[])[1]||name.replace(/\.md$/,'');
@@ -1223,10 +1262,11 @@ function importMarkdown(name,text){
       const sm=bd.match(/^\*Summary:\*\s*(.+)$/m);
       const sk=/^\*Skip:\*\s*(?:yes|true|1|ano)\b/mi.test(bd);
       const tsm=bd.match(/^\*Text:\*\s*(\d{2,3})%/m);
+      const stm=bd.match(/^\*Style:\*\s*(.+)$/m);
       const flm=bd.match(/^\*Flags:\*\s*(.+)$/m);
       const fl=flm?flm[1].split(',').map(x=>x.trim()).filter(Boolean):[];
       bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
-           .replace(/^\*Text:\*.*$/gm,'')
+           .replace(/^\*Text:\*.*$/gm,'').replace(/^\*Style:\*.*$/gm,'')
            .replace(/^\*\*Figure:\*\*.*$/gm,'').replace(/^\*(?:Delivery note|Transition)[^:]*:\*.*$/gm,'')
            .replace(/^---\s*$/gm,'')
            /* #, ## and ### structure the file; #### and deeper are a heading
@@ -1234,7 +1274,8 @@ function importMarkdown(name,text){
            .replace(/^#{1,3}\s+.*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
       slides.push({tag:m[2],group:act,sub:subAt(m.index),title:m[3],fig:f?f[1]:null,
                    layout:f?(LAYOUTS.includes(f[2])?f[2]:'figure'):'text',body:bd,notes:nt,
-                   figScale:f&&f[3]?+f[3]:100,summary:sm?sm[1].trim():'',skip:sk,flags:fl});
+                   figScale:f&&f[3]?+f[3]:100,summary:sm?sm[1].trim():'',skip:sk,flags:fl,
+                   textScale:tsm?+tsm[1]:100,style:parseStyle(stm?stm[1]:'')});
     });
     return slides;
   }
@@ -1262,7 +1303,9 @@ function importMarkdown(name,text){
   });
   return slides;
 }
-function normalise(){ S.slides.forEach((s,i)=>{s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;s.textScale=s.textScale||100;}); }
+function normalise(){ S.slides.forEach((s,i)=>{
+  if(s.style&&!Object.keys(s.style).length)delete s.style;   /* sparse, or absent */
+  s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;s.textScale=s.textScale||100;}); }
 
 /* ---------- bringing markdown in -------------------------------------------
    A folder of .md files is not obviously a deck: how many slides is it, what
@@ -1368,6 +1411,98 @@ async function importWizard(files){
 }
 async function ingest(files){ return importWizard(files); }
 
+/* ---------- carrying slides between decks --------------------------------
+   Two decks are two files, so the only thing they share is the browser. The
+   markdown goes on the system clipboard, which makes it paste into a mail or
+   another machine; the same slides plus every figure they reference go into
+   IndexedDB, which is what makes a paste into another deck arrive whole.
+   Whichever is newer wins on paste, so copying somewhere else and coming back
+   does what you meant.
+--------------------------------------------------------------------------- */
+const PICKED=new Set();
+let anchor=null;
+function picked(){
+  const ix=PICKED.size?[...PICKED].filter(i=>S.slides[i]).sort((a,b)=>a-b):[cur];
+  return ix.filter(i=>S.slides[i]);
+}
+function figsOf(list){
+  const out={};
+  list.forEach(s=>{
+    const ids=[...new Set([...((s.body||'').matchAll(FIGREF))].map(m=>m[1]))];
+    if(s.fig)ids.push(s.fig);
+    [...new Set(ids)].forEach(id=>{if(S.figs[id])out[id]=S.figs[id];});
+  });
+  return out;
+}
+async function copySlides(){
+  const ix=picked(),list=ix.map(i=>structuredClone(S.slides[i]));
+  if(!list.length)return;
+  const md=list.map(slideMd).join('\n');
+  const payload={kind:'slide-studio/slides',at:Date.now(),from:S.title||S.id,
+                 md,slides:list,figs:figsOf(list)};
+  try{await put('clip:slides',payload);}catch(e){}
+  try{await navigator.clipboard.writeText(md);}catch(e){}
+  const n=list.length,f=Object.keys(payload.figs).length;
+  toast(`Copied ${n} slide${n>1?'s':''}${f?` and ${f} figure${f>1?'s':''}`:''} — paste in any deck`);
+}
+async function cutSlides(){
+  const ix=picked();
+  if(ix.length>=S.slides.length)return toast('That is the whole deck');
+  await copySlides();
+  snap('cut slides');
+  ix.slice().reverse().forEach(i=>S.slides.splice(i,1));
+  PICKED.clear();cur=Math.min(ix[0],S.slides.length-1);
+  normalise();touch();paint();
+  banner(`Cut ${ix.length} slide${ix.length>1?'s':''}.`,'Undo',()=>undo());
+}
+/* An id that means something else in this deck must not be allowed to win. */
+function mergeFigs(figs){
+  const map={};
+  for(const id in figs){
+    if(!S.figs[id]){S.figs[id]=figs[id];map[id]=id;continue;}
+    if(S.figs[id]===figs[id]){map[id]=id;continue;}          /* the same drawing */
+    let n=2,alt;
+    do{alt=`${id}-${n++}`;}while(S.figs[alt]&&S.figs[alt]!==figs[id]);
+    S.figs[alt]=figs[id];map[id]=alt;
+  }
+  return map;
+}
+async function pasteSlides(){
+  let held=null;
+  try{held=await get('clip:slides');}catch(e){}
+  let text='';
+  try{text=await navigator.clipboard.readText();}catch(e){}
+  /* the browser copy is only used when it is the same thing on the clipboard —
+     otherwise you copied something else since, and that is what you meant */
+  const useHeld=held&&held.slides&&held.slides.length&&
+    (!text.trim()||text.trim()===String(held.md||'').trim());
+  let list=null,figs={};
+  if(useHeld){list=structuredClone(held.slides);figs=held.figs||{};}
+  else if(text.trim()){
+    const base=S.slides[cur]||{n:1,tag:'S'};
+    try{list=mdParse(text,base);}catch(e){list=null;}
+  }
+  if(!list||!list.length)return toast('Nothing on the clipboard that reads as slides');
+  const map=mergeFigs(figs);
+  const rename=t=>String(t||'').replace(FIGREF,(m,id)=>map[id]&&map[id]!==id?`![[${map[id]}]]`:m);
+  const at=S.slides[cur];
+  list.forEach(x=>{
+    if(x.fig&&map[x.fig])x.fig=map[x.fig];
+    x.body=rename(x.body);
+    if(!x.group)x.group=at?at.group:'';
+    if(x.sub===undefined)x.sub=at?at.sub:null;
+  });
+  snap('paste slides');
+  S.slides.splice(cur+1,0,...list);
+  PICKED.clear();
+  for(let k=0;k<list.length;k++)PICKED.add(cur+1+k);
+  cur=cur+1;normalise();touch();paint();
+  const nf=Object.values(map).filter((v,i)=>v!==Object.keys(map)[i]).length;
+  toast(`Pasted ${list.length} slide${list.length>1?'s':''}`+
+        (useHeld?` from ${esc(held.from||'another deck')}`:' from the clipboard')+
+        (nf?` · ${nf} figure${nf>1?'s':''} renamed to avoid a clash`:''));
+}
+
 function paintNav(){
   const el=document.getElementById('nav');el.innerHTML='';let g=null,sb=null;
   S.slides.forEach((s,i)=>{
@@ -1381,7 +1516,8 @@ function paintNav(){
         h.ondragover=dragOver;h.ondragleave=dragOff;h.ondrop=dropAt;
         renameable(h,'sub',sb);el.appendChild(h);}}
     const d=document.createElement('div');
-    d.className='item'+(i===cur?' on':'')+(s.skip?' skipped':'');d.draggable=true;d.dataset.i=i;
+    d.className='item'+(i===cur?' on':'')+(s.skip?' skipped':'')+(PICKED.has(i)?' picked':'');
+    d.draggable=true;d.dataset.i=i;
     d.innerHTML=`<span class="ix">${String(s.n).padStart(3,'0')}</span>
       <span class="pip" style="background:${KINDS[slideKind(s)][1]}"
         title="${KINDS[slideKind(s)][0]}"></span>
@@ -1391,7 +1527,17 @@ function paintNav(){
     d.onclick=e=>{
       const st=e.target.closest('[data-skip]');
       if(st){e.stopPropagation();return toggleSkip(+st.dataset.skip);}
-      cur=i;paint();};
+      /* the gestures every list uses: shift for a run, ctrl/cmd for one more */
+      if(e.shiftKey&&anchor!=null){
+        PICKED.clear();
+        for(let k=Math.min(anchor,i);k<=Math.max(anchor,i);k++)PICKED.add(k);
+        cur=i;paint();return;
+      }
+      if(e.metaKey||e.ctrlKey){
+        if(PICKED.has(i))PICKED.delete(i);else PICKED.add(i);
+        anchor=i;cur=i;paint();return;
+      }
+      PICKED.clear();anchor=i;cur=i;paint();};
     d.ondragstart=e=>{e.dataTransfer.setData('i',i);e.dataTransfer.effectAllowed='move';d.classList.add('dragging');};
     d.ondragend=()=>{d.classList.remove('dragging');dragOff.call(d);};
     d.ondragover=dragOver;d.ondragleave=dragOff;d.ondrop=dropAt;
@@ -1451,7 +1597,7 @@ function where(s){
   return{sec:g,at:i-a+1,of:b-a+1,n:i+1,total:S.slides.length,left:S.slides.length-i-1};
 }
 function hdrHtml(s){
-  const mode=style('header');
+  const mode=sstyle(s,'header');
   if(mode==='none')return '';
   const w=where(s);
   const path=[w.sec,s.sub].filter(Boolean).map(esc).join(' › ');
@@ -1555,12 +1701,15 @@ function stageClass(s){
   const has=s.fig&&S.figs[s.fig];
   return 'stage'+(s.layout==='background'&&has?' bgfig':'');
 }
+/* the overrides ride on the stage element itself, so every surface that draws a
+   stage — editor, projector, print — gets them without knowing about them */
+function stageStyle(s){const v=styleVars(s);return v?` style="${v}"`:'';}
 
 function paintBoard(){
   const s=S.slides[cur],sh=document.getElementById('sheet');
   if(!s){sh.innerHTML='';return;}
   sh.innerHTML=`<div class="stagewrap" id="stagewrap">
-      <div class="${stageClass(s)}" id="stage">${stageHtml(s,true)}</div></div>
+      <div class="${stageClass(s)}" id="stage"${stageStyle(s)}>${stageHtml(s,true)}</div></div>
     <div class="ins" id="plus">${['para','head','list','quote','table','math','code','fig','rule','gap'].map(k=>
       `<button data-k="${k}" title="${SNIP[k].l}" aria-label="${SNIP[k].l}">${ico(k)}</button>`).join('')}</div>
     <div id="overflag"><span>past the edge of the slide</span>
@@ -1865,7 +2014,7 @@ const TIDY_FIG=[100,92,84,76,68,60,52],TIDY_TXT=[100,94,88,82,76,70];
 function measureStage(s){
   let m=document.getElementById('measure');
   if(!m){m=document.createElement('div');m.id='measure';document.body.appendChild(m);}
-  m.className=stageClass(s)+' measure';
+  m.className=stageClass(s)+' measure';m.style.cssText=styleVars(s);
   m.innerHTML=stageHtml(s,false);
   const stack=m.querySelector('.stack');
   if(!stack)return null;
@@ -2281,6 +2430,11 @@ function paintSide(){
         <span class="pos" id="tsLab">${s.textScale||100} %</span></label>
       <input id="tSize" type="range" min="60" max="130" step="2" value="${s.textScale||100}"
         title="This slide only, as a percentage of the deck's body size (⋯ → Deck settings)"></div>
+    <button class="b" id="bSlideStyle" style="width:100%;margin-top:8px"
+      title="Colours, title size and header — for this slide only, overriding the deck">${
+      s.style&&Object.keys(s.style).length
+        ? `Styled apart from the deck · ${Object.keys(s.style).length}`
+        : 'Style just this slide…'}</button>
   </div>
 
   ${empty?'':`<div class="sec"><div class="sect">Changes to make</div>
@@ -2352,6 +2506,7 @@ function paintSide(){
   el.querySelector('#bAsk')?.addEventListener('click',e=>
     ask(document.getElementById('aiIn').value.trim(),null,e.target));
   el.querySelector('#bMd').onclick=editMarkdown;
+  el.querySelector('#bSlideStyle').onclick=()=>slideStyle(cur);
   el.querySelector('#bTidy').onclick=()=>{
     snap('tidy');
     const changed=tidyDeck([cur]);
@@ -2466,7 +2621,7 @@ function mdPreview(txt,base){
   if(!got.length)return `<div class="pvbad">Keep the <code>### n. \`[S]\` Title</code> line —
     that is what makes it a slide.</div>`;
   return got.map(g=>
-    `<div class="stagewrap pvwrap"><div class="${stageClass(g)}">${stageHtml(g,false)}</div></div>`+
+    `<div class="stagewrap pvwrap"><div class="${stageClass(g)}"${stageStyle(g)}>${stageHtml(g,false)}</div></div>`+
     (g.summary?`<div class="pvmeta"><b>For:</b> ${esc(g.summary)}</div>`:'')+
     (g.notes?`<div class="pvmeta"><b>Notes:</b> ${esc(g.notes)}</div>`:'')).join('');
 }
@@ -4024,6 +4179,53 @@ function feCommit(asCopy){
   touch();closeDialog();paint();
 }
 
+/* The deck sets the house style; a slide says only where it disagrees. Every
+   control here starts on "same as the deck" and stays there until you move it,
+   so changing the deck still moves every slide that has not spoken up. */
+function slideStyle(i){
+  const s=S.slides[i];if(!s)return;
+  s.style=s.style||{};
+  const set=k=>s.style[k]!=null;
+  const row=(k,label,input)=>`<div class="fld ovr${set(k)?' on':''}" data-k="${k}">
+      <label>${label}<button class="ovrx" data-clear="${k}"
+        title="Back to the deck's">${set(k)?'✕ same as the deck':''}</button></label>
+      ${input}</div>`;
+  dialog(`<h3>Slide ${s.n} · style</h3>
+   <p class="tip">Only what this slide disagrees with is kept. Everything else follows
+     <b>⋯ → Deck settings</b>, so changing the deck still moves this slide.</p>
+   ${row('accent','Accent',`<input data-s="accent" type="color" value="${sstyle(s,'accent')}">`)}
+   ${row('ink','Text',`<input data-s="ink" type="color" value="${sstyle(s,'ink')}">`)}
+   ${row('paper','Slide background',`<input data-s="paper" type="color" value="${sstyle(s,'paper')}">`)}
+   ${row('titleSize',`Title size <span class="pos" id="ssT">${sstyle(s,'titleSize')}px</span>`,
+     `<input data-s="titleSize" type="range" min="20" max="56" value="${sstyle(s,'titleSize')}">`)}
+   ${row('header','Slide header',`<div class="seg" id="ssH">${
+     [['position','Where + left'],['section','Section only'],['none','Nothing']].map(([v,l])=>
+       `<button data-v="${v}" class="${sstyle(s,'header')===v?'on':''}"
+          style="${sstyle(s,'header')===v?'background:var(--ink)':''}">${l}</button>`).join('')}</div>`)}
+   <div class="rw" style="margin-top:12px"><button class="b p" id="ssOk">Done</button>
+     <button class="b" id="ssAll">Back to the deck's style</button></div>`,'tall');
+  const live=()=>{touch();paint();};
+  const redraw=()=>{closeDialog();slideStyle(i);};
+  document.querySelectorAll('.dlg [data-s]').forEach(inp=>inp.oninput=()=>{
+    const k=inp.dataset.s;
+    s.style[k]=inp.type==='range'?+inp.value:inp.value;
+    if(k==='titleSize')document.getElementById('ssT').textContent=inp.value+'px';
+    document.querySelector(`.dlg .ovr[data-k="${k}"]`)?.classList.add('on');
+    const x=document.querySelector(`.dlg [data-clear="${k}"]`);
+    if(x)x.textContent='✕ same as the deck';
+    live();});
+  document.querySelectorAll('#ssH button').forEach(b=>b.onclick=()=>{
+    snap('slide style');s.style.header=b.dataset.v;live();redraw();});
+  document.querySelectorAll('.dlg [data-clear]').forEach(b=>b.onclick=e=>{
+    e.preventDefault();
+    const k=b.dataset.clear;
+    if(s.style[k]==null)return;
+    snap('slide style');delete s.style[k];live();redraw();});
+  document.getElementById('ssAll').onclick=()=>{
+    snap('slide style');s.style={};live();closeDialog();toast('Back to the deck\'s style');};
+  document.getElementById('ssOk').onclick=()=>{normalise();closeDialog();paintSide();};
+}
+
 function deckSettings(){
   const M=S.meta||{},F=[['author','Author'],['affiliation','Affiliation'],['event','Event'],
                        ['venue','Venue'],['date','Date']];
@@ -4166,6 +4368,13 @@ function shortcuts(){
   const R=[['↑ ↓','previous / next slide'],['Alt + ↑ ↓','move this slide in the deck'],
    ['drag in the list','move it anywhere, section and all'],
    ['Ctrl + D','duplicate'],['Ctrl + Enter','new slide below'],['Ctrl + S','save now'],['Ctrl + Shift + S','save to a file'],['Ctrl + Z','undo the last change'],
+   ['§carrying slides to another deck',''],
+   ['click, Shift + click','a run of slides'],['Ctrl + click','one more, or one fewer'],
+   ['Ctrl + A','all of them'],
+   ['Ctrl + C','copy them — the markdown to the clipboard, the figures with it'],
+   ['Ctrl + X','cut them'],
+   ['Ctrl + V','paste below, into this or any other deck'],
+   ['§the rest',''],
    ['P','present, full screen'],['H','hide this slide, or show it again'],['?','this list'],
    ['§the dot beside each slide',''],
    ['green','words alone'],['blue','words and a picture'],['purple','a picture alone'],
@@ -4497,6 +4706,10 @@ function slideMd(s){
   if(s.fig)m+=`**Figure:** \`${s.fig}\`${s.layout&&s.layout!=='figure'?' · '+s.layout:''}${
     s.figScale&&s.figScale!==100?' · '+s.figScale+'%':''}\n\n`;
   if(s.textScale&&s.textScale!==100)m+=`*Text:* ${s.textScale}%\n\n`;
+  /* only what this slide disagrees with; the rest is the deck's */
+  const ov=STYLE_KEYS.filter(k=>s.style&&s.style[k]!=null)
+    .map(k=>`${k}=${s.style[k]}`);
+  if(ov.length)m+=`*Style:* ${ov.join(', ')}\n\n`;
   if((s.summary||'').trim())m+=`*Summary:* ${s.summary.trim()}\n\n`;
   if(s.flags&&s.flags.length)m+=`*Flags:* ${s.flags.join(', ')}\n\n`;
   if(s.skip)m+=`*Skip:* yes\n\n`;
@@ -4588,7 +4801,7 @@ function printSlide(s,withNotes){
   const notes=withNotes&&(s.notes||'').trim()
     ?`<div class="pn"><b>Notes.</b> ${notesHtml(s.notes.trim())}</div>`:'';
   return `<section class="psl${withNotes?' withnotes':''}">
-    <div class="${stageClass(s)}">${stageHtml(s,false)}</div>${notes}</section>`;
+    <div class="${stageClass(s)}"${stageStyle(s)}>${stageHtml(s,false)}</div>${notes}</section>`;
 }
 
 function toPdf(withNotes){
@@ -4609,7 +4822,7 @@ function fit(){
 function paintDeck(){
   const s=S.slides[cur];if(!s)return;
   const d=document.getElementById('deck');
-  d.className=stageClass(s);
+  d.className=stageClass(s);d.style.cssText=styleVars(s);
   d.innerHTML=stageHtml(s,false);
   const R=liveIdx(),at=R.indexOf(cur);
   document.querySelector('#prog i').style.width=(((at<0?0:at)+1)/R.length*100)+'%';
@@ -4675,6 +4888,12 @@ document.addEventListener('keydown',e=>{
   }else{
     const mod=e.ctrlKey||e.metaKey;
     if(e.altKey&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();moveSlide(e.key==='ArrowDown'?1:-1);}
+    else if(mod&&e.key==='c'){e.preventDefault();copySlides();}
+    else if(mod&&e.key==='x'){e.preventDefault();cutSlides();}
+    else if(mod&&e.key==='v'){e.preventDefault();pasteSlides();}
+    else if(mod&&e.key==='a'){e.preventDefault();
+      PICKED.clear();S.slides.forEach((_,i)=>PICKED.add(i));paint();
+      toast(`${S.slides.length} slides selected — Ctrl-C carries them to another deck`);}
     else if(mod&&e.key==='d'){e.preventDefault();document.getElementById('bDup').click();}
     else if(mod&&e.key==='Enter'){e.preventDefault();document.getElementById('bNew').click();}
     else if(mod&&e.key==='s'){e.preventDefault();
@@ -4779,6 +4998,8 @@ document.getElementById('bSaveNow').onclick=()=>{
   persist().then(()=>{b.disabled=false;toast(saveErr?'Could not save — '+saveErr:'Saved');});};
 document.getElementById('bOpen').onclick=openDeckFile;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
+document.getElementById('bCopy').onclick=copySlides;
+document.getElementById('bPaste').onclick=pasteSlides;
 document.getElementById('bImport').onclick=()=>importWizard(null);
 document.getElementById('bBrief').onclick=briefWizard;
 document.getElementById('wBrief').onclick=briefWizard;

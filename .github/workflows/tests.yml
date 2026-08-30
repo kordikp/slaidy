@@ -1,0 +1,34 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: The markdown round trip
+        run: python3 scripts/test_roundtrip.py
+
+      - name: The browser suite
+        run: tests/run.sh
+        env:
+          CHROME_BIN: chrome
+
+      - name: One file, no dependencies
+        run: |
+          set -e
+          # the promise the project makes, checked rather than asserted in prose
+          grep -q "<script src=" slide-studio.html && { echo "external script found"; exit 1; } || true
+          grep -qE '<link[^>]+href="https?:' slide-studio.html && { echo "external stylesheet"; exit 1; } || true
+          test "$(ls *.html | wc -l)" -eq 1
+          echo "slide-studio.html is $(du -h slide-studio.html | cut -f1), on its own"

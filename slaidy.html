@@ -653,7 +653,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
     <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
     with thanks.</b> Nothing on this page needs it — the editor, the presenter and the exports all
     work without any AI at all. To use it, put your own endpoint under <b>⋯ → AI usage</b>; there is
-    a one-click preset for e-INFRA, which is free for Czech academia.
+    a one-click preset for e-INFRA, which is free to anyone <b>affiliated at a Czech academic
+    institution</b>.
   </p>
   <p class="tip">
     Also accepted, dropped anywhere on this window: one or more <code>.md</code> files, a whole folder
@@ -2304,6 +2305,7 @@ function tidyDeck(only){
 --------------------------------------------------------------------------- */
 function aiHost(){return document.getElementById('dsOut')||document.getElementById('aiout');}
 
+/* while a call is in flight, a retry is news the person waiting deserves */
 function progress(host,label,right){
   if(!host)return {step(){return this},done(){},fail(){}};
   host.classList.remove('hidden','ideas');
@@ -2325,6 +2327,7 @@ function progress(host,label,right){
     fail(msg){clearTimeout(timer);track.classList.add('err');
       host.innerHTML=`<div class="bad">${esc(msg)}</div>`;}
   };
+  llm.onretry=(n,of)=>{try{cnt.textContent=`retrying, ${n} of ${of}`;}catch(e){}};
   return api.step(label,0,90,right);
 }
 
@@ -2545,6 +2548,12 @@ async function designSlide(brief,btn,fixedTitle){
         `THE SLIDE AS IT STANDS — rewrite it, do not hand it back unchanged:\n`+
         `TITLE: ${s.title}\n\n${(s.body||'').slice(0,1800)}\n\n`+
         (s.notes?`NOTES: ${(s.notes||'').slice(0,600)}\n\n`:''))+
+      /* a figure the slide already has is not yours to drop */
+      ((()=>{const keep=[...new Set([...((s.body||'').matchAll(FIGREF))].map(m=>m[1]))];
+        if(s.fig)keep.push(s.fig);
+        const k=[...new Set(keep)].filter(id=>S.figs[id]);
+        return k.length?`FIGURES THIS SLIDE ALREADY HAS — keep every one of them exactly as it is, `+
+          `unless the instruction asks you to remove it: ${k.map(x=>'![['+x+']]').join(' ')}\n\n`:'';})())+
       `WHAT THE AUTHOR ASKS FOR: ${brief}`,2600,'slide')).trim();
     prog.done();
     let title='',body='',notes='';
@@ -2576,15 +2585,22 @@ async function designSlide(brief,btn,fixedTitle){
       (figs.length?`\n\n— ${figs.length===1?'a figure':figs.length+' figures'} to draw: ${figs.join(', ')}`:'')+
       (bad.length?`\n\n(dropped ${bad.length} link${bad.length>1?'s':''} this deck does not carry)`:''),
       async()=>{
+        /* Tidy used to run here, "to measure the layout once it has its
+           picture". It was wrong: a slide already arranged split-r came back as
+           figure, which does not project the body at all — so asking for
+           different words silently moved the picture and dropped the text. A
+           rewrite changes the words. The arrangement is the author's, and only
+           a slide that had none gets one chosen for it. */
+        const fresh=blankSlide(s);
         snap('design slide');
         if(title)s.title=title;
         s.body=body;
         if(notes)s.notes=notes;
         touch();paint();
         await fulfilFigures(S.slides[cur],brief);
-        tidyDeck([cur]);                       /* measure the layout once it has its picture */
+        if(fresh)tidyDeck([cur]);
         touch();paint();
-        toast('Slide designed');
+        toast(fresh?'Slide designed':'Slide rewritten — the layout is as you left it');
       },'Use this');
   }catch(e){prog.fail('Failed: '+e.message);}
   finally{if(btn){btn.disabled=false;btn.textContent=label||'Design this slide';}}
@@ -3241,7 +3257,8 @@ function usageHtml(){
   ${demoLimitsHtml()}
   <p class="tip" style="margin-top:9px">The AI in this editor was built and is run on capacity from
     <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
-    with thanks. If you are at a Czech institution you can get a key of your own there.</p>`;
+    with thanks. <b>If you are affiliated at a Czech academic institution you can get a key of your
+    own there</b> — and on your own machine there is no allowance at all.</p>`;
 }
 
 function configure(){
@@ -3254,7 +3271,7 @@ function configure(){
   <div class="fld"><label>Key</label><input id="cK" type="password" value="${esc(c.key||'')}"></div>
   <div class="chips" id="cPre" style="margin:2px 0 8px">
     <button data-u="https://llm.ai.e-infra.cz/v1/chat/completions" data-m="qwen3.5"
-      title="Free for Czech academia — bring your own key from e-infra.cz">CESNET e-INFRA</button>
+      title="Free if you are affiliated at a Czech academic institution — bring your own key from e-infra.cz">CESNET e-INFRA</button>
     <button data-u="https://api.openai.com/v1/chat/completions" data-m="gpt-5.6-sol">OpenAI</button>
     <button data-u="" data-m="" title="The page's own /api/generate, when it is served by studio.sh">This server</button>
   </div>
@@ -3332,7 +3349,40 @@ function cfgUrl(c){
   return '/api/generate';
 }
 
+/* A shared gateway is not always there, and most of the ways it is not are the
+   passing kind. Pressing the button again is the user doing by hand what this
+   does by itself — with the progress bar saying so, which a silent retry would
+   not. A refusal is not retried: a 400 will be a 400 again, and the demo's own
+   "you have had your figures for today" is not a failure to work around. */
+const RETRY=3;
+function transient(e){
+  if(!e||e.limited)return false;                    /* the demo's allowance is not a fault */
+  /* the status, where there is one — deciding this by reading the message is
+     how a 503 dressed in the gateway's own words gets treated as final */
+  if(e.status)return e.status>=500||e.status===429;
+  return /could not reach|no choices|timed out|network|failed to fetch/i.test(String(e.message||''));
+}
 async function llm(system,user,maxTok,kind){
+  let last;
+  for(let a=0;a<RETRY;a++){
+    if(a){
+      const wait=700*Math.pow(2,a-1)+Math.random()*400;
+      llm.onretry&&llm.onretry(a+1,RETRY);
+      await new Promise(r=>setTimeout(r,wait));
+    }
+    try{ return await llmOnce(system,user,maxTok,kind); }
+    catch(e){
+      last=e;
+      /* one press, one failure. The retries are the app's business, not
+         something the person waiting should see three of in the usage panel. */
+      if(!transient(e)){useFail();throw e;}
+    }
+  }
+  useFail();
+  last.message=`${last.message} — tried ${RETRY} times over a few seconds.`;
+  throw last;
+}
+async function llmOnce(system,user,maxTok,kind){
   const c=cfg();
   const url=cfgUrl(c);
   /* the proxy and the local server take the same small shape; only a bare
@@ -3347,7 +3397,7 @@ async function llm(system,user,maxTok,kind){
     r=await fetch(url,{method:'POST',
       headers:{'Content-Type':'application/json',...(c.key?{Authorization:'Bearer '+c.key}:{})},
       body:JSON.stringify(body)});
-  }catch(e){ useFail(); throw new Error(`could not reach ${url} — ${e.message}`); }
+  }catch(e){ throw new Error(`could not reach ${url} — ${e.message}`); }
 
   /* A plain file server answers a POST with the page itself. Say that, rather
      than letting JSON.parse complain about a "<". */
@@ -3355,10 +3405,11 @@ async function llm(system,user,maxTok,kind){
   let j;
   try{ j=JSON.parse(raw); }
   catch(e){
-    throw new Error(c.url
+    throw Object.assign(new Error(c.url
       ? `${url} answered with ${r.status} and something that is not JSON.`
       : 'this page is being served without an AI endpoint. Start it with ./studio.sh '+
-        '(it forwards to OpenAI using OPENAI_KEY), or point ⋯ → AI endpoint at an API yourself.');
+        '(it forwards to OpenAI using OPENAI_KEY), or point ⋯ → AI endpoint at an API yourself.'),
+      {status:r.status});
   }
   /* an endpoint you configured yourself should name itself when it complains —
      "no such endpoint" alone does not tell you which one you pointed at */
@@ -3366,7 +3417,6 @@ async function llm(system,user,maxTok,kind){
      panel can show it without asking again */
   if(j.limits){useLoad().limits={...j.limits,at:Date.now()};useSave();}
   if(j.error){
-    useFail();
     if(r.status===429){
       const e=new Error(j.error+(j.limits&&j.limits.resetsAt
         ? ` The demo's AI is back at ${new Date(j.limits.resetsAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}.`:''));
@@ -3377,7 +3427,7 @@ async function llm(system,user,maxTok,kind){
       throw e;
     }
     const m=typeof j.error==='string'?j.error:(j.error.message||'API error');
-    throw new Error(c.url?`${url} (${r.status}): ${m}`:m);
+    throw Object.assign(new Error(c.url?`${url} (${r.status}): ${m}`:m),{status:r.status});
   }
   const out=j.choices?.[0]?.message?.content ?? j.text ?? j.content ?? j.output ?? '';
   useNote(kind||'other',Date.now()-t0,(system||'').length,(user||'').length,out,

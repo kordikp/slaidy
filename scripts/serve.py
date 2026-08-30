@@ -10,7 +10,7 @@ from the environment, so the key stays on this machine and never reaches the pag
 
 Env: OPENAI_KEY (or OPENAI_API_KEY), OPENAI_BASE_URL, STUDIO_MODEL (default gpt-5.6-sol)
 """
-import json, os, shutil, sys, tempfile, urllib.error, urllib.request
+import json, os, random, shutil, sys, tempfile, time, urllib.error, urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from functools import partial
 
@@ -167,46 +167,62 @@ class Handler(SimpleHTTPRequestHandler):
                          {"role": "user", "content": req.get("user", "")}],
             cap: budget(model, req.get("maxTok")),
         }).encode()
-        r = urllib.request.Request(
-            BASE + "/chat/completions", data=body,
-            headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"})
-        try:
-            if GATE:
-                GATE.acquire()
+        headers = {"Authorization": "Bearer " + KEY, "Content-Type": "application/json"}
+
+        # e-INFRA is shared and not always there, and its failures are mostly the
+        # passing kind: a 429 from the cap, a 5xx, or a body with choices: null.
+        # Retried here so one person waits a few seconds rather than pressing the
+        # button again. A refusal is not retried — a 400 will be a 400 again.
+        last = "unknown"
+        for attempt in range(3):
+            if attempt:
+                time.sleep(0.7 * (2 ** (attempt - 1)) + random.random() * 0.4)
+            r = urllib.request.Request(BASE + "/chat/completions", data=body, headers=headers)
             try:
-                with urllib.request.urlopen(r, timeout=600) as resp:
-                    d = json.loads(resp.read().decode())
-            finally:
                 if GATE:
-                    GATE.release()
-            # pass the token counts through: the app cannot know what a call cost
-            # unless the endpoint says, and a usage panel that guesses is worthless
+                    GATE.acquire()
+                try:
+                    with urllib.request.urlopen(r, timeout=600) as resp:
+                        d = json.loads(resp.read().decode())
+                finally:
+                    if GATE:
+                        GATE.release()
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode()[:400]
+                try:
+                    detail = json.loads(detail)["error"]["message"]
+                except Exception:
+                    pass
+                if e.code < 500 and e.code != 429:
+                    return self._json(502, {"error": "%s says: %s" % (BASE, detail)})
+                last = "%s says: %s" % (BASE, detail)
+                continue
+            except Exception as e:
+                last = "%s: %s" % (type(e).__name__, e)
+                continue
+
             # `choices` is not guaranteed to be there: under load the e-INFRA
             # gateway answers with choices: null instead of an HTTP error, and
             # indexing that gives a TypeError several layers away from the cause
             choices = d.get("choices") or []
             if not choices:
-                return self._json(502, {"error": "the model returned no choices — "
-                                                 "usually the gateway under load; try again"})
+                last = "the model returned no choices"
+                continue
             msg = choices[0].get("message") or {}
             text = msg.get("content")
             if not text and msg.get("reasoning_content"):
                 return self._json(502, {"error": "the model spent its whole budget thinking and "
                                                  "never wrote an answer — ask for less, or raise "
                                                  "STUDIO_MAX_TOKENS"})
+            # pass the token counts through: the app cannot know what a call cost
+            # unless the endpoint says, and a usage panel that guesses is worthless
             return self._json(200, {"text": text or "",
                                     "usage": d.get("usage") or {},
-                                    "model": d.get("model") or model})
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode()[:400]
-            try:
-                detail = json.loads(detail)["error"]["message"]
-            except Exception:
-                pass
-            return self._json(502, {"error": "%s says: %s" % (BASE, detail)})
-        except Exception as e:
-            return self._json(502, {"error": "%s: %s" % (type(e).__name__, e)})
+                                    "model": d.get("model") or model,
+                                    "attempts": attempt + 1})
 
+        return self._json(502, {"error": "%s — tried 3 times over a few seconds. The endpoint is "
+                                         "not always there; give it a moment." % last})
 
 def main():
     global DECK

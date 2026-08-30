@@ -298,6 +298,29 @@ addEventListener('load',async()=>{
   ok('with the draft proposed',/Tighter body/.test(d.getElementById('aiout').textContent));
   unstub();
 
+
+  // ---------- a rewrite changes the words, not the arrangement ----------
+  const li=w.S.slides.findIndex(x=>x.fig&&w.S.figs[x.fig]&&(x.body||'').trim());
+  w.cur=li;w.S.slides[li].layout='split-r';w.paint();await wait(300);
+  const st2=()=>d.getElementById('stage');
+  ok('the slide is arranged with its figure beside the text',
+     !!st2().querySelector('.stack.rev .fg svg'),'split-r');
+  calls=[];replies=[JSON.stringify({title:'Rewritten',body:'Different words entirely.',notes:''})];
+  stub();
+  d.getElementById('deIn').value='say it differently';
+  d.getElementById('bDesign').click();await wait(500);
+  ok('the model is told which figures the slide already has',
+     /FIGURES THIS SLIDE ALREADY HAS/.test(calls[0].user||'')
+     &&(calls[0].user||'').includes(w.S.slides[li].fig),
+     'so a rewrite cannot drop one');
+  [...d.getElementById('dsOut').querySelectorAll('button')][0].click();await wait(900);
+  ok('the words change',/Different words entirely/.test(w.S.slides[li].body));
+  ok('but the arrangement is left alone',w.S.slides[li].layout==='split-r',
+     w.S.slides[li].layout+' — it used to come back as "figure", which does not project the body');
+  ok('so the figure is still beside the text',!!st2().querySelector('.stack.rev .fg svg'));
+  unstub();
+  w.undo();await wait(250);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  unstub();
  clearTimeout(__watchdog);

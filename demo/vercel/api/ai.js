@@ -16,6 +16,11 @@ const ORIGINS = (process.env.DEMO_ORIGINS || 'https://kordikp.github.io')
 
 const MAX_CHARS = 24000;   // system and user together
 const MAX_TOKENS = 6000;
+/* A figure is a whole SVG document — twenty thousand tokens of it, with room on
+   top for a model that thinks before it writes. Capping it at MAX_TOKENS meant
+   the demo could never draw one at all: the answer came back truncated and the
+   app reported, correctly, that it was not an SVG. */
+const FIG_TOKENS = 32000;
 
 /* A figure is the expensive call by an order of magnitude — twenty thousand
    tokens of SVG against a few hundred for a paragraph — so it gets its own
@@ -86,13 +91,13 @@ module.exports = async (req, res) => {
                  + 'endpoint under ⋯ → AI usage');
 
   const body = typeof req.body === 'string' ? safeJson(req.body) : (req.body || {});
+  const isFig = String(body.kind || '') === 'figure' || Number(body.maxTok || 0) >= 10000;
   const system = String(body.system || ''), user = String(body.user || '');
   if (!user) return no(400, 'nothing to answer');
   if (system.length + user.length > MAX_CHARS)
     return no(413, 'too long for the demo — run it locally with your own key');
 
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'anon';
-  const isFig = String(body.kind || '') === 'figure' || Number(body.maxTok || 0) >= 10000;
   const { why, left } = allow(ip, isFig);
   if (why)
     return res.status(429).json({
@@ -106,36 +111,64 @@ module.exports = async (req, res) => {
     });
 
   /* qwen3.5 spends most of a budget thinking before it answers, so a small
-     max_tokens comes back empty with finish_reason "length" */
-  const asked = Math.min(MAX_TOKENS, Math.max(4000, Number(body.maxTok || 4000) * 8));
+     max_tokens comes back empty with finish_reason "length". Multiplying is the
+     right instrument for a small request and the wrong one for a large: asking
+     for 20 000 does not mean wanting 160 000, it means wanting headroom. */
+  const want = Number(body.maxTok || 4000);
+  const asked = Math.min(isFig ? FIG_TOKENS : MAX_TOKENS,
+                         want < 4000 ? Math.max(4000, want * 8) : want + 8000);
 
-  let d;
-  try {
-    const r = await fetch(`${UPSTREAM}/chat/completions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json',
-                 authorization: `Bearer ${process.env.CESNET_API_KEY}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-        max_tokens: asked,
-      }),
-    });
-    d = await r.json();
-  } catch (e) {
-    return no(502, `could not reach the model — ${e.message}`);
+  /* e-INFRA is not always there, and its failures are mostly the passing kind:
+     a 429 from the shared cap, a 5xx, or a body with choices: null. Retrying
+     here rather than in the page means one waiting user instead of one who has
+     to press the button again, and the whole thing still fits inside the
+     function's minute. It does not retry a refusal — a 400 will be a 400 again. */
+  const ATTEMPTS = 3;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let d = null, last = 'unknown', tried = 0;
+
+  for (let a = 0; a < ATTEMPTS; a++) {
+    tried = a + 1;
+    if (a) await sleep(700 * Math.pow(2, a - 1) + Math.floor(Math.random() * 400));
+    let r;
+    try {
+      r = await fetch(`${UPSTREAM}/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json',
+                   authorization: `Bearer ${process.env.CESNET_API_KEY}` },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+          max_tokens: asked,
+        }),
+      });
+    } catch (e) { last = `could not reach the model — ${e.message}`; continue; }
+
+    if (r.status === 429 || r.status >= 500) { last = `the model answered ${r.status}`; continue; }
+
+    let body = null;
+    try { body = await r.json(); } catch { last = 'the model answered with something that is not JSON'; continue; }
+
+    if (body && body.error) {
+      const m = typeof body.error === 'string' ? body.error : (body.error.message || 'upstream error');
+      if (!r.ok && r.status < 500 && r.status !== 429) return no(502, m);   // a refusal is not transient
+      last = m; continue;
+    }
+    /* the gateway answers with choices: null under load rather than with an error */
+    if (!((body && body.choices) || [])[0]) { last = 'the model returned no choices'; continue; }
+    d = body; break;
   }
 
-  if (d && d.error) return no(502, typeof d.error === 'string' ? d.error : (d.error.message || 'upstream error'));
-  /* the gateway answers with choices: null under load rather than with an error */
-  const choice = ((d && d.choices) || [])[0];
-  if (!choice) return no(502, 'the model returned no choices — usually load; try again');
-  const msg = choice.message || {};
+  if (!d) return no(502, `${last} — tried ${tried} times over a few seconds. e-INFRA is shared and `
+                       + `not always there; give it a moment and press it again.`);
+
+  const msg = (d.choices[0].message) || {};
   if (!msg.content && msg.reasoning_content)
     return no(502, 'the model spent its whole budget thinking and never wrote an answer');
 
   return res.status(200).json({ text: msg.content || '', usage: d.usage || {},
-                               model: d.model || MODEL, limits: left });
+                               model: d.model || MODEL, limits: left,
+                               attempts: tried });
 };
 
 function safeJson(s) { try { return JSON.parse(s); } catch { return {}; } }

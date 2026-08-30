@@ -495,15 +495,8 @@ Requirements: Python 3 for the scripts, Chrome or Chromium for the tests. Nothin
 
 ## Thanks
 
-The AI in this editor was built on, and runs on, capacity from
-**[CESNET e-INFRA CZ](https://www.e-infra.cz/en)** — `llm.ai.e-infra.cz`, free to Czech
-academia. Everything the editor does without AI it does without them too; everything it
-does *with* AI exists because they made the experimenting affordable.
-
-Their gateway also taught the project two things it now handles for every provider: a
-reasoning model can spend its entire token budget thinking and return an empty answer,
-and a gateway under load can reply `choices: null` instead of an error. Both are reported
-as what they are rather than as an outage.
+The AI here runs on capacity from **[CESNET e-INFRA CZ](https://www.e-infra.cz/en)**, free to anyone
+affiliated at a Czech academic institution. Everything else in the editor works without it.
 
 ## Licence
 

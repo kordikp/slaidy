@@ -21,8 +21,9 @@ addEventListener('load',async()=>{
   w.cur=11;w.paint();await wait(150);
   d.querySelector('#side .chips button').click();
   await wait(600);
+  await wait(2600);          // three attempts with backoff before it gives up
   const out=d.getElementById('aiout').textContent;
-  ok('the panel repeats it plainly',/Failed:/.test(out)&&/studio\.sh/.test(out),out.slice(0,58)+'…');
+  ok('the panel repeats it plainly',/studio\.sh/.test(out),out.slice(0,58)+'…');
   ok('no JSON noise in the panel',!/Unexpected token/.test(out));
 
   // a configured but broken endpoint reports the server's own words
@@ -41,6 +42,57 @@ addEventListener('load',async()=>{
   ok('and no key anywhere in the file',
      !/sk-[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9_-]{20,}/.test(W.document.documentElement.innerHTML),
      'a static page cannot keep a secret, so it does not hold one');
+
+
+  // ---------- a shared gateway that is not always there ----------
+  ok('three attempts, not one',w.RETRY===3,String(w.RETRY));
+  ok('a gateway that is unreachable is worth trying again',
+     w.transient(new Error('could not reach https://x — failed to fetch')));
+  ok('so is one with nothing in its answer',w.transient(new Error('the model returned no choices')));
+  ok('so is a 503',w.transient(Object.assign(new Error('upstream'),{status:503})));
+  ok('and a 429 from the gateway',w.transient(Object.assign(new Error('busy'),{status:429})));
+  ok('a refusal is not',!w.transient(Object.assign(new Error('bad request'),{status:400})),
+     'decided by the status, not by reading the words');
+  ok('and neither is the demo saying you have had your share',
+     !w.transient(Object.assign(new Error('6 drawn figures a day'),{limited:true})),
+     'that is not a failure to work around');
+
+  const realFetch=W.fetch;
+  await wait(2600);                    // let anything already retrying finish first
+  let n=0;
+  W.fetch=async(u,o)=>{
+    if(!o||o.method!=='POST')return realFetch(u,o);
+    n++;
+    if(n<3)return {status:503,text:async()=>JSON.stringify({error:'gateway busy'})};
+    return {status:200,text:async()=>JSON.stringify({text:'got there in the end'})};
+  };
+  let said=[];w.llm.onretry=(a,of)=>said.push(a+'/'+of);
+  const got=await w.llm('s','u',50,'edit');
+  ok('it keeps trying and gets there',got==='got there in the end',got);
+  ok('after exactly as many attempts as it took',n===3,n+' calls');
+  ok('and says so while you wait',said.join(' ')==='2/3 3/3',said.join(' '));
+
+  await wait(200);n=0;
+  W.fetch=async(u,o)=>{
+    if(!o||o.method!=='POST')return realFetch(u,o);
+    n++;return {status:503,text:async()=>JSON.stringify({error:'gateway busy'})};
+  };
+  let gaveUp='';
+  try{ await w.llm('s','u',50,'edit'); }catch(e){ gaveUp=e.message; }
+  ok('one that never comes back gives up and says how hard it tried',
+     /tried 3 times/.test(gaveUp),gaveUp.slice(-46));
+  ok('having tried three times, not more',n===3,n+' calls');
+
+  await wait(200);n=0;
+  W.fetch=async(u,o)=>{
+    if(!o||o.method!=='POST')return realFetch(u,o);
+    n++;return {status:400,text:async()=>JSON.stringify({error:'that model does not exist'})};
+  };
+  W.localStorage.setItem('studio:cfg',JSON.stringify({url:'https://x/y',key:'',model:'m'}));
+  try{ await w.llm('s','u',50,'edit'); }catch(e){}
+  ok('a refusal is asked once and once only',n===1,n+' calls');
+  W.localStorage.removeItem('studio:cfg');
+  W.fetch=realFetch;w.llm.onretry=null;
 
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);

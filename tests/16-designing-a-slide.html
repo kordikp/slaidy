@@ -87,16 +87,82 @@ addEventListener('load',async()=>{
   ok('a missing hero figure counts too',
      w.wantedFigures({body:'',fig:'fig-hero-nope'}).join()==='fig-hero-nope');
 
-  // ---------- design a slide end to end, figure and all ----------
+  // ---------- only the deck's own links are offered, and only those survive ----------
+  const withLink=w.S.slides.find(x=>/\]\(https?:/.test(x.body||''))||w.S.slides[0];
+  withLink.body=(withLink.body||'')+'\n\nSee [arXiv:2004.04906](https://arxiv.org/abs/2004.04906).';
+  const ln=w.deckLinks(w.S.slides[NEW]);
+  ok('the deck\'s own links are collected',ln.some(x=>x.includes('2004.04906')),ln.length+' links');
+  ok('the design brief forbids inventing one',/[Nn]ever invent a URL/.test(w.DESIGN_SYS));
+
+  // ---------- suggestions arrive as editable cards ----------
   w.cur=NEW;w.paint();await wait(120);
-  calls=[];replies=['Why The Walls Came Down\n\nThree systems merged.\n\n![[fig-walls]]\n\n> One index, one model.',SVG];
+  calls=[];replies=[JSON.stringify([
+    {title:'Why The Walls Came Down',angle:'names the mechanism',spec:'· the three systems\n· a figure'},
+    {title:'What It Cost',angle:'the price',spec:'· latency and serving cost'},
+    {title:'Who Paid',angle:'who absorbed it',spec:'· a table of four companies'}])];
+  stub();
+  d.getElementById('bSugg').click();await wait(400);
+  const cards=d.querySelectorAll('#dsOut .idea');
+  ok('three ideas come back',cards.length===3,cards.length+' cards');
+  ok('each names itself in an editable field',
+     cards[0].querySelector('input.ih')&&cards[0].querySelector('input.ih').value==='Why The Walls Came Down',
+     cards[0].querySelector('input.ih')&&cards[0].querySelector('input.ih').value);
+  ok('and its specification is editable too',
+     !!cards[0].querySelector('textarea.is')&&/three systems/.test(cards[0].querySelector('textarea.is').value));
+  ok('the panel says the spec is what gets built',/what gets built/i.test(d.getElementById('dsOut').textContent));
+  // edit both, then design
+  const ti=cards[0].querySelector('input.ih'),sp=cards[0].querySelector('textarea.is');
+  ti.value='A Title I Chose Myself';ti.dispatchEvent(new W.Event('input'));
+  sp.value='· exactly what I asked for';sp.dispatchEvent(new W.Event('input'));
+  await wait(60);
+  ok('the edits are held on the suggestion',
+     w.SUGG[0].title==='A Title I Chose Myself'&&/exactly what I asked/.test(w.SUGG[0].spec));
+  unstub();
+
+  // ---------- design a slide end to end, figure and all ----------
+  calls=[];replies=[JSON.stringify({
+      title:'ignored — the card decided',
+      body:'Three systems merged.\n\n![[fig-walls]]\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n'+
+           'See [arXiv:2004.04906](https://arxiv.org/abs/2004.04906) and '+
+           '[made up](https://example.com/nope).\n\n> One index, one model.',
+      notes:'Say the walls were organisational before they were technical.'}),SVG];
+  stub();
+  cards[0].querySelector('button').click();
+  await wait(500);
+  const o1=d.getElementById('dsOut');
+  ok('the brief carried the edited spec',/exactly what I asked/.test(calls[0].user||''));
+  ok('and the title the card was given',/A Title I Chose Myself/.test(calls[0].system||''));
+  ok('the deck\'s links travel with the request',/2004\.04906/.test(calls[0].user||''));
+  ok('the draft keeps the table',/\| a \| b \|/.test(o1.textContent));
+  ok('and the speaker notes',/organisational before they were technical/.test(o1.textContent));
+  ok('a link the deck does not have is dropped',/dropped 1 link/.test(o1.textContent),
+     o1.textContent.slice(-120));
+  [...o1.querySelectorAll('button')][0].click();
+  await wait(1200);
+  ok('the card\'s title wins over the model\'s',w.S.slides[NEW].title==='A Title I Chose Myself',
+     w.S.slides[NEW].title);
+  ok('the table lands on the slide',/\| a \| b \|/.test(w.S.slides[NEW].body));
+  ok('the real link survives',/arxiv\.org\/abs\/2004\.04906/.test(w.S.slides[NEW].body));
+  ok('the invented one is gone, its words kept',
+     !/example\.com/.test(w.S.slides[NEW].body)&&/made up/.test(w.S.slides[NEW].body));
+  ok('the notes land too',/organisational/.test(w.S.slides[NEW].notes||''));
+  ok('the figure was drawn',!!w.S.figs['fig-walls']);
+  unstub();
+  w.paint();await wait(150);
+
+  // the rest of this file drives the plain design box
+  Object.assign(w.S.slides[NEW],{title:'New slide',body:'',notes:'',fig:null,layout:'text',summary:''});
+  delete w.S.figs['fig-walls'];
+  w.paint();await wait(150);
+  calls=[];replies=[JSON.stringify({title:'Why The Walls Came Down',
+    body:'Three systems merged.\n\n![[fig-walls]]\n\n> One index, one model.',notes:''}),SVG];
   stub();
   d.getElementById('deIn').value='how retrieval and ranking merged, with a diagram';
   d.getElementById('bDesign').click();
   await wait(400);
   const out=d.getElementById('dsOut');
   ok('the draft is proposed, not applied',/Why The Walls Came Down/.test(out.textContent)
-     &&w.S.slides[NEW].title==='New slide');
+     &&w.S.slides[NEW].title==='New slide',w.S.slides[NEW].title);
   ok('and it says a figure has to be drawn',/fig-walls/.test(out.textContent));
   [...out.querySelectorAll('button')][0].click();
   await wait(900);
@@ -106,6 +172,7 @@ addEventListener('load',async()=>{
      Object.keys(w.S.figs).length+' figures now');
   ok('the model was asked twice — slide, then figure',calls.length===2,calls.length+' calls');
   ok('the second call carried the design system',/viewBox exactly/.test(calls[1].system||''));
+  ok('the figure was redrawn for the new slide',!!w.S.figs['fig-walls']);
   ok('nothing is left wanting',w.wantedFigures(w.S.slides[NEW]).length===0);
   unstub();
   w.paint();await wait(150);

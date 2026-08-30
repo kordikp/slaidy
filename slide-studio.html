@@ -254,13 +254,26 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .chips button:hover{border-color:var(--acc);color:var(--acc)}
 .aiout{border:1px solid var(--line);border-radius:var(--r6);padding:9px;background:#FAFAFB;font-size:12px;
  max-height:260px;overflow:auto;line-height:1.5;margin-top:7px}
+/* proposals to read and edit are not a scrolling box inside a scrolling panel —
+   they get their length and the panel does the scrolling */
+.aiout.ideas{max-height:none;overflow:visible;background:none;border:0;padding:0}
 .aiout .pv{white-space:pre-wrap;max-height:200px;overflow:auto}
 .aiout .bad{color:var(--b)}
 .idea{border:1px solid var(--line);border-radius:var(--r6);background:#fff;padding:9px 10px;margin-bottom:7px}
 .idea:last-of-type{margin-bottom:0}
-.ih{font:600 13px/1.3 system-ui;color:var(--ink);margin-bottom:3px}
-.ia{font-size:11.5px;color:var(--acc);line-height:1.4;margin-bottom:5px}
-.is{font-size:11.5px;color:var(--gray);line-height:1.5;white-space:pre-wrap;margin-bottom:8px}
+/* both editable: a proposal you cannot adjust is take-it-or-leave-it */
+.ih{font:600 13px/1.3 system-ui;color:var(--ink);width:100%;border:0;border-bottom:1px solid transparent;
+ padding:1px 0 2px;background:none;outline:none;margin-bottom:3px}
+.ih:hover{border-bottom-color:var(--line)}
+.ih:focus{border-bottom-color:var(--acc)}
+.ia{font-size:11.5px;color:var(--acc);line-height:1.4;margin-bottom:6px}
+/* deliberately looks like a field: the point is that you can change it before
+   designing. (#side .sec textarea would win on specificity anyway — better to
+   mean it than to be overruled by it.) */
+#side .aiout .is,.is{width:100%;font:11.5px/1.55 system-ui;color:var(--gray);
+ border:1px solid var(--line);border-radius:5px;padding:5px 7px;margin:0 0 8px;
+ background:#FCFCFD;resize:none;overflow:hidden;outline:none;display:block}
+#side .aiout .is:focus,.is:focus{border-color:var(--acc);background:#fff;color:var(--ink)}
 .idea button{width:100%}
 /* Progress, because a model call is long enough that silence reads as broken.
    The bar creeps asymptotically inside the band of the step it is on, and only
@@ -1113,7 +1126,7 @@ function paintNav(){
     d.innerHTML=`<span class="ix">${String(s.n).padStart(3,'0')}</span>
       <span class="pip" style="background:${KINDS[slideKind(s)][1]}"
         title="${KINDS[slideKind(s)][0]}"></span>
-      <span class="tt">${esc(s.title)}${s.flags.includes('ours')?'<span class="own" title="Our own work">·</span>':''}</span>
+      <span class="tt">${esc(s.title)}${(s.flags||[]).includes('ours')?'<span class="own" title="Our own work">·</span>':''}</span>
       <button class="eye" title="${s.skip?'Hidden — click to show':'Hide this slide'}"
         data-skip="${i}">${s.skip?'⊘':'◉'}</button>`;
     d.onclick=e=>{
@@ -1650,7 +1663,7 @@ function aiHost(){return document.getElementById('dsOut')||document.getElementBy
 
 function progress(host,label,right){
   if(!host)return {step(){return this},done(){},fail(){}};
-  host.classList.remove('hidden');
+  host.classList.remove('hidden','ideas');
   host.innerHTML='<div class="wlab"><b></b><i></i></div><div class="prog"><i></i></div>';
   const bar=host.querySelector('.prog i'),lab=host.querySelector('.wlab b'),
         cnt=host.querySelector('.wlab i'),track=host.querySelector('.prog');
@@ -1674,7 +1687,7 @@ function progress(host,label,right){
 
 /* A proposal is never applied behind your back — it is shown, then you take it. */
 function propose(host,text,onApply,verb){
-  host.classList.remove('hidden');
+  host.classList.remove('hidden','ideas');
   host.innerHTML=`<div class="pv"></div><div class="rw" style="margin-top:7px">
     <button class="b p">${verb||'Apply'}</button><button class="b">Discard</button></div>`;
   host.querySelector('.pv').textContent=text;
@@ -1772,8 +1785,9 @@ then propose THREE different slides that would earn their place there — differ
 phrasings of one idea. For each give:
   title  — how it appears on the slide, under 8 words, no colon-subtitle
   angle  — one line saying what this slide does that the neighbours do not
-  spec   — 3 to 5 short lines: what goes on the slide, whether it wants a figure and what the
-           figure would show, and the one line that must land
+  spec   — 4 to 6 short lines: what goes on the slide, whether it wants a figure and what that
+           figure would show, whether the content is really a table and what its columns are,
+           which paper or system it should cite, and the one line that must land
 House style: plain and precise; every claim carries a number, a named system or a citation.
 Return ONLY a JSON array of three objects with keys title, angle, spec. No fences, no commentary.`,
 `DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n\nSLIDES AROUND THE GAP:\n${near||'(the deck is empty)'}`,
@@ -1784,60 +1798,131 @@ Return ONLY a JSON array of three objects with keys title, angle, spec. No fence
     if(!SUGG.length)throw new Error('no suggestions came back');
     prog.done();
     host.classList.remove('hidden');
-    host.innerHTML=SUGG.map((x,i)=>`<div class="idea">
-      <div class="ih">${esc(x.title)}</div>
-      <div class="ia">${esc(x.angle||'')}</div>
-      <div class="is">${esc(x.spec||'').trim()}</div>
-      <button class="b p" data-i="${i}">Design this one</button></div>`).join('')+
+    /* the title and the specification are both editable here. A proposal you
+       cannot adjust is a proposal you either take whole or throw away, and the
+       useful case is almost always "yes, but" */
+    host.classList.add('ideas');
+    host.innerHTML=`<div class="tip" style="margin:0 0 7px">Change anything here before designing —
+      the specification is what gets built.</div>`+
+      SUGG.map((x,i)=>`<div class="idea">
+        <input class="ih" data-i="${i}" value="${esc(x.title)}" spellcheck="false">
+        <div class="ia">${esc(x.angle||'')}</div>
+        <textarea class="is" data-i="${i}" rows="1">${esc((x.spec||'').trim())}</textarea>
+        <button class="b p" data-i="${i}">Design this one</button></div>`).join('')+
       `<button class="b" id="bMore" style="width:100%;margin-top:8px">Three more ideas</button>`;
+    const grow=t=>{t.style.height='auto';t.style.height=Math.min(340,t.scrollHeight+2)+'px';};
+    host.querySelectorAll('textarea.is').forEach(t=>{grow(t);t.oninput=()=>{
+      SUGG[+t.dataset.i].spec=t.value;grow(t);};});
+    host.querySelectorAll('input.ih').forEach(t=>t.oninput=()=>{SUGG[+t.dataset.i].title=t.value;});
     host.querySelectorAll('.idea button').forEach(bt=>bt.onclick=()=>{
       const x=SUGG[+bt.dataset.i];
-      designSlide(`${x.angle||''}\n${x.spec||''}`.trim(),bt,x.title);});
+      if(!(x.spec||'').trim()){toast('Say what the slide should contain');return;}
+      designSlide(`${x.angle||''}\n${x.spec||''}`.trim(),bt,(x.title||'').trim()||null);});
     document.getElementById('bMore').onclick=e=>suggestSlides(e.target);
   }catch(e){prog.fail('Failed: '+e.message);}
   finally{if(btn){btn.disabled=false;btn.textContent='Suggest what goes here';}}
 }
 
+/* Real links only. A slide citing a paper the deck does not have is worse than
+   one citing nothing, and a model asked for "a link" will cheerfully invent an
+   arXiv id that resolves to something else. So it is handed the links this deck
+   actually carries — its own section first — and told it may use nothing else. */
+function deckLinks(s,max){
+  const L=/\[([^\]]{1,70})\]\((https?:\/\/[^)\s]+)\)/g;
+  const seen=new Map();
+  const take=x=>{for(const m of (((x.body||'')+'\n'+(x.notes||'')).matchAll(L)))
+                   if(!seen.has(m[2]))seen.set(m[2],m[1]);};
+  S.slides.forEach(x=>{if(x.group===s.group)take(x);});
+  if(seen.size<10)S.slides.forEach(take);
+  return [...seen].slice(0,max||30).map(([u,l])=>`[${l}](${u})`);
+}
+
+const DESIGN_SYS=`You write one slide of a technical presentation. Finished, not a sketch —
+what you return is what goes on the screen.
+
+Return ONLY a JSON object, no fences, no commentary:
+  {"title": "...", "body": "...", "notes": "..."}
+
+body is the slide in markdown, carrying whatever the content actually calls for:
+ · a line containing only ![[fig-<short-slug>]] where a picture carries the point better than
+   words can — it will be drawn for you, to this deck's own design system. At most two, and
+   invent the slug from the subject.
+ · a markdown table when the content is really a comparison. On a slide a table usually beats
+   the same facts written out.
+ · a short list, three to five items, for an enumeration.
+ · > one line at the end that must land.
+ · *** for a divider, <!-- gap --> for breathing room. Sparingly.
+ · links, but ONLY ones from the list you are given. Never invent a URL or an arXiv id. If
+   nothing in the list fits, name the paper or the system in plain text instead.
+Three bullet points is not a finished slide. Give it a structure and something to look at.
+Do not repeat the title as the first line of the body.
+
+notes is what is said out loud and not printed: two to four sentences — the argument behind
+the slide, and what to drop when short on time.
+
+House style: plain and precise, no marketing adjectives; every claim carries a number, a named
+system or a citation, or it is cut; honest about limits.`;
+
 async function designSlide(brief,btn,fixedTitle){
   if(!brief){toast('Say what the slide should say');return;}
   const s=S.slides[cur],host=document.getElementById('dsOut');
+  const label=btn?btn.textContent:null;
   if(btn){btn.disabled=true;btn.textContent='Designing…';}
   const prog=progress(host,'writing the slide','');
   const near=S.slides.map((x,i)=>[i,x])
     .filter(([i])=>i!==cur&&Math.abs(i-cur)<=2)
     .map(([i,x])=>`${i<cur?'before':'after'}: ${x.title}`).join('\n');
-  const sys=`You design one slide of a technical presentation.
-Return the slide title on the first line, then a blank line, then the body in markdown.
-House style: plain and precise, no marketing adjectives; every claim carries a number, a named
-system or a citation, or it is cut; honest about limits. Slides are read at a glance — short lines,
-no paragraphs of prose. Use > for the one line that must land, a table when it is really a
-comparison, **bold** sparingly.
-If a figure would carry the point better than words can, put a line containing only
-![[fig-<short-slug>]] where it belongs and it will be drawn for you. Invent the slug from the
-subject; never reference any other figure id. At most two figures.
-No commentary, no code fences.`+(fixedTitle?`\nThe title is already decided: use exactly "${fixedTitle}".`:'');
+  const links=deckLinks(s);
   try{
-    const raw=(await llm(sys,
+    const raw=(await llm(
+      DESIGN_SYS+(fixedTitle?`\nThe title is already decided: use exactly "${fixedTitle}".`:''),
       `DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n`+
-      `NEIGHBOURING SLIDES:\n${near||'(none)'}\n\nWHAT THIS SLIDE SHOULD SAY: ${brief}`,1400))
-      .replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+      `NEIGHBOURING SLIDES:\n${near||'(none)'}\n\n`+
+      `LINKS THIS DECK CARRIES — you may use these and no others:\n${
+        links.length?links.join('\n'):'(none — cite by name instead)'}\n\n`+
+      `WHAT THIS SLIDE SHOULD SAY: ${brief}`,2600)).trim();
     prog.done();
-    const nl=raw.indexOf('\n');
-    const title=(nl<0?raw:raw.slice(0,nl)).replace(/^#+\s*/,'').replace(/^["']|["']$/g,'').trim();
-    const body=(nl<0?'':raw.slice(nl+1)).trim();
+    let title='',body='',notes='';
+    const a=raw.indexOf('{'),b=raw.lastIndexOf('}');
+    let ok=false;
+    if(a>=0&&b>a){
+      try{ const j=JSON.parse(raw.slice(a,b+1));
+           title=(j.title||'').trim();body=(j.body||'').trim();notes=(j.notes||'').trim();
+           ok=!!body; }catch(e){}
+    }
+    if(!ok){
+      /* it answered in prose. Take the first line as the title rather than lose the lot. */
+      const t=raw.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+      const nl=t.indexOf('\n');
+      title=(nl<0?t:t.slice(0,nl)).replace(/^#+\s*/,'').replace(/^["']|["']$/g,'').trim();
+      body=(nl<0?'':t.slice(nl+1)).trim();
+    }
+    if(fixedTitle)title=fixedTitle;
+    if(!body){prog.fail('The model returned nothing usable.');return;}
+    /* a link it invented anyway: keep the words, drop the target */
+    const bad=[...body.matchAll(/\]\((https?:\/\/[^)\s]+)\)/g)].map(m=>m[1])
+      .filter(u=>!links.some(l=>l.includes(u)));
+    bad.forEach(u=>{body=body.replace(new RegExp(`\\[([^\\]]*)\\]\\(${
+      u.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\)`,'g'),'$1');});
     const figs=[...new Set([...body.matchAll(FIGREF)].map(m=>m[1]))].filter(id=>!S.figs[id]);
-    propose(host,`${title}\n\n${body}`+
-      (figs.length?`\n\n— and ${figs.length===1?'a figure':figs.length+' figures'} to draw: ${figs.join(', ')}`:''),
+    propose(host,
+      `${title}\n\n${body}`+
+      (notes?`\n\n— speaker notes —\n${notes}`:'')+
+      (figs.length?`\n\n— ${figs.length===1?'a figure':figs.length+' figures'} to draw: ${figs.join(', ')}`:'')+
+      (bad.length?`\n\n(dropped ${bad.length} link${bad.length>1?'s':''} this deck does not carry)`:''),
       async()=>{
         snap('design slide');
         if(title)s.title=title;
         s.body=body;
+        if(notes)s.notes=notes;
         touch();paint();
         await fulfilFigures(S.slides[cur],brief);
+        tidyDeck([cur]);                       /* measure the layout once it has its picture */
+        touch();paint();
         toast('Slide designed');
       },'Use this');
   }catch(e){prog.fail('Failed: '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent='Design this slide';}}
+  finally{if(btn){btn.disabled=false;btn.textContent=label||'Design this slide';}}
 }
 
 function paintSide(){

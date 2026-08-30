@@ -162,8 +162,21 @@ picks the layout from what is left.
 An **empty slide** does not hand you a blank box. **Suggest what goes here** reads where the
 slide sits — the deck, the section, the four slides either side — and comes back with three
 named ideas: a title, one line on what this slide does that its neighbours do not, and a
-short specification of what goes on it and what a figure would show. Pick one and it is
-written. Or say it yourself in the box, with starter chips for the usual shapes.
+specification of what goes on it, what a figure would show, what a table would compare and
+what it should cite.
+
+**The title and the specification are editable before you build.** A proposal you cannot
+adjust is one you take whole or throw away, and the useful case is almost always *yes, but*.
+What is in the box is what gets built.
+
+Then it is developed, not sketched: a figure where a picture carries the point, a table where
+the content is really a comparison, a short list where it is an enumeration, the line that has
+to land, and speaker notes for what is said rather than shown. Links come **only from the ones
+this deck already carries** — its own section first — because a model asked for a citation will
+otherwise invent an arXiv id that resolves to something else; one that slips through anyway has
+its target dropped and its words kept. The layout is measured once the figure exists.
+
+Or say it yourself in the box, with starter chips for the usual shapes.
 
 A slide **with content** offers **Summarise**: one line saying what the slide is for, which
 then doubles as the instruction — edit the line and **Update the slide** rewrites the slide

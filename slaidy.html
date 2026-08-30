@@ -111,7 +111,12 @@ button{cursor:pointer;background:none;border:none}
 .stage .stack:not(.col)>.fg,.stage .stack:not(.col)>.fg .hero{align-items:flex-start}
 .stage .stack:not(.col)>.tx{justify-content:flex-start}
 /* Tidy may decide a short slide sits better in the middle of the frame */
+/* Centring the row stops the figure column stretching, and the figure sizes
+   itself from that column's height (100cqh) — so it collapsed to nothing and
+   the picture simply was not there. The text centres; the column still gets
+   the full height to measure against, and the drawing centres inside it. */
 .stage .stack.mid:not(.col){align-items:safe center}
+.stage .stack.mid:not(.col)>.fg{align-self:stretch}
 .stage .stack.mid:not(.col)>.fg,.stage .stack.mid:not(.col)>.fg .hero{align-items:safe center}
 .stage .stack.mid:not(.col)>.tx{justify-content:safe center}
 .stage .stack.mid.col>.tx{justify-content:safe center}
@@ -637,7 +642,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
   <p>A WYSIWYG editor and presenter for decks written in markdown. Nothing is uploaded; everything
      stays in this browser, and Export always gives you files you own.
      <a href="https://github.com/kordikp/slaidy" target="_blank" rel="noopener noreferrer">Source
-     on GitHub</a> — MIT, one file, no dependencies.</p>
+     on GitHub</a> — MIT, one file, no dependencies. Built by
+     <a href="https://kordikp.github.io" target="_blank" rel="noopener noreferrer">Pavel Kordík</a>.</p>
 
   <p class="tip">Figures are SVG, never bitmaps — a deck has to stay readable to you, to git and
      to the AI you ask to redraw something. 237 slides and 180 figures come to a megabyte, where

@@ -1,10 +1,10 @@
 {
-  "title": "Slide Studio",
+  "title": "SlAIdy",
   "meta": {
-    "author": "",
-    "affiliation": "",
-    "event": "",
-    "venue": "",
+    "author": "Pavel Kordík",
+    "affiliation": "CTU FIT & Recombee",
+    "event": "a demo deck",
+    "venue": "kordikp.github.io/slaidy",
     "date": ""
   },
   "style": {

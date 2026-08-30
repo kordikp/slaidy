@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,sans-serif">
+  <style>
+    @keyframes rise  { 0%,100%{opacity:.30;transform:translateY(3px)} 50%{opacity:1;transform:translateY(0)} }
+    @keyframes flow  { 0%{stroke-dashoffset:120} 100%{stroke-dashoffset:0} }
+    @keyframes glow  { 0%,100%{opacity:.35} 50%{opacity:.9} }
+    .ln   { stroke-dasharray:6 6; animation: flow 6s linear infinite; }
+    .ln.b { animation-direction: reverse; }
+    .l1{animation:rise 6s ease-in-out infinite}
+    .l2{animation:rise 6s ease-in-out infinite;animation-delay:-.5s}
+    .l3{animation:rise 6s ease-in-out infinite;animation-delay:-1s}
+    .halo{animation:glow 6s ease-in-out infinite}
+  </style>
+  <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
+  <text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">One material, two readers</text>
+
+  <!-- the deck in the middle -->
+  <rect class="halo" x="300" y="150" width="200" height="150" rx="12" fill="#EDE9FE"/>
+  <rect x="308" y="158" width="184" height="134" rx="9" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
+  <text x="400" y="186" text-anchor="middle" font-size="13" font-weight="700" fill="#4C1D95">the deck</text>
+  <g font-family="ui-monospace,monospace" font-size="10.5" fill="#6B7280">
+    <text class="l1" x="326" y="212">### A slide</text>
+    <text class="l3" x="326" y="234">![[fig-idea]]</text>
+  </g>
+  <text x="400" y="278" text-anchor="middle" font-size="11" fill="#6B7280">markdown and svg</text>
+
+  <!-- human -->
+  <circle cx="120" cy="212" r="46" fill="#D1FAE5" stroke="#10B981" stroke-width="2"/>
+  <text x="120" y="207" text-anchor="middle" font-size="13" font-weight="700" fill="#065F46">you</text>
+  <text x="120" y="226" text-anchor="middle" font-size="11" fill="#065F46">read it</text>
+  <path class="ln" d="M168 212 H300" stroke="#10B981" stroke-width="2.5" fill="none"/>
+
+  <!-- model -->
+  <circle cx="680" cy="212" r="46" fill="#E0F2FE" stroke="#0EA5E9" stroke-width="2"/>
+  <text x="680" y="207" text-anchor="middle" font-size="13" font-weight="700" fill="#075985">the model</text>
+  <text x="680" y="226" text-anchor="middle" font-size="11" fill="#075985">reads it too</text>
+  <path class="ln b" d="M500 212 H632" stroke="#0EA5E9" stroke-width="2.5" fill="none"/>
+
+  <text x="120" y="300" text-anchor="middle" font-size="11.5" fill="#6B7280">decides what is true</text>
+  <text x="680" y="300" text-anchor="middle" font-size="11.5" fill="#6B7280">drafts, draws, tightens</text>
+
+  <text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">Neither has to take the other's word for what is on the slide.</text>
+</svg>

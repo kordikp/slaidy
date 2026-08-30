@@ -103,6 +103,23 @@ addEventListener('load',async()=>{
   ok('print uses the stage as well',!!tmp.querySelector('.psl .stage'));
   ok('print markup matches the board',
      tmp.querySelector('.stage').className===st.className,tmp.querySelector('.stage').className);
+  // ---------- a centred row keeps its figure ----------
+  // Centring stops the figure column stretching, and the figure sizes itself
+  // from that column's height — so it collapsed to nothing and simply was not
+  // there. Found by looking at the demo deck, not by the suite.
+  const ci=w.S.slides.findIndex(x=>x.fig&&w.S.figs[x.fig]);
+  w.cur=ci;w.S.slides[ci].layout='split-r';w.S.slides[ci].flags=[];w.paint();await wait(350);
+  const fw=()=>{const v=d.getElementById('stage').querySelector('.fg svg');
+    return v?Math.round(v.getBoundingClientRect().width):0;};
+  const plain=fw();
+  ok('a figure beside text has a width',plain>50,plain+'px');
+  w.S.slides[ci].flags=['center'];w.paint();await wait(350);
+  ok('centring the row does not collapse it',fw()>50,fw()+'px');
+  ok('and leaves it the same size',Math.abs(fw()-plain)<6,fw()+' vs '+plain);
+  ok('the row really is centred',
+     /\bmid\b/.test(d.getElementById('stage').querySelector('.stack').className));
+  w.S.slides[ci].flags=[];w.paint();await wait(200);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

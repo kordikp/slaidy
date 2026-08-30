@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,sans-serif">
+  <style>
+    @keyframes sweep { 0%{stroke-dashoffset:300} 60%,100%{stroke-dashoffset:0} }
+    @keyframes tick  { 0%,45%{opacity:0;transform:translateY(4px)} 60%,100%{opacity:1;transform:translateY(0)} }
+    @keyframes hold  { 0%,100%{opacity:.55} 50%{opacity:1} }
+    .arc{stroke-dasharray:300;animation:sweep 6s ease-in-out infinite}
+    .t1{animation:tick 6s ease-in-out infinite}
+    .t2{animation:tick 6s ease-in-out infinite;animation-delay:-.4s}
+    .t3{animation:tick 6s ease-in-out infinite;animation-delay:-.8s}
+    .keep{animation:hold 6s ease-in-out infinite}
+  </style>
+  <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
+  <text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">Who decides what</text>
+
+  <rect x="56" y="72" width="330" height="292" rx="12" fill="#D1FAE5" opacity=".45"/>
+  <text x="221" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#065F46">yours</text>
+  <text class="keep" x="88" y="152" font-size="13" fill="#065F46">what the talk argues</text>
+  <text class="keep" x="88" y="192" font-size="13" fill="#065F46">which slide earns its place</text>
+  <text class="keep" x="88" y="232" font-size="13" fill="#065F46">the arrangement, the words</text>
+  <text class="keep" x="88" y="272" font-size="13" fill="#065F46">what is true</text>
+
+  <rect x="414" y="72" width="330" height="292" rx="12" fill="#E0F2FE" opacity=".55"/>
+  <text x="579" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#075985">the model's</text>
+  <text class="t1" x="446" y="152" font-size="13" fill="#075985">a draft to argue with</text>
+  <text class="t2" x="446" y="192" font-size="13" fill="#075985">the figure, drawn to the rules</text>
+  <text class="t3" x="446" y="232" font-size="13" fill="#075985">what it would cut, as a list</text>
+  <path class="arc" d="M446 258 H712" stroke="#0EA5E9" stroke-width="2" fill="none"/>
+  <text x="579" y="330" text-anchor="middle" font-size="11.5" fill="#6B7280">each a proposal · one undo puts them back</text>
+
+  <text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">A partner drafts. It does not sign off.</text>
+</svg>

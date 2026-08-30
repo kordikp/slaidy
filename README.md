@@ -513,7 +513,7 @@ The compactness follows from the same choice rather than being a separate featur
 | a 237-slide deck, 180 figures | **1.0 MB**, everything included |
 | the median figure | 3.7 kB |
 | the same deck exported as `.pptx` | 33.8 MB — **33× larger** |
-| the editor itself | 289 kB, one file |
+| the editor itself | 290 kB, one file |
 
 This is the same bet [**pbook**](https://github.com/kordikp/recsys-pbook)
 ([live](https://recsys-pbook.vercel.app)) makes, and the reason the two projects feel related: a
@@ -525,6 +525,10 @@ same principle — **the material has to be legible to everyone working on it, h
 
 The AI here runs on capacity from **[CESNET e-INFRA CZ](https://www.e-infra.cz/en)**, free to anyone
 affiliated at a Czech academic institution. Everything else in the editor works without it.
+
+## Who
+
+Built by [Pavel Kordík](https://kordikp.github.io) — CTU FIT and Recombee.
 
 ## Licence
 

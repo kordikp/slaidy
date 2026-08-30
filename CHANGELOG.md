@@ -40,6 +40,9 @@ Dates are when the work landed, not when it was released; there are no releases 
   catchy quietly got you the house default back.
 
 ### Fixed
+- Centring a row collapsed its figure to nothing: the column stopped stretching, and the
+  figure sizes itself from that column's height. Found by looking at the demo deck.
+
 - **Edits could be lost three ways at once**: the deck was copied to be served, so every
   restart looked newer than your work; a file handle could not be re-permissioned after
   a restart; and rebuilding from markdown wrote over a newer deck. All three closed, and

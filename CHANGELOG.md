@@ -47,6 +47,15 @@ Dates are when the work landed, not when it was released; there are no releases 
 - A hidden slide vanished from the list, because its state class collided with a global
   `display:none` utility.
 
+### Security
+- A deck is treated as untrusted text, because one can now arrive from anywhere. Link
+  schemes are checked (`javascript:` keeps its words and loses its target), figure SVGs
+  are stripped of `<script>`, `on*` handlers and `foreignObject` on every render path,
+  and the figure editor's canvas is sandboxed. `scripts/serve.py` caps the size of a
+  written deck and refuses cross-origin calls to its AI proxy.
+- Copying slides used to report success even when both the clipboard and the browser
+  store had refused it.
+
 ### Removed
 - **Trim to length.** Which slides matter is the one judgement a tool cannot make for
   you, and the deck-wide guess was worse than no answer. `scripts/short_run.py` still

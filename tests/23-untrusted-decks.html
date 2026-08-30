@@ -1,0 +1,78 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1400px;height:900px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(150); const w=W.__api;
+ try{
+  // A deck can arrive from anywhere now: dropped in, imported, pasted from another
+  // machine, or written by a model. None of those are this application.
+
+  // ---------- a link is a link ----------
+  ok('http is a link',w.safeUrl('https://arxiv.org/abs/1301.3781'));
+  ok('so is mailto',w.safeUrl('mailto:a@b.c'));
+  ok('so is an anchor and a relative path',w.safeUrl('#x')&&w.safeUrl('../papers/a.pdf'));
+  ok('javascript: is not',!w.safeUrl('javascript:alert(1)'));
+  ok('nor with a space in it',!w.safeUrl('java script:alert(1)'));
+  ok('nor with a tab hidden inside',!w.safeUrl('java	script:alert(1)'));
+  ok('nor in capitals',!w.safeUrl('JaVaScRiPt:alert(1)'));
+  ok('data: is not',!w.safeUrl('data:text/html,<svg/onload=alert(1)>'));
+  ok('vbscript: is not',!w.safeUrl('vbscript:msgbox'));
+
+  const html=w.inl('a [good](https://example.org/p) and a [bad](javascript:alert(1)) one');
+  ok('a good link survives markdown',/href="https:\/\/example\.org\/p"/.test(html),html.slice(0,60));
+  ok('a bad one loses its target',!/javascript:/.test(html),html);
+  ok('but keeps its words, so nothing vanishes silently',/bad/.test(html));
+  ok('and links do not leak the page they came from',/rel="noopener noreferrer"/.test(html));
+
+  // ---------- a figure is a drawing, not a program ----------
+  const nasty='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">'+
+    '<rect width="800" height="450" fill="#fff"/>'+
+    '<scr'+'ipt>window.__pwned=1;</scr'+'ipt>'+
+    '<circle cx="10" cy="10" r="5" onload="window.__pwned=2" onclick="window.__pwned=3"/>'+
+    '<a xlink:href="javascript:window.__pwned=4"><text x="5" y="5">click</text></a>'+
+    '<foreignObject><body xmlns="http://www.w3.org/1999/xhtml">hi</body></foreignObject>'+
+    '<style>@keyframes k{to{opacity:1}}</style></svg>';
+  const clean=w.disarmSvg(nasty);
+  ok('a script element is taken out',!/<scr'+'ipt/i.test(clean.replace(/'/g,'')),clean.slice(0,60));
+  ok('so are event handlers',!/\son(load|click)\s*=/i.test(clean));
+  ok('so is a javascript: href',!/javascript:/i.test(clean));
+  ok('so is foreignObject, which is a page inside a drawing',!/<foreignObject/i.test(clean));
+  ok('the drawing itself survives',/<circle/.test(clean)&&/@keyframes/.test(clean)&&/<rect/.test(clean));
+  ok('scopeSvg disarms too, so every render path is covered',
+     !/window.__pwned=1/.test(w.scopeSvg(nasty,'u1')));
+
+  w.S.figs['fig-nasty']=nasty;
+  w.S.slides[0].body='![[fig-nasty]]';w.cur=0;w.paint();await wait(400);
+  ok('a poisoned figure on a slide runs nothing',!W.__pwned,String(W.__pwned));
+  ok('and no script element reaches the document',
+     !d.getElementById('sheet').querySelector('script'));
+  ok('while the figure still draws',!!d.querySelector('#sheet .inlinefig svg circle'));
+
+  // ---------- the figure editor's canvas ----------
+  w.figEdit(w.S.slides[0],'fig-nasty');
+  await wait(700);
+  const canvas=d.getElementById('fefr');
+  ok('the editor canvas is sandboxed',canvas.getAttribute('sandbox')==='allow-same-origin',
+     String(canvas.getAttribute('sandbox')));
+  ok('which still leaves the editor able to read it',!!w.FE&&!!w.FE.svg,'still editable');
+  ok('and nothing ran there either',!W.__pwned,String(W.__pwned));
+  d.getElementById('feCancel').click();await wait(200);
+  delete w.S.figs['fig-nasty'];
+
+  // ---------- pasted markdown is untrusted the same way ----------
+  const slides=w.importMarkdown('x.md',
+    '# G\n\n### 1. `[S]` A pasted slide\n\nSee [this](javascript:alert(1)) and <img src=x onerror=alert(1)>.\n');
+  w.S.slides.splice(1,0,slides[0]);w.normalise();w.cur=1;w.paint();await wait(350);
+  ok('a pasted javascript: link is defused',
+     !/javascript:/.test(d.getElementById('sheet').innerHTML));
+  ok('raw html in a slide body is shown, not run',
+     !d.getElementById('sheet').querySelector('img[onerror]'),
+     'markdown is escaped before anything else happens');
+  ok('and the words are still there',/A pasted slide/.test(d.getElementById('sheet').textContent));
+  w.S.slides.splice(1,1);w.normalise();w.paint();
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

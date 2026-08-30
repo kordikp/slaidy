@@ -78,6 +78,10 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(404, {"error": "no such endpoint"})
         try:
             n = int(self.headers.get("Content-Length") or 0)
+            # a deck is a megabyte or two; anything near a hundred is not one, and
+            # reading it into memory on request is how a local server falls over
+            if n > 256 * 1024 * 1024:
+                return self._json(413, {"error": "that is far too large to be a deck"})
             raw = self.rfile.read(n)
             d = json.loads(raw or b"{}")
             if not isinstance(d.get("slides"), list) or not d["slides"]:
@@ -117,6 +121,11 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path.rstrip("/") != "/api/generate":
             return self._json(404, {"error": "no such endpoint"})
+        # the proxy exists to keep the key off the page; it is not an open relay
+        if self.headers.get("Origin") and self.headers.get("Origin") not in (
+                "http://localhost:%d" % self.server.server_address[1],
+                "http://127.0.0.1:%d" % self.server.server_address[1]):
+            return self._json(403, {"error": "this endpoint only answers the page it serves"})
         if not KEY:
             return self._json(503, {"error":
                 "No OPENAI_KEY on the machine running studio.sh. Either export it and restart, "

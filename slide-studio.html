@@ -121,8 +121,7 @@ button{cursor:pointer;background:none;border:none}
  aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
 .stage .fg svg{width:100%;height:100%;display:block}
 /* safe center: centred when it fits, top-aligned when it would otherwise be cut */
-.stage .tx{align-self:stretch}
-.stage .tx{flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C;
+.stage .tx{align-self:stretch;flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C;
  display:flex;flex-direction:column}
 /* In the editor you can scroll to whatever spilled past the frame — otherwise the
    thing you need to fix is the one thing you cannot reach. No visible scrollbar,
@@ -966,7 +965,23 @@ function freshIds(svg,uid){
   });
   return svg;
 }
+/* An SVG can carry <script> and on* handlers, and this app inlines figures
+   straight into the page. Its own figures never do — but a figure can come from
+   a dropped file, a pasted slide, or a model, and none of those are this app.
+   Stripped once, here, because every path that renders a figure comes through
+   scopeSvg. */
+function disarmSvg(svg){
+  return String(svg||'')
+    .replace(/<script\b[\s\S]*?<\/script\s*>/gi,'')
+    .replace(/<script\b[^>]*\/>/gi,'')
+    .replace(/<foreignObject\b[\s\S]*?<\/foreignObject\s*>/gi,'')
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi,'')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi,'')
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi,'')
+    .replace(/((?:xlink:)?href)\s*=\s*(["'])\s*(?:javascript|data(?!:image\/(?:png|jpe?g|gif|webp|svg\+xml);)|vbscript):[^"']*\2/gi,'$1="#"');
+}
 function scopeSvg(svg,uid){
+  svg=disarmSvg(svg);
   svg=freshIds(svg,uid);
   if(!svg) return '';
   svg=svg.replace(/<\?xml[^>]*\?>/,'').trim();
@@ -1144,6 +1159,14 @@ function tex2mml(tex,display){
     return `<code class="tex" title="${esc(e.message)}">${esc(display?'$$'+tex+'$$':'$'+tex+'$')}</code>`;
   }
 }
+/* http, https, mailto, an anchor, or a relative path. Not javascript:, not
+   data:, not vbscript: — and not a scheme hidden behind whitespace or control
+   characters, which is the classic way past a check like this. */
+function safeUrl(u){
+  const t=String(u||'').replace(/[\u0000-\u0020]/g,'').toLowerCase();
+  if(/^(javascript|data|vbscript|file|blob):/.test(t))return false;
+  return /^(https?:|mailto:|#|\/|\.{0,2}\/|[\w.-]+(\/|$))/.test(t)||!/:/.test(t);
+}
 function inl(s){
   /* Maths comes out before escaping — TeX contains < and > and \, and running
      it through esc() first would turn the formula into entities. It goes back
@@ -1155,7 +1178,11 @@ function inl(s){
   });
   s=esc(s);
   s=s.replace(/!\[\[([a-zA-Z0-9._-]+)(\|\d{2,3}%)?\]\]/g,''); // inline figures handled at block level
-  s=s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  /* A deck can arrive from anywhere now — pasted, imported, sent to you — so a
+     link in one is untrusted text. Only schemes that navigate are allowed
+     through; anything else keeps its words and loses its target. */
+  s=s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,(m,txt,href)=>
+    safeUrl(href)?`<a href="${href}" target="_blank" rel="noopener noreferrer">${txt}</a>`:txt);
   s=s.replace(/~~(.+?)~~/g,'<s>$1</s>');
   s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   s=s.replace(/(^|[^\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/g,'$1<em>$2</em>');
@@ -1328,7 +1355,10 @@ async function readFiles(files){
   const mds=[],svgs=[];let bundle=null;
   for(const f of files){
     const n=f.name.toLowerCase();
-    if(n.endsWith('.json')){try{bundle=JSON.parse(await f.text());}catch(e){}}
+    if(n.endsWith('.json')){
+      try{bundle=JSON.parse(await f.text());}
+      catch(e){toast(`${f.name} is not readable as a deck — ${e.message}`);}
+    }
     else if(n.endsWith('.md')) mds.push([f.webkitRelativePath||f.name, await f.text()]);
     else if(n.endsWith('.svg')) svgs.push([f.name.replace(/\.svg$/i,''), await f.text()]);
   }
@@ -1452,10 +1482,17 @@ async function copySlides(){
   const md=list.map(slideMd).join('\n');
   const payload={kind:'slide-studio/slides',at:Date.now(),from:S.title||S.id,
                  md,slides:list,figs:figsOf(list)};
-  try{await put('clip:slides',payload);}catch(e){}
-  try{await navigator.clipboard.writeText(md);}catch(e){}
+  /* Two places, and it used to claim success if neither worked. The browser copy
+     is what carries the figures; the clipboard is what carries them off this
+     machine. Say which of the two actually happened. */
+  let held=false,clip=false;
+  try{await put('clip:slides',payload);held=true;}catch(e){}
+  try{await navigator.clipboard.writeText(md);clip=true;}catch(e){}
   const n=list.length,f=Object.keys(payload.figs).length;
-  toast(`Copied ${n} slide${n>1?'s':''}${f?` and ${f} figure${f>1?'s':''}`:''} — paste in any deck`);
+  if(!held&&!clip)return toast('Could not copy — this browser allowed neither the clipboard nor its own storage');
+  toast(`Copied ${n} slide${n>1?'s':''}${f&&held?` and ${f} figure${f>1?'s':''}`:''} — `+
+        (clip?(held?'paste in any deck':'paste as markdown; the figures did not come'):
+              'paste into another deck in this browser'));
 }
 async function cutSlides(){
   const ix=picked();
@@ -3285,7 +3322,7 @@ function figEdit(s,figId,onRename){
           <button data-a="con" title="Join the two selected (Ctrl-J)">${fico('con')}</button>
           <button data-a="dup" title="Duplicate (Ctrl-D)">${fico('dup')}</button>
         </div>
-        <iframe id="fefr"></iframe>
+        <iframe id="fefr" sandbox="allow-same-origin"></iframe>
         <div class="fehint" id="fehint">Click takes the whole object · double-click steps inside ·
           lasso by dragging empty space · handles resize · tools on the left add shapes</div>
       </div>

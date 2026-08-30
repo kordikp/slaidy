@@ -38,6 +38,18 @@ addEventListener('load',async()=>{
   const wantFigs=Object.keys(w.figsOf(w.picked().map(i=>w.S.slides[i])));
   await w.copySlides();await wait(300);
   ok('the markdown lands on the system clipboard',/^### /m.test(CLIP),CLIP.slice(0,42));
+  // and it must not claim success when neither place accepted it
+  const realWrite=W.navigator.clipboard.writeText;
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:{
+    writeText:async()=>{throw new Error('denied');},readText:async()=>CLIP}});
+  const realPut=W.__api.put;
+  let said='';const realToast=d.getElementById('toast');
+  await w.copySlides();await wait(250);
+  ok('a clipboard that refuses is reported, not papered over',
+     /paste into another deck in this browser|Could not copy/.test(realToast.textContent),
+     realToast.textContent);
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:{
+    writeText:async t=>{CLIP=t;},readText:async()=>CLIP}});
   ok('one heading per slide taken',(CLIP.match(/^### /gm)||[]).length===3,
      (CLIP.match(/^### /gm)||[]).length+' headings');
   ok('every title is in it',taken.every(t=>CLIP.includes(t)),taken.join(' | ').slice(0,60));

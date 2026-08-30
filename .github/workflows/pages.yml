@@ -31,6 +31,7 @@ jobs:
           cp decks/example.json _site/deck.json
           cp LICENSE _site/LICENSE
       - uses: actions/configure-pages@v5
+        with: {enablement: true}      # turn Pages on the first time rather than asking
       - uses: actions/upload-pages-artifact@v3
         with: {path: _site}
       - id: deploy

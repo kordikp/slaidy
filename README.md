@@ -1,6 +1,8 @@
-# Slide Studio
+# SlAIdy
 
 **A slide editor in one HTML file, where the deck stays a folder of markdown.**
+
+*Slides, with the AI in the middle of the word and out of the way of the work.*
 
 [![tests](https://github.com/kordikp/slide-studio/actions/workflows/tests.yml/badge.svg)](https://github.com/kordikp/slide-studio/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
@@ -14,7 +16,14 @@ application, and if the application disappears you still have a deck.
 ### [Try it in your browser →](https://kordikp.github.io/slide-studio/)
 
 No sign-up and nothing uploaded; it is the same single file, served from GitHub Pages
-with an example deck beside it.
+with an example deck beside it. Everything works there except the AI, which needs an
+endpoint of your own — `⋯ → AI usage` has one-click presets for **CESNET e-INFRA** and
+OpenAI, and you paste your key into the browser, where it stays.
+
+> The demo cannot ship a key. It is a static page with no server to keep a secret in, so
+> a key in it would be a key given away. Run it locally with `./studio.sh` and the key
+> stays in your shell environment — the page never sees it, and it never appears on a
+> command line where `ps` would show it.
 
 ```bash
 git clone https://github.com/kordikp/slide-studio
@@ -476,6 +485,18 @@ endpoint.
 Requirements: Python 3 for the scripts, Chrome or Chromium for the tests. Nothing else.
 
 ---
+
+## Thanks
+
+The AI in this editor was built on, and runs on, capacity from
+**[CESNET e-INFRA CZ](https://www.e-infra.cz/en)** — `llm.ai.e-infra.cz`, free to Czech
+academia. Everything the editor does without AI it does without them too; everything it
+does *with* AI exists because they made the experimenting affordable.
+
+Their gateway also taught the project two things it now handles for every provider: a
+reasoning model can spend its entire token budget thinking and return an empty answer,
+and a gateway under load can reply `choices: null` instead of an error. Both are reported
+as what they are rather than as an outage.
 
 ## Licence
 

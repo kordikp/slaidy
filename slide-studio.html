@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Slide Studio</title>
+<title>SlAIdy</title>
 <style>
 :root{
  /* the desk is cool and quiet so the figures carry every colour */
@@ -26,7 +26,9 @@ button{cursor:pointer;background:none;border:none}
 /* ---------- toolbar ---------- */
 #bar{height:38px;display:flex;align-items:center;gap:7px;padding:0 9px;background:var(--chrome);
  border-bottom:1px solid var(--line);position:relative;z-index:20;flex:none}
-#bar .logo{font-weight:650;font-size:13px;letter-spacing:-.005em}
+#bar .logo{font-weight:650;font-size:13px;letter-spacing:-.005em;color:inherit;text-decoration:none}
+#bar .logo:hover{color:var(--acc)}
+#bar .logo::after{content:'↗';font-size:9px;margin-left:3px;opacity:.45;vertical-align:2px}
 #bar .meta2{color:var(--faint);font-size:11.5px;max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #bar .sp{flex:1}
 #bar .div{width:1px;height:17px;background:var(--line);margin:0 2px}
@@ -585,7 +587,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 </style></head><body>
 
 <div id="bar">
-  <span class="logo">Studio</span>
+  <a class="logo" href="https://github.com/kordikp/slide-studio" target="_blank" rel="noopener noreferrer"
+     title="SlAIdy on GitHub — MIT, one file, no dependencies">SlAIdy</a>
   <span class="meta2" id="deckInfo">no deck</span>
   <span id="status" class="busy" title="storage status">no deck</span>
   <span class="sp"></span>
@@ -630,9 +633,11 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 <div id="veil"><div class="dlg" id="dlg"></div></div>
 <div id="drop">Drop markdown, SVG figures, or a deck bundle</div>
 <div id="welcome"><div class="card2">
-  <h1>Slide Studio</h1>
+  <h1>SlAIdy</h1>
   <p>A WYSIWYG editor and presenter for decks written in markdown. Nothing is uploaded; everything
-     stays in this browser, and Export always gives you files you own.</p>
+     stays in this browser, and Export always gives you files you own.
+     <a href="https://github.com/kordikp/slide-studio" target="_blank" rel="noopener noreferrer">Source
+     on GitHub</a> — MIT, one file, no dependencies.</p>
 
   <p><b>To open a whole presentation, pick the one <code>.json</code> file in <code>decks/</code>.</b><br>
      For this keynote that is <code>decks/great-convergence.json</code> — it carries all 237 slides and
@@ -644,6 +649,13 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
   <div id="recent" class="recent"></div>
 
   <p class="tip" style="margin-top:18px">
+    <b>The AI here runs on capacity from
+    <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
+    with thanks.</b> Nothing on this page needs it — the editor, the presenter and the exports all
+    work without any AI at all. To use it, put your own endpoint under <b>⋯ → AI usage</b>; there is
+    a one-click preset for e-INFRA, which is free for Czech academia.
+  </p>
+  <p class="tip">
     Also accepted, dropped anywhere on this window: one or more <code>.md</code> files, a whole folder
     of them (including a p-book content directory), and <code>.svg</code> files, which join the figure library.
   </p>
@@ -659,7 +671,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 
 <script>
 /* =====================================================================
-   Slide Studio — content-agnostic WYSIWYG slide editor and presenter.
+   SlAIdy — content-agnostic WYSIWYG slide editor and presenter.
    The app ships empty; decks are opened from disk. Markdown stays the
    source of truth and Export writes it back unchanged in shape.
    ===================================================================== */
@@ -3157,7 +3169,10 @@ function usageHtml(){
     <table class="usetab">${Object.entries(u.byModel).sort((a,b)=>b[1]-a[1])
       .map(([m,n])=>`<tr><td><code>${esc(m)}</code></td><td class="num">${n}</td></tr>`).join('')}</table>`:''}
   <p class="tip">Counted in this browser only, and never sent anywhere. Tokens are what the endpoint
-    reported; where it reports none, none are shown rather than guessed.</p>`;
+    reported; where it reports none, none are shown rather than guessed.</p>
+  <p class="tip" style="margin-top:9px">The AI in this editor was built and is run on capacity from
+    <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
+    with thanks. If you are at a Czech institution you can get a key of your own there.</p>`;
 }
 
 function configure(){
@@ -3168,6 +3183,12 @@ function configure(){
    in this browser.</p>
   <div class="fld"><label>Endpoint</label><input id="cU" value="${esc(c.url||'')}" placeholder="https://api.openai.com/v1/chat/completions"></div>
   <div class="fld"><label>Key</label><input id="cK" type="password" value="${esc(c.key||'')}"></div>
+  <div class="chips" id="cPre" style="margin:2px 0 8px">
+    <button data-u="https://llm.ai.e-infra.cz/v1/chat/completions" data-m="qwen3.5"
+      title="Free for Czech academia — bring your own key from e-infra.cz">CESNET e-INFRA</button>
+    <button data-u="https://api.openai.com/v1/chat/completions" data-m="gpt-5.6-sol">OpenAI</button>
+    <button data-u="" data-m="" title="The page's own /api/generate, when it is served by studio.sh">This server</button>
+  </div>
   <div class="fld"><label>Model</label><input id="cM" value="${esc(c.model||'gpt-5.6-sol')}"></div>
   <div class="fld" style="margin-top:14px"><label>What every figure in this deck should obey</label>
     <textarea id="cF" rows="5" placeholder="Fewer labels than you think — name the parts, do not narrate them.&#10;Arrows carry the verb; never caption what an arrow already shows.&#10;Three colours at most in one figure.">${esc((S.style&&S.style.figBrief)||'')}</textarea></div>
@@ -3188,6 +3209,11 @@ function configure(){
     S.style=S.style||{};
     if(b!==((S.style.figBrief)||'')){S.style.figBrief=b;touch();}
     closeDialog();toast('Saved');};
+  document.querySelectorAll('#cPre button').forEach(b=>b.onclick=()=>{
+    document.getElementById('cU').value=b.dataset.u;
+    if(b.dataset.m)document.getElementById('cM').value=b.dataset.m;
+    document.getElementById('cK').focus();
+    toast(b.dataset.u?'Endpoint set — paste your key':'Using the server that serves this page');});
   document.getElementById('cC').onclick=closeDialog;
   document.getElementById('cZero').onclick=()=>{
     useReset();

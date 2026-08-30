@@ -17,6 +17,27 @@ from functools import partial
 BASE = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 KEY = os.environ.get("OPENAI_KEY") or os.environ.get("OPENAI_API_KEY")
 MODEL = os.environ.get("STUDIO_MODEL") or os.environ.get("FIGURE_MODEL") or "gpt-5.6-sol"
+# e-INFRA caps concurrent calls; going past it earns a 429 rather than a queue
+MAXPAR = int(os.environ.get("STUDIO_MAX_CONCURRENCY") or ("4" if "e-infra" in BASE else "0") or 0)
+GATE = __import__("threading").Semaphore(MAXPAR) if MAXPAR else None
+
+# Models that spend most of their budget thinking before they say anything.
+# Learned the expensive way on CESNET's qwen3.5: it answers with
+# `content: null`, `reasoning_content` full, and `finish_reason: "length"` —
+# the thinking consumed the whole allowance before a visible word was produced,
+# and every caller saw an empty completion that looked like an outage.
+REASONERS = ("qwen3", "deepseek-r1", "o1", "o3", "o4-mini", "gpt-5")
+# reasoning cost scales with the INPUT, not with how long an answer you asked
+# for, so a multiplier alone is the wrong instrument — the floor is what makes
+# small requests survivable.
+THINK_FLOOR, THINK_MULT, THINK_CEIL = 4000, 8, 32000
+
+
+def budget(model, asked):
+    asked = int(asked or 4000)
+    if any(m in (model or "").lower() for m in REASONERS):
+        return min(THINK_CEIL, max(THINK_FLOOR, asked * THINK_MULT))
+    return asked
 
 # The real deck on disk. The app saves straight to it, so there is no second
 # copy to disagree with it and nothing to re-permission after a restart.
@@ -136,23 +157,46 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:
             return self._json(400, {"error": "could not read the request: %s" % e})
 
+        model = req.get("model") or MODEL
+        # OpenAI renamed the field; everyone else still wants max_tokens, and a
+        # gateway that does not know the new name simply ignores the limit
+        cap = "max_completion_tokens" if "api.openai.com" in BASE else "max_tokens"
         body = json.dumps({
-            "model": req.get("model") or MODEL,
+            "model": model,
             "messages": [{"role": "system", "content": req.get("system", "")},
                          {"role": "user", "content": req.get("user", "")}],
-            "max_completion_tokens": int(req.get("maxTok") or 4000),
+            cap: budget(model, req.get("maxTok")),
         }).encode()
         r = urllib.request.Request(
             BASE + "/chat/completions", data=body,
             headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(r, timeout=600) as resp:
-                d = json.loads(resp.read().decode())
+            if GATE:
+                GATE.acquire()
+            try:
+                with urllib.request.urlopen(r, timeout=600) as resp:
+                    d = json.loads(resp.read().decode())
+            finally:
+                if GATE:
+                    GATE.release()
             # pass the token counts through: the app cannot know what a call cost
             # unless the endpoint says, and a usage panel that guesses is worthless
-            return self._json(200, {"text": d["choices"][0]["message"]["content"],
+            # `choices` is not guaranteed to be there: under load the e-INFRA
+            # gateway answers with choices: null instead of an HTTP error, and
+            # indexing that gives a TypeError several layers away from the cause
+            choices = d.get("choices") or []
+            if not choices:
+                return self._json(502, {"error": "the model returned no choices — "
+                                                 "usually the gateway under load; try again"})
+            msg = choices[0].get("message") or {}
+            text = msg.get("content")
+            if not text and msg.get("reasoning_content"):
+                return self._json(502, {"error": "the model spent its whole budget thinking and "
+                                                 "never wrote an answer — ask for less, or raise "
+                                                 "STUDIO_MAX_TOKENS"})
+            return self._json(200, {"text": text or "",
                                     "usage": d.get("usage") or {},
-                                    "model": d.get("model") or req.get("model") or MODEL})
+                                    "model": d.get("model") or model})
         except urllib.error.HTTPError as e:
             detail = e.read().decode()[:400]
             try:
@@ -170,7 +214,7 @@ def main():
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
     if len(sys.argv) > 3 and sys.argv[3]:
         DECK = os.path.abspath(sys.argv[3])
-    print("  AI: " + (f"on, {MODEL} via {BASE}" if KEY
+    print("  AI: " + (f"on, {MODEL} via {BASE}" + (f", {MAXPAR} at a time" if MAXPAR else "") if KEY
                       else "off — no OPENAI_KEY, so the AI panels will say so plainly"),
           flush=True)   # stdout is a pipe when started detached; without this it is never seen
     if DECK:

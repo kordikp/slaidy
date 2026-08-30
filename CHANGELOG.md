@@ -27,6 +27,11 @@ Dates are when the work landed, not when it was released; there are no releases 
 - **`New deck…`** asks where it will be saved before you start.
 
 ### Changed
+- **The project is called SlAIdy.** The name in the toolbar is the link to the source.
+- The AI can be pointed at **CESNET e-INFRA CZ** in one click, and `studio.sh` prefers it
+  when `CESNET_API_KEY` is in the environment or in `.env`. A reasoning model's token
+  budget is scaled so it has room to answer after it has finished thinking, the e-INFRA
+  four-at-a-time cap is respected, and an empty completion is reported as what it is.
 - **The deck file is the document.** Started with `studio.sh`, the server owns it and
   every save writes to it. No permission prompt, no second copy.
 - Generated figures are told how sparse to be, in numbers measured from the deck they

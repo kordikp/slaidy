@@ -77,6 +77,30 @@ addEventListener('load',async()=>{
   ok('and is not the one we had',w.S.title!==wasTitle,w.S.title);
   ok('it goes straight to a file when the server holds one',
      !!w.srvDeck?w.fileName===w.srvDeck.path:true,String(w.fileName));
+
+  // ---------- the name, the link, and who paid for the AI ----------
+  const logo=d.querySelector('#bar .logo');
+  ok('the project is called SlAIdy',logo.textContent.trim()==='SlAIdy',logo.textContent.trim());
+  ok('and the name is the way to the source',
+     /github\.com\/kordikp\/slide-studio/.test(logo.getAttribute('href')),logo.getAttribute('href'));
+  ok('opened safely, like every other outbound link',
+     /noopener/.test(logo.getAttribute('rel'))&&logo.target==='_blank',logo.getAttribute('rel'));
+  ok('the document is titled that too',/SlAIdy/.test(d.title),d.title);
+
+  w.configure();await wait(200);
+  const pres=[...d.querySelectorAll('#cPre button')].map(b=>b.textContent);
+  ok('the endpoint has presets rather than a URL to remember',pres.length===3,pres.join(' · '));
+  ok('CESNET e-INFRA among them',pres.some(x=>/CESNET/.test(x)));
+  d.querySelector('#cPre button[data-m="qwen3.5"]').click();await wait(120);
+  ok('picking it fills the endpoint',
+     /llm\.ai\.e-infra\.cz/.test(d.getElementById('cU').value),d.getElementById('cU').value);
+  ok('and the model',d.getElementById('cM').value==='qwen3.5',d.getElementById('cM').value);
+  ok('but never a key — a preset cannot hand you someone else\'s',
+     !d.getElementById('cK').value,'"'+d.getElementById('cK').value+'"');
+  ok('and the panel thanks them',/e-infra\.cz/.test(d.querySelector('.dlg').innerHTML)
+     &&/with thanks/.test(d.querySelector('.dlg').textContent));
+  d.getElementById('cC').click();await wait(150);
+
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  W.fetch=realFetch;
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

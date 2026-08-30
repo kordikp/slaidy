@@ -27,19 +27,36 @@ cp slide-studio.html "$WORK/index.html"
 
 PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
 
-# Pick up OPENAI_KEY from .env if it is not already in the environment, so the AI
-# panels work without an export every time. Only these three names are read, and
-# the value never reaches the command line — just this shell's environment.
-ENVFILE="${OPENAI_ENV_FILE:-.env}"
-if [ -z "${OPENAI_KEY:-}${OPENAI_API_KEY:-}" ] && [ -r "$ENVFILE" ]; then
-  for v in OPENAI_KEY OPENAI_API_KEY STUDIO_MODEL; do
-    line=$(grep -m1 "^$v=" "$ENVFILE" 2>/dev/null) || continue
-    val=${line#*=}; val=${val%\"}; val=${val#\"}; val=${val%\'}; val=${val#\'}
-    [ -n "$val" ] && export "$v=$val"
-  done
+# Read the AI credentials from .env if they are not already exported, so the AI
+# panels work without an export every time. Only these names are read, and no
+# value ever reaches the command line — where `ps` would show it — just this
+# shell's environment.
+#
+# CESNET e-INFRA CZ is preferred when it is configured: it is what the demo and
+# the development of this tool run on, by their grace. Otherwise OpenAI.
+ENVFILE="${STUDIO_ENV_FILE:-${OPENAI_ENV_FILE:-.env}}"
+readenv() {                       # readenv VAR — echo the value, never log it
+  [ -r "$ENVFILE" ] || return 1
+  line=$(grep -m1 "^$1=" "$ENVFILE" 2>/dev/null) || return 1
+  val=${line#*=}; val=${val%\"}; val=${val#\"}; val=${val%\'}; val=${val#\'}
+  [ -n "$val" ] && printf '%s' "$val"
+}
+if [ -z "${OPENAI_KEY:-}${OPENAI_API_KEY:-}" ]; then
+  CK=$(readenv CESNET_API_KEY || true)
+  if [ -n "${CESNET_API_KEY:-}" ] || [ -n "$CK" ]; then
+    export OPENAI_KEY="${CESNET_API_KEY:-$CK}"
+    export OPENAI_BASE_URL="${CESNET_BASE_URL:-$(readenv CESNET_BASE_URL || echo https://llm.ai.e-infra.cz/v1)}"
+    export STUDIO_MODEL="${STUDIO_MODEL:-${CESNET_MODEL:-$(readenv CESNET_MODEL || echo qwen3.5)}}"
+    AI_VIA="CESNET e-INFRA CZ"
+  else
+    for v in OPENAI_KEY OPENAI_API_KEY STUDIO_MODEL OPENAI_BASE_URL; do
+      val=$(readenv "$v" || true); [ -n "$val" ] && export "$v=$val"
+    done
+    AI_VIA="OpenAI"
+  fi
 fi
 
-echo "Slide Studio  ·  $(basename "$DECK")"
+echo "SlAIdy  ·  $(basename "$DECK")${AI_VIA:+  ·  AI via $AI_VIA}"
 echo "  http://localhost:$PORT"
 echo "  Ctrl-C to stop. Your edits are stored by the browser under that address,"
 echo "  so always start it the same way — or keep a copy with Export."

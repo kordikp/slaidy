@@ -37,7 +37,9 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},
   pickFigure,figRef,figMark,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
-  srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v}};"""
+  srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
+  progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
+  aiHost,DESIGN_SEEDS,STUB,FIGREF,get llmImpl(){return llm}};"""
 ready = """
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}

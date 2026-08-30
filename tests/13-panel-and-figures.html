@@ -10,7 +10,7 @@ addEventListener('load',async()=>{
   ok('fixture has an empty slide',ei>=0,'slide '+(ei+1));
   w.cur=ei;w.paint();await wait(150);
   ok('empty slide offers no Summarise',!d.getElementById('bSum'));
-  ok('and says why',/Nothing on this slide yet/i.test(d.getElementById('side').textContent));
+  ok('it offers to suggest what goes there',!!d.getElementById('bSugg'));
 
   const ni=w.S.slides.findIndex(x=>(x.body||'').trim()&&!(x.summary||'').trim());
   w.cur=ni;w.paint();await wait(150);

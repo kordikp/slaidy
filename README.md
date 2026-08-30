@@ -157,11 +157,29 @@ means, and word overlap cannot tell that apart from an echo.
 lists, tables and key lines stay on the slide, prose moves to the speaker notes — and
 picks the layout from what is left.
 
-**Design with AI.** One line saying what the slide is for, which doubles as the instruction.
-The panel walks you through it: an empty slide says so and offers nothing; a slide with
-content offers **Summarise**; once there is a line it becomes editable, and **Update the
-slide** only wakes up when you have actually changed it. Inside the figure editor the same
-idea applies to one selected element rather than the whole slide.
+**Design with AI.** What the panel offers depends on what is on the slide.
+
+An **empty slide** does not hand you a blank box. **Suggest what goes here** reads where the
+slide sits — the deck, the section, the four slides either side — and comes back with three
+named ideas: a title, one line on what this slide does that its neighbours do not, and a
+short specification of what goes on it and what a figure would show. Pick one and it is
+written. Or say it yourself in the box, with starter chips for the usual shapes.
+
+A slide **with content** offers **Summarise**: one line saying what the slide is for, which
+then doubles as the instruction — edit the line and **Update the slide** rewrites the slide
+to deliver it. That button only wakes up once you have actually changed the line. Inside the
+figure editor the same idea applies to one selected element rather than the whole slide.
+
+**A figure that was asked for gets drawn.** When the model decides a slide wants a picture it
+writes `![[fig-something]]`, and the app then draws it — same design system, same 800×450
+canvas, same palette as everything else. It used to leave the reference dangling and the
+slide reported a missing figure. If a drawing fails, the reference stays on the slide as a
+box offering **Draw it**, **Pick one** and **Remove**, rather than as an error message.
+
+**It says when it is working.** Every model call shows a labelled bar under the button that
+started it, and multi-step work says which step it is on (`drawing fig-walls · 2 of 3`). The
+bar creeps toward the end of the current step's band and only reaches it when that step
+actually finishes, so it never claims progress it has not made.
 
 **Tidy.** Layout is arranged by measuring, not by guessing: the slide is drawn into a hidden
 stage at full size once per candidate arrangement, and the one that fills the frame without

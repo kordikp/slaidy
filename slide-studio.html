@@ -151,6 +151,14 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx .inlinefig .figbox{width:calc(100%*var(--fsn));aspect-ratio:var(--arw)/var(--arh);
  position:relative}
 .stage .tx .inlinefig svg{width:100%;height:100%;display:block}
+.stage .tx .undrawn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:26px 20px;
+ border:1px dashed #CFD3DA;border-radius:10px;background:#FAFAFB;color:#6B7280;font-size:14px;text-align:center}
+.stage .tx .undrawn b{font:600 13px ui-monospace,monospace;color:#3A404C}
+.stage .tx .undrawn .ubtns{display:flex;gap:6px}
+.stage .tx .undrawn button{border:1px solid var(--line);background:#fff;border-radius:6px;
+ padding:4px 11px;font-size:12px;color:#3A404C}
+.stage .tx .undrawn button:hover{border-color:var(--acc);color:var(--acc)}
+.stage .tx .undrawn button[disabled]{opacity:.55;cursor:default}
 
 /* editing affordances live on the same stage, so nothing shifts when you present */
 .stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;
@@ -244,8 +252,26 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
 .chips button{border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-size:11px;background:#fff;transition:.12s}
 .chips button:hover{border-color:var(--acc);color:var(--acc)}
-#aiout{border:1px solid var(--line);border-radius:var(--r6);padding:9px;background:#FAFAFB;font-size:12px;
- max-height:240px;overflow:auto;white-space:pre-wrap;line-height:1.5;margin-top:7px}
+.aiout{border:1px solid var(--line);border-radius:var(--r6);padding:9px;background:#FAFAFB;font-size:12px;
+ max-height:260px;overflow:auto;line-height:1.5;margin-top:7px}
+.aiout .pv{white-space:pre-wrap;max-height:200px;overflow:auto}
+.aiout .bad{color:var(--b)}
+.idea{border:1px solid var(--line);border-radius:var(--r6);background:#fff;padding:9px 10px;margin-bottom:7px}
+.idea:last-of-type{margin-bottom:0}
+.ih{font:600 13px/1.3 system-ui;color:var(--ink);margin-bottom:3px}
+.ia{font-size:11.5px;color:var(--acc);line-height:1.4;margin-bottom:5px}
+.is{font-size:11.5px;color:var(--gray);line-height:1.5;white-space:pre-wrap;margin-bottom:8px}
+.idea button{width:100%}
+/* Progress, because a model call is long enough that silence reads as broken.
+   The bar creeps asymptotically inside the band of the step it is on, and only
+   reaches the end of that band when the step actually finishes — so it never
+   claims progress it has not made. */
+.wlab{font-size:11px;color:var(--gray);margin-bottom:5px;display:flex;justify-content:space-between;gap:8px}
+.wlab b{font-weight:600;color:var(--ink)}
+.wlab i{font-style:normal;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.prog{height:4px;border-radius:3px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;width:0;border-radius:3px;background:var(--acc);transition:width .3s linear}
+.prog.err i{background:var(--b)}
 .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--line);border-top-color:var(--acc);
  border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -853,7 +879,9 @@ function block(b){
   if(b.kind==='fig'){
     const{id,size}=figRef(b.src);
     return `<div class="inlinefig"${size!==100?` style="--fsn:${size/100}"`:''}>${
-      fig(id)||'<span style="color:var(--faint)">missing figure '+esc(id)+'</span>'}</div>`;}
+      fig(id)||`<div class="undrawn"><b>${esc(id)}</b><span>not drawn yet</span>
+        <span class="ubtns"><button data-a="draw">Draw it</button><button data-a="pick">Pick one</button
+          ><button data-a="drop">Remove</button></span></div>`}</div>`;}
   if(b.kind==='table'){
     const r=L.map(l=>l.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
     const body=r.slice(1).filter(x=>!x.every(c=>/^[-: ]*$/.test(c)));
@@ -1432,18 +1460,32 @@ function paintBody(s){
     w.appendChild(d);
     if(b.kind==='fig'){
       const box=d.querySelector('.inlinefig .figbox');
+      const put=(nid,nsz)=>{const a=blocks(s.body);
+        const{id,size}=figRef(a[bi].src);
+        a[bi]={kind:'fig',src:figMark(nid??id,nsz??size)};
+        s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();};
+      const drop=()=>{snap('remove figure');const a=blocks(s.body);a.splice(bi,1);
+        s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();};
+      /* referenced but not drawn — the reference is actionable, not an error message */
+      d.querySelectorAll('.undrawn button').forEach(btn=>btn.onclick=async e=>{
+        e.stopPropagation();
+        const a=btn.dataset.a,{id}=figRef(blocks(s.body)[bi].src);
+        if(a==='pick')return pickFigure(nid=>{snap('figure');put(nid,null);});
+        if(a==='drop')return drop();
+        d.querySelectorAll('.undrawn button').forEach(x=>x.disabled=true);
+        btn.textContent='drawing…';
+        try{const svg=await drawFigure(id,s);
+          snap('draw figure',{[id]:null});S.figs[id]=svg;touch();paint();toast('Drew '+id);}
+        catch(err){d.querySelectorAll('.undrawn button').forEach(x=>x.disabled=false);
+          btn.textContent='Draw it';toast('Could not draw it — '+err.message);}
+      });
       if(box&&box.querySelector('svg')){
-        const put=(nid,nsz)=>{const a=blocks(s.body);
-          const{id,size}=figRef(a[bi].src);
-          a[bi]={kind:'fig',src:figMark(nid??id,nsz??size)};
-          s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();};
         figChrome(box,{
           size:()=>figRef(b.src).size,
           setSize:n=>put(null,n),
           edit:()=>figEdit(s,figRef(b.src).id,nid=>{snap('figure');put(nid,null);}),
           swap:()=>pickFigure(nid=>{snap('figure');put(nid,null);}),
-          remove:()=>{snap('remove figure');const a=blocks(s.body);a.splice(bi,1);
-            s.body=a.map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();}
+          remove:drop
         });
       }
     }
@@ -1551,18 +1593,227 @@ function tidyDeck(only){
   return n;
 }
 
+
+/* ---------- progress, proposals, and drawing what was asked for -------------
+   Three things were wrong here. A model call took seconds with nothing on
+   screen, so "Update the slide" looked dead. A brand-new slide arrived carrying
+   placeholder prose, so the panel thought it had content and offered to
+   summarise "Say something true." And when the model decided a slide wanted a
+   figure it wrote ![[fig-something]] — a reference to a drawing that did not
+   exist, which the slide then reported as missing. Now the reference is a
+   promise the app keeps: the figure gets drawn.
+--------------------------------------------------------------------------- */
+function aiHost(){return document.getElementById('dsOut')||document.getElementById('aiout');}
+
+function progress(host,label,right){
+  if(!host)return {step(){return this},done(){},fail(){}};
+  host.classList.remove('hidden');
+  host.innerHTML='<div class="wlab"><b></b><i></i></div><div class="prog"><i></i></div>';
+  const bar=host.querySelector('.prog i'),lab=host.querySelector('.wlab b'),
+        cnt=host.querySelector('.wlab i'),track=host.querySelector('.prog');
+  let timer=null,base=0,span=90,t=0;
+  const api={
+    step(text,from,to,note){
+      clearTimeout(timer);
+      lab.textContent=text;cnt.textContent=note||'';
+      base=from??0;span=(to??90)-base;t=0;
+      const tick=()=>{t++;bar.style.width=(base+span*(1-Math.exp(-t/12))).toFixed(1)+'%';
+        timer=setTimeout(tick,300);};
+      tick();return api;},
+    done(text){clearTimeout(timer);bar.style.width='100%';
+      if(text){lab.textContent=text;cnt.textContent='';setTimeout(()=>host.classList.add('hidden'),900);}
+      else host.classList.add('hidden');},
+    fail(msg){clearTimeout(timer);track.classList.add('err');
+      host.innerHTML=`<div class="bad">${esc(msg)}</div>`;}
+  };
+  return api.step(label,0,90,right);
+}
+
+/* A proposal is never applied behind your back — it is shown, then you take it. */
+function propose(host,text,onApply,verb){
+  host.classList.remove('hidden');
+  host.innerHTML=`<div class="pv"></div><div class="rw" style="margin-top:7px">
+    <button class="b p">${verb||'Apply'}</button><button class="b">Discard</button></div>`;
+  host.querySelector('.pv').textContent=text;
+  const[yes,no]=host.querySelectorAll('button');
+  yes.onclick=()=>{host.classList.add('hidden');onApply();};
+  no.onclick=()=>host.classList.add('hidden');
+}
+
+/* A new slide used to arrive with prose in it, which made it look written-on to
+   every check in the app. It arrives empty now; these are the leftovers. */
+const STUB=new Set(['say something true.','write here. click any block to edit it as markdown.',
+                    'write here.','tbd','todo']);
+function blankSlide(s){
+  if(!s)return true;
+  if(s.fig&&S.figs[s.fig])return false;
+  if(/!\[\[/.test(s.body||''))return false;
+  if((s.notes||'').trim())return false;
+  const b=(s.body||'').trim();
+  return !b||STUB.has(b.toLowerCase());
+}
+
+const FIGREF=/!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]/g;
+
+async function drawFigure(id,s,brief){
+  let t=(await llm(FIG_SYS,
+    `Draw a NEW figure from scratch. It is referenced from the slide as ![[${id}]].\n\n`+
+    `SLIDE TITLE: ${s.title}\nSECTION: ${s.group||''}\n\nSLIDE BODY:\n${(s.body||'').slice(0,1400)}\n\n`+
+    (brief?`WHAT THE AUTHOR ASKED FOR: ${brief}\n\n`:'')+
+    `Show the mechanism — how it works, what flows where — rather than restating the words `+
+    `already on the slide. Give it a title line and a one-line takeaway.`,20000)).trim();
+  t=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+  const a=t.indexOf('<svg'),b=t.lastIndexOf('</svg>');
+  if(a<0||b<0)throw new Error('the model did not return an svg');
+  t=t.slice(a,b+6);
+  const bad=checkSvg(t).filter(x=>x==='invalid XML'||x==='unparseable');
+  if(bad.length)throw new Error(bad.join('; '));
+  return t;
+}
+
+/* Every ![[id]] the slide names but the deck does not have. */
+function wantedFigures(s){
+  const ids=[...new Set([...(s.body||'').matchAll(FIGREF)].map(m=>m[1]))];
+  if(s.fig)ids.push(s.fig);
+  return [...new Set(ids)].filter(id=>!S.figs[id]);
+}
+async function fulfilFigures(s,brief){
+  const want=wantedFigures(s);
+  if(!want.length)return 0;
+  const prog=progress(aiHost(),'','');
+  const made={};
+  for(let i=0;i<want.length;i++){
+    prog.step(`drawing ${want[i]}`,i/want.length*100,(i+1)/want.length*100,
+              want.length>1?`${i+1} of ${want.length}`:'');
+    try{made[want[i]]=await drawFigure(want[i],s,brief);}
+    catch(e){
+      prog.fail(`Could not draw ${want[i]} — ${e.message}. The slide keeps the reference; `+
+                `use “Draw it” on the slide to try again.`);
+      if(Object.keys(made).length){snap('draw figures',Object.fromEntries(Object.keys(made).map(k=>[k,null])));
+        Object.assign(S.figs,made);touch();}
+      return Object.keys(made).length;}
+  }
+  snap('draw figures',Object.fromEntries(want.map(id=>[id,null])));
+  Object.assign(S.figs,made);
+  touch();paint();
+  toast(want.length===1?`Drew ${want[0]}`:`Drew ${want.length} figures`);
+  return want.length;
+}
+
+const DESIGN_SEEDS=[
+  {l:'A point with evidence',p:'One claim, carried by a number or a named system. Three or four lines.'},
+  {l:'A comparison',        p:'A compact table comparing two or three approaches on what actually differs.'},
+  {l:'A diagram',           p:'Mostly a figure showing how it works, with one line under it.'},
+  {l:'Section opener',      p:'A section opener: the question this part answers, in one line.'},
+  {l:'The takeaway',        p:'The one thing to remember from this part, stated plainly.'}
+];
+
+
+/* The empty slide should not hand you a blank box and wait. It reads where it
+   sits in the deck — the section, the slides either side — and comes back with
+   named ideas and enough of a specification that picking one is a decision, not
+   a leap. */
+let SUGG=null;
+async function suggestSlides(btn){
+  const s=S.slides[cur],host=document.getElementById('dsOut');
+  if(btn){btn.disabled=true;btn.textContent='Thinking…';}
+  const prog=progress(host,'reading where this slide sits','');
+  const near=S.slides.map((x,i)=>[i,x])
+    .filter(([i])=>i!==cur&&Math.abs(i-cur)<=4)
+    .map(([i,x])=>`${String(i+1).padStart(3)} ${i<cur?'◀':'▶'} ${x.title}${
+       x.summary?' — '+x.summary:''}`).join('\n');
+  try{
+    const raw=await llm(
+`You propose slides for a technical talk. Read the deck and the slides on either side of the gap,
+then propose THREE different slides that would earn their place there — different angles, not three
+phrasings of one idea. For each give:
+  title  — how it appears on the slide, under 8 words, no colon-subtitle
+  angle  — one line saying what this slide does that the neighbours do not
+  spec   — 3 to 5 short lines: what goes on the slide, whether it wants a figure and what the
+           figure would show, and the one line that must land
+House style: plain and precise; every claim carries a number, a named system or a citation.
+Return ONLY a JSON array of three objects with keys title, angle, spec. No fences, no commentary.`,
+`DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n\nSLIDES AROUND THE GAP:\n${near||'(the deck is empty)'}`,
+      1800);
+    const a=raw.indexOf('['),b=raw.lastIndexOf(']');
+    if(a<0||b<0)throw new Error('no suggestions came back');
+    SUGG=JSON.parse(raw.slice(a,b+1)).filter(x=>x&&x.title).slice(0,3);
+    if(!SUGG.length)throw new Error('no suggestions came back');
+    prog.done();
+    host.classList.remove('hidden');
+    host.innerHTML=SUGG.map((x,i)=>`<div class="idea">
+      <div class="ih">${esc(x.title)}</div>
+      <div class="ia">${esc(x.angle||'')}</div>
+      <div class="is">${esc(x.spec||'').trim()}</div>
+      <button class="b p" data-i="${i}">Design this one</button></div>`).join('')+
+      `<button class="b" id="bMore" style="width:100%;margin-top:8px">Three more ideas</button>`;
+    host.querySelectorAll('.idea button').forEach(bt=>bt.onclick=()=>{
+      const x=SUGG[+bt.dataset.i];
+      designSlide(`${x.angle||''}\n${x.spec||''}`.trim(),bt,x.title);});
+    document.getElementById('bMore').onclick=e=>suggestSlides(e.target);
+  }catch(e){prog.fail('Failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Suggest what goes here';}}
+}
+
+async function designSlide(brief,btn,fixedTitle){
+  if(!brief){toast('Say what the slide should say');return;}
+  const s=S.slides[cur],host=document.getElementById('dsOut');
+  if(btn){btn.disabled=true;btn.textContent='Designing…';}
+  const prog=progress(host,'writing the slide','');
+  const near=S.slides.map((x,i)=>[i,x])
+    .filter(([i])=>i!==cur&&Math.abs(i-cur)<=2)
+    .map(([i,x])=>`${i<cur?'before':'after'}: ${x.title}`).join('\n');
+  const sys=`You design one slide of a technical presentation.
+Return the slide title on the first line, then a blank line, then the body in markdown.
+House style: plain and precise, no marketing adjectives; every claim carries a number, a named
+system or a citation, or it is cut; honest about limits. Slides are read at a glance — short lines,
+no paragraphs of prose. Use > for the one line that must land, a table when it is really a
+comparison, **bold** sparingly.
+If a figure would carry the point better than words can, put a line containing only
+![[fig-<short-slug>]] where it belongs and it will be drawn for you. Invent the slug from the
+subject; never reference any other figure id. At most two figures.
+No commentary, no code fences.`+(fixedTitle?`\nThe title is already decided: use exactly "${fixedTitle}".`:'');
+  try{
+    const raw=(await llm(sys,
+      `DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n`+
+      `NEIGHBOURING SLIDES:\n${near||'(none)'}\n\nWHAT THIS SLIDE SHOULD SAY: ${brief}`,1400))
+      .replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+    prog.done();
+    const nl=raw.indexOf('\n');
+    const title=(nl<0?raw:raw.slice(0,nl)).replace(/^#+\s*/,'').replace(/^["']|["']$/g,'').trim();
+    const body=(nl<0?'':raw.slice(nl+1)).trim();
+    const figs=[...new Set([...body.matchAll(FIGREF)].map(m=>m[1]))].filter(id=>!S.figs[id]);
+    propose(host,`${title}\n\n${body}`+
+      (figs.length?`\n\n— and ${figs.length===1?'a figure':figs.length+' figures'} to draw: ${figs.join(', ')}`:''),
+      async()=>{
+        snap('design slide');
+        if(title)s.title=title;
+        s.body=body;
+        touch();paint();
+        await fulfilFigures(S.slides[cur],brief);
+        toast('Slide designed');
+      },'Use this');
+  }catch(e){prog.fail('Failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Design this slide';}}
+}
+
 function paintSide(){
   const s=S.slides[cur],el=document.getElementById('side');
   if(!s){el.innerHTML='';return;}
   const has=s.fig&&S.figs[s.fig];
-  const empty=!has&&!(s.body||'').trim()&&!(s.notes||'').trim();
+  const empty=blankSlide(s);
   const deckSecs=S.slides.reduce((a,x)=>a+stats(x).secs,0);
 
   el.innerHTML=`
   <div class="sec"><div class="sect">Design with AI</div>
     ${empty
-      ? `<div class="tip">Nothing on this slide yet. Give it a title and something in the body —
-          or add a figure — and AI can take it from there.</div>`
+      ? `<div class="tip">This slide is empty. AI can read where it sits in the deck and come back
+           with named ideas — or say it yourself and it writes the slide, figure included.</div>
+         <button class="b p" id="bSugg" style="width:100%;margin-top:8px">Suggest what goes here</button>
+         <div class="chips" id="seeds" style="margin-top:9px">${DESIGN_SEEDS.map((d,i)=>
+            `<button data-i="${i}" title="${esc(d.p)}">${d.l}</button>`).join('')}</div>
+         <textarea id="deIn" rows="3" placeholder="…or say what this slide should say"></textarea>
+         <button class="b" id="bDesign" style="width:100%;margin-top:6px">Design this slide</button>`
       : !(s.summary||'').trim()
         ? `<div class="tip">Have AI read the slide and say, in one line, what it is for.
              Edit that line and it will rewrite the slide to match.</div>
@@ -1574,6 +1825,7 @@ function paintSide(){
            </div>
            <div class="tip" id="sumHint">Change the line, then update. One <kbd>Ctrl</kbd>+<kbd>Z</kbd>
              puts the slide back.</div>`}
+    <div class="aiout hidden" id="dsOut"></div>
   </div>
 
   <div class="sec"><div class="sect">Layout</div>
@@ -1586,16 +1838,14 @@ function paintSide(){
       <input id="fSize" type="range" min="40" max="100" step="5" value="${s.figScale||100}"></div>`:''}
   </div>
 
-  <div class="sec"><div class="sect">Ask AI</div>
-    <div class="chips">
+  ${empty?'':`<div class="sec"><div class="sect">Ask AI</div>
+    <div class="chips" id="acts">
       ${AI_ACTS.map((a,i)=>`<button data-i="${i}" title="${esc(a.h)}">${a.l}</button>`).join('')}
     </div>
     <textarea id="aiIn" rows="2" placeholder="Or say it in your own words…"></textarea>
     <button class="b p" id="bAsk" style="width:100%;margin-top:6px">Ask</button>
-    <div id="aiout" class="hidden"></div>
-    <div class="rw hidden" id="aiAct" style="margin-top:6px">
-      <button class="b p" id="bYes">Apply</button><button class="b" id="bNo">Discard</button></div>
-  </div>
+    <div class="aiout hidden" id="aiout"></div>
+  </div>`}
 
   <div class="sec"><div class="sect">Tidy</div>
     <button class="b" id="bTidy" style="width:100%">Tidy this slide</button>
@@ -1637,14 +1887,24 @@ function paintSide(){
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
     if(s.layout!=='text'&&!s.fig)pickFigure(id=>{s.fig=id;touch();paint();});else{touch();paint();}});
+  el.querySelector('#bSugg')?.addEventListener('click',e=>suggestSlides(e.target));
+  const de=el.querySelector('#deIn');
+  el.querySelectorAll('#seeds button').forEach(b=>b.onclick=()=>{
+    const p=DESIGN_SEEDS[+b.dataset.i].p;
+    de.value=de.value.trim()?de.value.trim()+' '+p:p;de.focus();});
+  el.querySelector('#bDesign')?.addEventListener('click',e=>designSlide(de.value.trim(),e.target));
+  if(de)de.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))
+    designSlide(de.value.trim(),el.querySelector('#bDesign'));};
   el.querySelector('#bSum')?.addEventListener('click',askSummary);
-  el.querySelector('#bMatch')?.addEventListener('click',()=>{
+  el.querySelector('#bMatch')?.addEventListener('click',e=>{
     const v=sum.value.trim();
     if(!v)return;
-    ask(`Rewrite this slide so it delivers exactly this, and nothing else: "${v}"`);
+    ask(`Rewrite this slide so it delivers exactly this, and nothing else: "${v}"`,
+        el.querySelector('#dsOut'),e.target);
   });
-  el.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>ask(AI_ACTS[+b.dataset.i].p));
-  el.querySelector('#bAsk').onclick=()=>ask(document.getElementById('aiIn').value.trim());
+  el.querySelectorAll('#acts button').forEach(b=>b.onclick=e=>ask(AI_ACTS[+b.dataset.i].p,null,e.target));
+  el.querySelector('#bAsk')?.addEventListener('click',e=>
+    ask(document.getElementById('aiIn').value.trim(),null,e.target));
   el.querySelector('#bMd').onclick=editMarkdown;
   el.querySelector('#bTidy').onclick=()=>{
     snap('tidy');
@@ -1657,16 +1917,18 @@ function paintSide(){
 }
 
 async function askSummary(){
-  const s=S.slides[cur],out=document.getElementById('aiout');
-  out.classList.remove('hidden');out.innerHTML='<span class="spin"></span> reading the slide…';
+  const s=S.slides[cur],out=document.getElementById('dsOut');
+  if(blankSlide(s)){toast('Nothing to summarise yet — let AI suggest the slide first');return;}
+  const prog=progress(out,'reading the slide','');
   try{
     const t=(await llm(
       'You write one sentence saying what a conference slide is for: the point it makes, in plain words. '+
       'No preamble, no quotes, no more than 25 words. Return the sentence only.',
       `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nNOTES:\n${s.notes||''}`,400))
       .replace(/^["']|["']$/g,'').trim();
-    snap('summary');s.summary=t;touch();out.classList.add('hidden');paintSide();toast('Summarised');
-  }catch(e){out.textContent='Failed: '+e.message;}
+    prog.done();
+    snap('summary');s.summary=t;touch();paintSide();toast('Summarised');
+  }catch(e){prog.fail('Failed: '+e.message);}
 }
 
 const AI_ACTS=[
@@ -1861,28 +2123,35 @@ async function llm(system,user,maxTok){
   if(j.error) throw new Error(typeof j.error==='string'?j.error:(j.error.message||'API error'));
   return j.choices?.[0]?.message?.content ?? j.text ?? j.content ?? j.output ?? '';
 }
-let proposal=null;
-async function ask(instr){
+async function ask(instr,host,btn){
   if(!instr){toast('Type an instruction');return;}
-  const s=S.slides[cur],out=document.getElementById('aiout'),act=document.getElementById('aiAct');
-  out.classList.remove('hidden');act.classList.add('hidden');out.innerHTML='<span class="spin"></span> thinking…';
+  const s=S.slides[cur];
+  host=host||document.getElementById('aiout')||document.getElementById('dsOut');
+  const label=btn?btn.textContent:null;
+  if(btn){btn.disabled=true;btn.textContent='Working…';}
+  const prog=progress(host,'rewriting the slide','');
   const sys=`You edit one slide of a technical presentation. House style: plain, precise, no marketing adjectives; every claim carries a number, a named system or a citation, or it is cut; honest about limits.
-Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.`;
+Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.
+If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.`;
   const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
   try{
     let t=(await llm(sys,usr)).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
-    proposal=t;out.textContent=t;act.classList.remove('hidden');
-    document.getElementById('bYes').onclick=()=>{
-      snap('AI edit');
-      if(/^\s*notes?\b/i.test(instr)||instr.startsWith('Write speaker notes')){s.notes=proposal;}
-      else if(proposal.includes('\n---\n')){
-        const[a,b]=proposal.split(/\n---\n/);s.body=a.trim();
-        const c=structuredClone(s);c.body=b.trim();c.title=s.title+' (cont.)';c.fig=null;c.layout='text';
-        S.slides.splice(cur+1,0,c);normalise();
-      } else s.body=proposal;
-      proposal=null;out.classList.add('hidden');act.classList.add('hidden');touch();paint();toast('Applied');};
-    document.getElementById('bNo').onclick=()=>{proposal=null;out.classList.add('hidden');act.classList.add('hidden');};
-  }catch(e){out.textContent='Failed: '+e.message;}
+    prog.done();
+    const news=[...new Set([...t.matchAll(FIGREF)].map(m=>m[1]))].filter(id=>!S.figs[id]);
+    propose(host,t+(news.length?`\n\n— and ${news.length===1?'a figure':news.length+' figures'} to draw: ${news.join(', ')}`:''),
+      async()=>{
+        snap('AI edit');
+        if(/^\s*notes?\b/i.test(instr)||instr.startsWith('Write speaker notes')){s.notes=t;}
+        else if(t.includes('\n---\n')){
+          const[a,b]=t.split(/\n---\n/);s.body=a.trim();
+          const c=structuredClone(s);c.body=b.trim();c.title=s.title+' (cont.)';c.fig=null;c.layout='text';
+          S.slides.splice(cur+1,0,c);normalise();
+        } else s.body=t;
+        touch();paint();
+        await fulfilFigures(S.slides[cur],instr);
+        toast('Applied');});
+  }catch(e){prog.fail('Failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent=label;}}
 }
 /* ---------------------------------------------------------------------------
    Direct editing of a figure.
@@ -3615,7 +3884,7 @@ document.getElementById('wSample').onclick=()=>{
 document.getElementById('bShow').onclick=()=>S.slides.length&&present(true);
 document.getElementById('bSave').onclick=()=>S.slides.length&&save();
 document.getElementById('bNew').onclick=()=>{const s=S.slides[cur]||{};
-  S.slides.splice(cur+1,0,{tag:'S',group:s.group||'',title:'New slide',body:'Say something true.',notes:'',fig:null,layout:'text'});
+  S.slides.splice(cur+1,0,{tag:'S',group:s.group||'',title:'New slide',body:'',notes:'',fig:null,layout:'text'});
   cur++;normalise();touch();paint();};
 document.getElementById('bDup').onclick=()=>{if(!S.slides.length)return;
   const c=structuredClone(S.slides[cur]);c.title+=' (copy)';S.slides.splice(cur+1,0,c);cur++;normalise();touch();paint();};

@@ -1,0 +1,164 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">'+
+  '<rect width="800" height="450" fill="#FAFAF7"/>'+
+  '<style>@keyframes p{to{opacity:1}}</style>'+
+  '<text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">Drawn</text>'+
+  '<text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">a takeaway</text></svg>';
+
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ const realFetch=W.fetch;
+ let calls=[],replies=[],lag=0;
+ const stub=()=>{W.fetch=async(url,o)=>{calls.push(JSON.parse(o.body));
+   if(lag)await wait(lag);
+   const t=replies.shift();
+   if(t===undefined)throw new Error('no canned reply left');
+   return {status:200,text:async()=>JSON.stringify({text:t})};};};
+ const unstub=()=>{W.fetch=realFetch;};
+ try{
+  // ---------- what counts as an empty slide ----------
+  ok('a slide with nothing on it is blank',w.blankSlide({body:'',notes:'',fig:null}));
+  ok('placeholder prose is still blank',w.blankSlide({body:'Say something true.',notes:'',fig:null}),
+     'this is what a new slide used to carry');
+  ok('real words are not blank',!w.blankSlide({body:'Retrieval and ranking merged in 2021.',notes:''}));
+  ok('a figure reference is not blank',!w.blankSlide({body:'![[fig-x]]',notes:''}));
+  ok('speaker notes are not blank',!w.blankSlide({body:'',notes:'say this out loud'}));
+
+  // ---------- a new slide arrives empty ----------
+  const before=w.S.slides.length;
+  w.cur=0;d.getElementById('bNew').click();await wait(150);
+  ok('＋ adds a slide',w.S.slides.length===before+1);
+  ok('and it is genuinely empty',w.blankSlide(w.S.slides[1]),JSON.stringify(w.S.slides[1].body));
+  const NEW=1;
+
+  // ---------- the panel on an empty slide ----------
+  w.cur=NEW;w.paint();await wait(150);
+  ok('it offers to suggest what goes there',!!d.getElementById('bSugg'));
+  ok('and a box to say it yourself',!!d.getElementById('deIn')&&!!d.getElementById('bDesign'));
+  ok('with starter chips',d.querySelectorAll('#seeds button').length===w.DESIGN_SEEDS.length);
+  ok('Summarise is not offered',!d.getElementById('bSum'));
+  ok('nor is Ask AI, which has nothing to act on',!d.getElementById('acts'));
+
+  // summarising an empty slide must not reach the model at all
+  calls=[];replies=['should never be used'];stub();
+  await w.askSummary();await wait(120);
+  ok('Summarise refuses an empty slide without calling the model',calls.length===0);
+  unstub();
+
+  // ---------- progress reports work, and only claims what is done ----------
+  const host=d.getElementById('dsOut');
+  const pr=w.progress(host,'drawing something','1 of 2');
+  ok('a progress bar appears',!!host.querySelector('.prog i')&&!host.classList.contains('hidden'));
+  ok('labelled with the step',/drawing something/.test(host.textContent));
+  ok('and how far along it is',/1 of 2/.test(host.textContent));
+  const w1=parseFloat(host.querySelector('.prog i').style.width)||0;
+  await wait(700);
+  const w2=parseFloat(host.querySelector('.prog i').style.width)||0;
+  ok('the bar advances while waiting',w2>w1,w1.toFixed(1)+'% → '+w2.toFixed(1)+'%');
+  ok('but never reaches the end on its own',w2<100,w2.toFixed(1)+'%');
+  pr.fail('it broke');
+  ok('failure says so in place',/it broke/.test(host.textContent));
+  const pr2=w.progress(host,'x');pr2.done();
+  ok('done hides the bar',host.classList.contains('hidden'));
+
+  // ---------- a proposal is shown, never applied behind your back ----------
+  let applied=0;
+  w.propose(host,'some new body',()=>applied++,'Use this');
+  ok('the proposal is visible',/some new body/.test(host.textContent));
+  ok('with the verb asked for',/Use this/.test(host.textContent));
+  const btns=[...host.querySelectorAll('button')];
+  btns[1].click();await wait(40);
+  ok('Discard applies nothing',applied===0&&host.classList.contains('hidden'));
+  w.propose(host,'some new body',()=>applied++);
+  [...host.querySelectorAll('button')][0].click();await wait(40);
+  ok('Apply applies once',applied===1);
+
+  // ---------- figures the deck was told about but does not have ----------
+  ok('a reference with no drawing is wanted',
+     w.wantedFigures({body:'a\n\n![[fig-nope]]\n\nb'}).join()==='fig-nope');
+  const have=Object.keys(w.S.figs)[0];
+  ok('one it already has is not',w.wantedFigures({body:'![['+have+']]'}).length===0,have);
+  ok('a missing hero figure counts too',
+     w.wantedFigures({body:'',fig:'fig-hero-nope'}).join()==='fig-hero-nope');
+
+  // ---------- design a slide end to end, figure and all ----------
+  w.cur=NEW;w.paint();await wait(120);
+  calls=[];replies=['Why The Walls Came Down\n\nThree systems merged.\n\n![[fig-walls]]\n\n> One index, one model.',SVG];
+  stub();
+  d.getElementById('deIn').value='how retrieval and ranking merged, with a diagram';
+  d.getElementById('bDesign').click();
+  await wait(400);
+  const out=d.getElementById('dsOut');
+  ok('the draft is proposed, not applied',/Why The Walls Came Down/.test(out.textContent)
+     &&w.S.slides[NEW].title==='New slide');
+  ok('and it says a figure has to be drawn',/fig-walls/.test(out.textContent));
+  [...out.querySelectorAll('button')][0].click();
+  await wait(900);
+  ok('the title lands on the slide',w.S.slides[NEW].title==='Why The Walls Came Down',w.S.slides[NEW].title);
+  ok('so does the body',/Three systems merged/.test(w.S.slides[NEW].body));
+  ok('the figure it asked for was actually drawn',!!w.S.figs['fig-walls'],
+     Object.keys(w.S.figs).length+' figures now');
+  ok('the model was asked twice — slide, then figure',calls.length===2,calls.length+' calls');
+  ok('the second call carried the design system',/viewBox exactly/.test(calls[1].system||''));
+  ok('nothing is left wanting',w.wantedFigures(w.S.slides[NEW]).length===0);
+  unstub();
+  w.paint();await wait(150);
+  ok('and the slide renders it',!!d.querySelector('#sheet .inlinefig svg'));
+  ok('with no "not drawn yet" left',!d.querySelector('#sheet .undrawn'));
+
+  // undo takes the drawing back out with the slide
+  w.undo();await wait(120);
+  ok('undo removes the drawn figure',!w.S.figs['fig-walls']);
+  w.undo();await wait(120);
+  ok('and then the slide text',w.S.slides[NEW].title==='New slide',w.S.slides[NEW].title);
+
+  // ---------- a reference with no drawing is actionable, not an error ----------
+  w.S.slides[NEW].body='![[fig-todo]]';w.paint();await wait(160);
+  const un=d.querySelector('#sheet .undrawn');
+  ok('an undrawn figure shows as a box, not "missing figure"',!!un
+     &&!/missing figure/i.test(d.getElementById('sheet').textContent));
+  ok('naming the figure',/fig-todo/.test(un.textContent));
+  ok('with three ways out',[...un.querySelectorAll('button')].map(b=>b.dataset.a).join()==='draw,pick,drop');
+
+  calls=[];replies=[SVG];stub();
+  [...un.querySelectorAll('button')].find(b=>b.dataset.a==='draw').click();
+  await wait(600);
+  ok('Draw it draws it',!!w.S.figs['fig-todo']);
+  ok('and asked the model for an svg',calls.length===1&&/Draw a NEW figure/.test(calls[0].user||''));
+  unstub();
+
+  // ---------- when drawing fails, the reference survives and says so ----------
+  delete w.S.figs['fig-todo'];
+  w.S.slides[NEW].body='![[fig-todo]]';w.paint();await wait(160);
+  calls=[];replies=['sorry, I cannot do that'];stub();
+  await w.fulfilFigures(w.S.slides[NEW],'a diagram');
+  await wait(200);
+  ok('a failed drawing does not invent one',!w.S.figs['fig-todo']);
+  ok('the reference is still on the slide',/!\[\[fig-todo\]\]/.test(w.S.slides[NEW].body));
+  ok('and the panel says what to do',/Draw it/i.test(d.getElementById('dsOut').textContent),
+     d.getElementById('dsOut').textContent.slice(0,60));
+  unstub();
+
+  // ---------- Ask AI reports that it is working ----------
+  const ci=w.S.slides.findIndex(x=>(x.body||'').trim()&&!/!\[\[/.test(x.body));
+  w.cur=ci;w.paint();await wait(150);
+  calls=[];replies=['Tighter body.'];lag=300;stub();
+  const askBtn=d.getElementById('bAsk');
+  d.getElementById('aiIn').value='tighten it';
+  askBtn.click();
+  await wait(60);
+  ok('the Ask button goes busy',askBtn.disabled&&/Working/.test(askBtn.textContent),askBtn.textContent);
+  ok('and a bar appears under it',!!d.querySelector('#aiout .prog'));
+  await wait(700);lag=0;
+  ok('the button comes back',!d.getElementById('bAsk').disabled);
+  ok('with the draft proposed',/Tighter body/.test(d.getElementById('aiout').textContent));
+  unstub();
+
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ unstub();
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

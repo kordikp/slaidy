@@ -1,0 +1,134 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(150); const w=W.__api;
+ const realFetch=W.fetch;
+ let calls=[],replies=[];
+ const stub=()=>{const real=W.fetch;W.fetch=async(u,o)=>{
+   if(!/generate|completions/.test(String(u)))return real(u,o);
+   calls.push(JSON.parse(o.body));
+   const t=replies.shift();
+   if(t===undefined)throw new Error('no canned reply left');
+   return {status:200,text:async()=>JSON.stringify({text:t})};};};
+ const unstub=()=>{W.fetch=realFetch;};
+ try{
+  // ---------- two boxes, two heights ----------
+  const ci=w.S.slides.findIndex(x=>(x.body||'').trim());
+  w.cur=ci;w.paint();await wait(200);
+  ok('the top box asks what the slide is for',
+     /what this slide is for/i.test(d.querySelector('#side .sect').textContent),
+     d.querySelector('#side .sect').textContent);
+  ok('and builds the slide from it',/Rewrite it to do this/.test(d.getElementById('bDesign').textContent),
+     d.getElementById('bDesign').textContent);
+  const sects=[...d.querySelectorAll('#side .sect')].map(x=>x.textContent);
+  ok('the lower one is about changes',sects.some(x=>/changes to make/i.test(x)),sects.join(' · '));
+  ok('and it says so on its button',/Make these changes/.test(d.getElementById('bAsk').textContent),
+     d.getElementById('bAsk').textContent);
+  ok('the two boxes are not the same box',
+     d.getElementById('deIn')!==d.getElementById('aiIn')&&!!d.getElementById('aiIn'));
+  ok('the lower box starts empty',d.getElementById('aiIn').value==='');
+
+  // ---------- analysis is written where it can be edited ----------
+  ok('the slide can be analysed',!!d.getElementById('bScan'));
+  calls=[];replies=['cut the third bullet, the figure already says it\ngive the 40% a source\nthe key line names the symptom, make it name the mechanism'];
+  stub();
+  d.getElementById('bScan').click();await wait(500);
+  ok('analysing calls the model once',calls.length===1,calls.length+' calls');
+  ok('and shows it the slide',(calls[0].user||'').includes(w.S.slides[ci].title));
+  const box=d.getElementById('aiIn');
+  ok('the proposals land in the lower box, not in a verdict',
+     /cut the third bullet/.test(box.value),box.value.split('\n')[0]);
+  ok('all of them',box.value.split('\n').filter(x=>x.trim()).length===3);
+  ok('the slide is untouched until you say so',!/third bullet/.test(w.S.slides[ci].body||''));
+
+  // you strike one and run the rest
+  box.value=box.value.split('\n').slice(0,2).join('\n');
+  calls=[];replies=['TITLE: A sharper title\nThe rewritten body.'];
+  d.getElementById('bAsk').click();await wait(500);
+  ok('what you kept is what is asked for',/give the 40% a source/.test(calls[0].user||''));
+  ok('and what you struck is not',!/name the mechanism/.test(calls[0].user||''));
+  const before=w.S.slides[ci].title;
+  [...d.getElementById('aiout').querySelectorAll('button')][0].click();await wait(400);
+  ok('a change that needs a new title gets one',w.S.slides[ci].title==='A sharper title',
+     w.S.slides[ci].title);
+  ok('and the TITLE line does not land in the body',!/^TITLE:/m.test(w.S.slides[ci].body));
+  ok('the body is the rest',/The rewritten body/.test(w.S.slides[ci].body));
+  w.undo();await wait(150);
+  ok('undo puts the title back',w.S.slides[ci].title===before,w.S.slides[ci].title);
+  unstub();
+
+  // analysing an empty slide asks for a purpose first
+  w.S.slides[ci]._keep=1;
+  const ei=w.S.slides.findIndex(x=>w.blankSlide(x));
+  if(ei>=0){
+    w.cur=ei;w.paint();await wait(150);
+    ok('an empty slide is not offered an analysis',!d.getElementById('bScan'));
+  } else ok('an empty slide is not offered an analysis',true,'(no empty slide in the fixture)');
+
+  // ---------- a deck from a brief ----------
+  w.briefWizard();await wait(200);
+  ok('the wizard asks for the abstract',!!d.getElementById('bwAbs'));
+  ok('and for the arc',!!d.getElementById('bwStory'));
+  ok('and how long the talk is',!!d.getElementById('bwMin'),d.getElementById('bwMin').value+' minutes');
+  d.getElementById('bwGo').click();await wait(200);
+  ok('it will not draft without an abstract',!!d.getElementById('bwAbs'),'still on the form');
+
+  d.getElementById('bwTitle').value='The Great Convergence';
+  d.getElementById('bwAbs').value='Search, recommendation and conversation collapsed onto one architecture.';
+  d.getElementById('bwStory').value='Four rooms, one question, the walls, the bill.';
+  d.getElementById('bwMin').value='30';
+  calls=[];replies=[JSON.stringify({title:'The Great Convergence',sections:[
+    {name:'I · Four Rooms',slides:[
+      {title:'Four rooms, four vocabularies',purpose:'Name the four fields and show they used different words for one problem. Wants a table.'},
+      {title:'Nobody could hear the next room',purpose:'One anecdote with a date and a venue.'}]},
+    {name:'II · The Walls',slides:[
+      {title:'What actually merged',purpose:'The one architecture, with the paper that first showed it. Wants a figure.'}]}]})];
+  stub();
+  d.getElementById('bwGo').click();await wait(600);
+  ok('the brief reaches the model',/collapsed onto one architecture/.test(calls[0].user||''));
+  ok('so does the arc',/Four rooms, one question/.test(calls[0].user||''));
+  ok('and the length',/30 minutes/.test(calls[0].user||''));
+  ok('it asks for shape, not words',/SHAPE — not its words/.test(calls[0].system||''));
+
+  const rows=d.querySelectorAll('.brow');
+  ok('the outline comes back as rows you can edit',rows.length===3,rows.length+' rows');
+  ok('grouped into its sections',d.querySelectorAll('.bgrp').length===2,
+     [...d.querySelectorAll('.bgrp')].map(x=>x.textContent).join(' · '));
+  ok('each row names the slide',rows[0].querySelector('input.bt').value==='Four rooms, four vocabularies',
+     rows[0].querySelector('input.bt').value);
+  ok('and carries what it is for',/Name the four fields/.test(rows[0].querySelector('textarea.bp').value));
+  ok('nothing is built yet',w.S.slides.length!==3);
+
+  // edit one, drop one
+  const t0=rows[0].querySelector('input.bt');
+  t0.value='A title I chose';t0.dispatchEvent(new W.Event('input'));
+  rows[1].querySelector('.bx').click();await wait(150);
+  ok('dropping a row removes it',d.querySelectorAll('.brow').length===2);
+  d.getElementById('bwMake').click();await wait(400);
+  ok('the deck is built',w.S.slides.length===2,w.S.slides.length+' slides');
+  ok('with the title you chose',w.S.slides[0].title==='A title I chose',w.S.slides[0].title);
+  ok('the sections carry through',w.S.slides[1].group==='II · The Walls',w.S.slides[1].group);
+  ok('the deck takes the talk title',w.S.title==='The Great Convergence',w.S.title);
+  ok('every slide arrives empty',w.S.slides.every(x=>!(x.body||'').trim()));
+  ok('but with its purpose already in it',
+     /Name the four fields/.test(w.S.slides[0].summary||''),w.S.slides[0].summary.slice(0,34));
+  w.cur=0;w.paint();await wait(200);
+  ok('which is what the panel shows',d.getElementById('deIn').value===w.S.slides[0].summary);
+  ok('and it is one press from being written',
+     /Write this slide/.test(d.getElementById('bDesign').textContent),
+     d.getElementById('bDesign').textContent);
+  ok('a seeded slide is not asked what could go on it',!d.getElementById('bSugg'),
+     'it already knows');
+  const truly=Object.assign({},w.S.slides[0],{summary:''});
+  w.S.slides.push(Object.assign(truly,{n:w.S.slides.length+1}));
+  w.cur=w.S.slides.length-1;w.paint();await wait(150);
+  ok('a slide that knows nothing still is',!!d.getElementById('bSugg'));
+  unstub();
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ unstub();
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

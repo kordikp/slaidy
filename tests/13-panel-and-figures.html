@@ -18,7 +18,7 @@ addEventListener('load',async()=>{
   ok('a written slide offers to read itself',!!d.getElementById('bSum'));
   ok('and one box to say what it is for',!!d.getElementById('deIn'));
   ok('with one button that builds it',!!d.getElementById('bDesign')
-     &&/Rewrite this slide/.test(d.getElementById('bDesign').textContent),
+     &&/Rewrite it to do this/.test(d.getElementById('bDesign').textContent),
      d.getElementById('bDesign').textContent);
   ok('and no second box competing with it',!d.getElementById('fSum')&&!d.getElementById('bMatch'),
      'there used to be two, and nobody could say what the difference was');

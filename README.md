@@ -209,18 +209,26 @@ its target dropped and its words kept. The layout is measured once the figure ex
 
 Or say it yourself in the box, with starter chips for the usual shapes.
 
-A slide **with content** offers **Summarise**: one line saying what the slide is for, which
-then doubles as the instruction — edit the line and **Update the slide** rewrites the slide
-to deliver it. That button only wakes up once you have actually changed the line. Inside the
-figure editor the same idea applies to one selected element rather than the whole slide.
+### Two boxes, two heights
 
-**Redesign this slide** is on every slide, not only an empty one. Say what should change — *make
-this open the whole deck and grab the room*, *turn it into a table*, *give it a figure* — and it
-rewrites the title, the body, the notes and the figure together, with the slide as it stands in
-front of it. **Your instruction outranks the house style.** It did not, and that was the bug: ask
-for something catchy and the standing "no marketing adjectives" quietly won, so the model handed
-back what was already there and it looked as though nothing had run.
+The panel asks two different questions, and keeping them apart is most of what makes it usable.
 
+**What this slide is for** — one line, the slide's job. *Rewrite it to do this* builds the whole
+slide to serve it: title, body, notes, and a figure if it needs one. **Your instruction outranks
+the house style**; it did not, and that was a bug — ask for something catchy and the standing
+"no marketing adjectives" quietly won, so the model handed back what was already there. `↻` fills
+the line by reading the slide.
+
+**Changes to make** — the concrete level. **Analyse this slide** reads it and writes what it would
+change *into the box*, as instructions: *cut the third bullet, the figure already says it* · *give
+the 40% a source* · *the key line names the symptom, make it name the mechanism*. Strike the ones
+you disagree with, keep the rest, press **Make these changes**. A proposed edit you can delete a
+line from is worth more than a correct one you can only accept whole — which is why the analysis
+is not shown as a verdict. Chips are the presets: Tighten, Make it concrete, Turn into a table,
+Add a counterpoint, Split in two, Write the notes. A change that needs a different title gets one.
+
+There used to be two free-text boxes doing the same thing at the same height. There is one of each
+now.
 **A figure that was asked for gets drawn.** When the model decides a slide wants a picture it
 writes `![[fig-something]]`, and the app then draws it — same design system, same 800×450
 canvas, same palette as everything else. It used to leave the reference dangling and the
@@ -315,6 +323,18 @@ Everything here exists because a version of it once failed.
   (fig-affiliation…) · 2 titles differ* — because "237 slides" is no help when you are
   hunting one edited figure. Restoring snapshots the current state first and is undoable.
 - **Closing the window with unsaved changes warns.**
+
+### A deck from a brief
+
+The blank deck is the worst screen in any presentation tool. `Start from a brief…` on the welcome
+screen, or `⋯ → New deck from a brief…`, takes the abstract, the arc if you have one, and how long
+you have, and comes back with **the shape**: the sections, and for each slide a title and the one
+line it is there to do.
+
+Deliberately not forty finished slides. What is seeded is each slide's **purpose** — which is
+exactly what the panel's top box holds — so every seeded slide arrives one press of *Write this
+slide* away from being written, and you read and edit the arc before a word is spent on it. Rows
+are editable and droppable before anything is built.
 
 ## Development
 

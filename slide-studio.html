@@ -336,6 +336,34 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 /* what the caret is in, and what you clicked */
 .mdpv.linked [data-b]{cursor:pointer}
 .mdpv .srcon{outline:2px solid var(--acc);outline-offset:3px;border-radius:3px}
+/* the brief, and the outline it comes back with */
+.bwrap{flex:1;min-height:0;overflow-y:auto;padding:16px 18px;background:#F7F8FA}
+.bwform{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:13px}
+.bwform label{display:flex;flex-direction:column;gap:5px;font:650 9.5px/1 system-ui;
+ letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.bwform input,.bwform textarea{border:1px solid var(--line);border-radius:var(--r6);
+ padding:8px 10px;font:13px/1.55 system-ui;background:#fff;outline:none;resize:vertical}
+.bwform input:focus,.bwform textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
+.bwform label.bwshort{flex-direction:row;align-items:center;gap:10px}
+.bwform label.bwshort span{display:flex;align-items:center;gap:7px;font:13px system-ui;
+ letter-spacing:0;text-transform:none;color:var(--ink)}
+.bwform label.bwshort input{width:74px;text-align:right}
+.bwrev{max-width:760px;margin:0 auto}
+.brow{background:#fff;border:1px solid var(--line);border-radius:var(--r6);padding:8px 10px;
+ margin-bottom:6px}
+.brow[data-first]{margin-top:14px}
+.bgrp{font:650 9.5px/1 system-ui;letter-spacing:.13em;text-transform:uppercase;color:var(--acc);
+ margin:-2px 0 7px}
+.bline{display:flex;align-items:center;gap:8px}
+.bn{font:600 10px/1 ui-monospace,monospace;color:var(--faint);flex:none}
+.bt{flex:1;border:0;border-bottom:1px solid transparent;padding:2px 0;font:600 13px system-ui;
+ background:none;outline:none}
+.bt:hover{border-bottom-color:var(--line)} .bt:focus{border-bottom-color:var(--acc)}
+.bx{color:var(--faint);font-size:12px;padding:2px 5px;border-radius:4px;flex:none}
+.bx:hover{color:#B4232A;background:#FDF0F0}
+.bp{width:100%;margin-top:5px;border:1px solid transparent;border-radius:5px;padding:4px 6px;
+ font:11.5px/1.5 system-ui;color:var(--gray);background:#FCFCFD;resize:none;overflow:hidden;outline:none}
+.bp:focus{border-color:var(--acc);background:#fff;color:var(--ink)}
 .pvbad{background:#FDF0F0;border:1px solid #F0B4B7;border-radius:var(--r6);padding:11px 13px;
  font-size:12.5px;color:#B4232A}
 
@@ -527,6 +555,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bOpen">Open a deck…</button>
       <button id="bSaveAs">Save to a file…</button>
       <button id="bImport">Import markdown…</button>
+      <button id="bBrief">New deck from a brief…</button>
       <button id="bHist">Version history</button>
       <button id="bSave">Export…</button>
       <button id="bTidyAll">Tidy every slide…</button>
@@ -563,7 +592,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
      For this keynote that is <code>decks/great-convergence.json</code> — it carries all 237 slides and
      every figure in one file.</p>
 
-  <div class="rw"><button class="b p" id="wOpen">Open a deck…</button></div>
+  <div class="rw"><button class="b p" id="wOpen">Open a deck…</button>
+    <button class="b" id="wBrief">Start from a brief…</button></div>
 
   <div id="recent" class="recent"></div>
 
@@ -2185,22 +2215,27 @@ function paintSide(){
   if(!s){el.innerHTML='';return;}
   const has=s.fig&&S.figs[s.fig];
   const empty=blankSlide(s);
+  /* A slide seeded from a brief is empty but not blank: it already knows what
+     it is for, so it is one press from being written and must not be offered
+     the "what could go here" ideas as though nothing had been decided. */
+  const seeded=empty&&!!(s.summary||'').trim();
+  const blank=empty&&!seeded;
   const deckSecs=S.slides.reduce((a,x)=>a+stats(x).secs,0);
 
   el.innerHTML=`
-  <div class="sec"><div class="sect">Design with AI</div>
-    ${empty?`<button class="b p" id="bSugg" style="width:100%"
+  <div class="sec"><div class="sect">What this slide is for</div>
+    ${blank?`<button class="b p" id="bSugg" style="width:100%"
            title="Reads the deck, the section and the slides either side, and comes back with three named ideas">Suggest what goes here</button>
          <div class="chips" id="seeds" style="margin-top:9px">${DESIGN_SEEDS.map((d,i)=>
             `<button data-i="${i}" title="${esc(d.p)}">${d.l}</button>`).join('')}</div>`:''}
-    <textarea id="deIn" rows="${empty?2:3}" style="margin-top:${empty?6:0}px"
-      placeholder="${empty?'…or say what this slide should say'
-        :'What is this slide for — or how should it change? A table, a figure, a different angle.'}"
-      >${empty?'':esc(s.summary||'')}</textarea>
+    <textarea id="deIn" rows="${seeded?3:2}" style="margin-top:${blank?6:0}px"
+      placeholder="${blank?'…or say what this slide should say in one line'
+        :'The one thing this slide does, in a line'}"
+      >${esc(s.summary||'')}</textarea>
     <div class="rw" style="margin-top:6px">
-      <button class="b${empty?'':' p'}" id="bDesign" style="flex:1"
-        title="Rewrites the whole slide — title, body, notes and a figure if it needs one. Your words win over the house style.">${
-        empty?'Design this slide':'Rewrite this slide'}</button>
+      <button class="b${blank?'':' p'}" id="bDesign" style="flex:1"
+        title="Builds the whole slide to serve this — title, body, notes and a figure if it needs one. Your words win over the house style.">${
+        seeded?'Write this slide':empty?'Design this slide':'Rewrite it to do this'}</button>
       ${empty?'':`<button class="b" id="bSum" title="Have AI read the slide and fill this in">↻</button>`}
     </div>
     <div class="aiout hidden" id="dsOut"></div>
@@ -2216,12 +2251,14 @@ function paintSide(){
       <input id="fSize" type="range" min="40" max="100" step="5" value="${s.figScale||100}"></div>`:''}
   </div>
 
-  ${empty?'':`<div class="sec"><div class="sect">Ask AI</div>
+  ${empty?'':`<div class="sec"><div class="sect">Changes to make</div>
+    <button class="b" id="bScan" style="width:100%"
+      title="Reads the slide and writes what it would change, as instructions you can edit">Analyse this slide</button>
     <div class="chips" id="acts">
       ${AI_ACTS.map((a,i)=>`<button data-i="${i}" title="${esc(a.h)}">${a.l}</button>`).join('')}
     </div>
-    <textarea id="aiIn" rows="2" placeholder="Or say it in your own words…"></textarea>
-    <button class="b p" id="bAsk" style="width:100%;margin-top:6px">Ask</button>
+    <textarea id="aiIn" rows="3" placeholder="…or say exactly what to change"></textarea>
+    <button class="b p" id="bAsk" style="width:100%;margin-top:6px">Make these changes</button>
     <div class="aiout hidden" id="aiout"></div>
   </div>`}
 
@@ -2244,7 +2281,7 @@ function paintSide(){
      what the difference was. There is only one thing to say here: what this
      slide is for. Saying it is also how you ask for it to be rewritten. */
   const de0=el.querySelector('#deIn');
-  if(de0&&!empty){
+  if(de0){
     de0.onfocus=()=>snap('summary');
     de0.oninput=()=>{s.summary=de0.value;touch();};
   }
@@ -2267,6 +2304,7 @@ function paintSide(){
   if(de)de.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))
     designSlide(de.value.trim(),el.querySelector('#bDesign'));};
   el.querySelector('#bSum')?.addEventListener('click',askSummary);
+  el.querySelector('#bScan')?.addEventListener('click',e=>analyseSlide(e.target));
   el.querySelectorAll('#acts button').forEach(b=>b.onclick=e=>ask(AI_ACTS[+b.dataset.i].p,null,e.target));
   el.querySelector('#bAsk')?.addEventListener('click',e=>
     ask(document.getElementById('aiIn').value.trim(),null,e.target));
@@ -2280,6 +2318,43 @@ function paintSide(){
 
   el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
   el.querySelector('#bDrop').onclick=()=>deleteSlide(cur);
+}
+
+/* The two boxes are two heights. The one above says what the slide is FOR, and
+   rewriting from it rebuilds the slide to serve that. This one says what to
+   CHANGE, and the point of writing the analysis into it — rather than showing
+   it as a verdict — is that a proposed edit you can strike a line from is worth
+   more than a correct one you can only accept whole. */
+async function analyseSlide(btn){
+  const s=S.slides[cur],box=document.getElementById('aiIn'),host=document.getElementById('aiout');
+  if(blankSlide(s)){toast('Nothing to analyse yet — say what it is for first');return;}
+  const label=btn?btn.textContent:null;
+  if(btn){btn.disabled=true;btn.textContent='Reading…';}
+  const prog=progress(host,'reading the slide','');
+  const near=S.slides.map((x,i)=>[i,x]).filter(([i])=>i!==cur&&Math.abs(i-cur)<=2)
+    .map(([i,x])=>`${i<cur?'before':'after'}: ${x.title}`).join('\n');
+  try{
+    const t=(await llm(
+`You review one slide of a technical presentation and say what you would change.
+Return 3 to 6 lines. Each line is ONE concrete change, written as an instruction to carry out —
+"cut the third bullet, the figure already says it", "give the 40% a source", "the key line names
+the symptom, make it name the mechanism". Refer to what is actually on this slide.
+No praise, no summary, no preamble, no numbering, no markdown. Just the lines.
+Judge it against: does every claim carry a number, a named system or a citation; does the body
+repeat what the figure already shows; is there one line that lands; is anything on it doing no
+work; does it overlap the slides either side.`,
+      `DECK: ${S.title}\nSECTION: ${s.group||''}\nNEIGHBOURS:\n${near||'(none)'}\n\n`+
+      `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\n`+
+      `NOTES:\n${s.notes||'(none)'}`,900))
+      .replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+    prog.done();
+    if(!t){toast('Nothing came back');return;}
+    box.value=box.value.trim()?box.value.trim()+'\n'+t:t;
+    box.style.height='auto';box.style.height=Math.min(220,box.scrollHeight+2)+'px';
+    box.focus();
+    toast('Strike what you disagree with, then make the changes');
+  }catch(e){prog.fail('Failed: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent=label||'Analyse this slide';}}
 }
 
 async function askSummary(){
@@ -2462,6 +2537,141 @@ function editMarkdown(){
     }});
 }
 
+
+/* ---------- a deck from a brief -------------------------------------------
+   The blank deck is the worst screen in any presentation tool. What an author
+   has before they have slides is an abstract and an arc — so take those, and
+   come back with the shape: the sections, and for each slide a title and the
+   one line it is there to do.
+
+   Deliberately not forty finished slides. What is seeded is the PURPOSE of
+   each slide, which is exactly what the panel's top box holds — so every
+   seeded slide is one press of "Rewrite it to do this" away from being
+   written, and the author reads and edits the arc before a word is spent on it.
+--------------------------------------------------------------------------- */
+let BRIEF=null;
+function briefWizard(){
+  const b=BRIEF||{title:'',abstract:'',story:'',minutes:45};
+  dialog(`<div class="mdhead"><h3>A deck from a brief</h3>
+      <span class="tip">The abstract and the arc; it comes back with the shape.</span>
+      <span style="flex:1"></span><button class="b" id="bwNo">Cancel</button></div>
+    <div class="bwrap" id="bwBody"></div>`,'md');
+  const body=document.getElementById('bwBody');
+  document.getElementById('bwNo').onclick=closeDialog;
+  const form=()=>{
+    body.innerHTML=`<div class="bwform">
+      <label>What is the talk called
+        <input id="bwTitle" value="${esc(b.title)}" placeholder="The Great Convergence"></label>
+      <label>The abstract — what it is about, and for whom
+        <textarea id="bwAbs" rows="7" placeholder="Recommendation, search and conversation were four separate fields with four vocabularies. Between 2021 and 2025 they collapsed onto one architecture. This talk maps that convergence, what it cost, and what still breaks.">${esc(b.abstract)}</textarea></label>
+      <label>The storyline, if you have one — the arc, act by act
+        <textarea id="bwStory" rows="6" placeholder="Open in four rooms that cannot hear each other. Ask the one question they all answer. Show the walls coming down, then the bill.">${esc(b.story)}</textarea></label>
+      <label class="bwshort">How long do you have
+        <span><input id="bwMin" type="number" min="5" max="180" step="5" value="${b.minutes}"> minutes</span></label>
+      <button class="b p" id="bwGo">Draft the outline</button>
+      <div class="aiout hidden" id="bwOut"></div>
+    </div>`;
+    document.getElementById('bwGo').onclick=e=>draft(e.target);
+  };
+  const read=()=>{
+    b.title=document.getElementById('bwTitle').value.trim();
+    b.abstract=document.getElementById('bwAbs').value.trim();
+    b.story=document.getElementById('bwStory').value.trim();
+    b.minutes=Math.max(5,Math.min(180,+document.getElementById('bwMin').value||45));
+    BRIEF=b;
+  };
+  async function draft(btn){
+    read();
+    if(!b.abstract){toast('The abstract is the part it cannot guess');return;}
+    const out=document.getElementById('bwOut');
+    const label=btn.textContent;btn.disabled=true;btn.textContent='Drafting…';
+    const prog=progress(out,'shaping the talk','');
+    /* roughly a slide every 70 seconds of stage time, which is what stats() assumes */
+    const n=Math.max(4,Math.min(120,Math.round(b.minutes*60/70)));
+    try{
+      const raw=await llm(
+`You shape technical talks. Given an abstract and an arc, return the deck's SHAPE — not its words.
+
+Return ONLY JSON:
+  {"title":"...","sections":[{"name":"...","slides":[{"title":"...","purpose":"..."}]}]}
+
+title    — the talk's title, kept if one was given
+name     — a section name, in the deck's own voice, e.g. "I · Four Rooms"
+title    — how the slide reads on screen, under 8 words, no colon-subtitle
+purpose  — ONE line saying what that slide is there to do. This is a brief for
+           writing the slide later, so make it specific: the claim it carries,
+           the evidence it needs, whether it wants a figure or a table.
+
+About ${n} slides across 4 to 8 sections. Open with a title slide and close with
+a takeaway. Every slide must do something the ones either side do not — no slide
+whose purpose is "introduce the next section". House style: plain and precise,
+every claim carrying a number, a named system or a citation.`,
+        `TITLE: ${b.title||'(none given)'}\nLENGTH: ${b.minutes} minutes\n\n`+
+        `ABSTRACT:\n${b.abstract}\n\nSTORYLINE:\n${b.story||'(none given — propose one)'}`,4000);
+      const a=raw.indexOf('{'),z=raw.lastIndexOf('}');
+      if(a<0||z<0)throw new Error('no outline came back');
+      const o=JSON.parse(raw.slice(a,z+1));
+      if(!o.sections||!o.sections.length)throw new Error('no sections came back');
+      b.title=b.title||o.title||'Untitled';
+      prog.done();
+      review(o);
+    }catch(e){prog.fail('Failed: '+e.message);}
+    finally{btn.disabled=false;btn.textContent=label;}
+  }
+  function review(o){
+    const rows=[];
+    o.sections.forEach(sec=>sec.slides&&sec.slides.forEach(sl=>
+      rows.push({group:sec.name||'',title:sl.title||'',purpose:sl.purpose||''})));
+    const draw=()=>{
+      body.innerHTML=`<div class="bwrev">
+        <div class="rw" style="align-items:center;margin-bottom:10px">
+          <b style="font-size:13px">${esc(b.title)}</b>
+          <span class="tip" style="margin:0">${rows.length} slides ·
+            ${new Set(rows.map(r=>r.group)).size} sections · about ${clock(rows.length*70)}</span>
+          <span style="flex:1"></span>
+          <button class="b" id="bwBack">Back to the brief</button>
+          <button class="b p" id="bwMake">Create the deck</button>
+        </div>
+        <div class="tip" style="margin:0 0 10px">Every line here becomes a slide with that purpose
+          already in its panel. Edit or drop anything before you build it.</div>
+        ${rows.map((r,i)=>`<div class="brow"${
+            i&&rows[i-1].group===r.group?'':' data-first="1"'}>
+          ${i&&rows[i-1].group===r.group?'':`<div class="bgrp">${esc(r.group)}</div>`}
+          <div class="bline">
+            <span class="bn">${String(i+1).padStart(2,'0')}</span>
+            <input class="bt" data-i="${i}" value="${esc(r.title)}">
+            <button class="bx" data-x="${i}" title="Drop this slide">✕</button>
+          </div>
+          <textarea class="bp" data-i="${i}" rows="2">${esc(r.purpose)}</textarea>
+        </div>`).join('')}
+      </div>`;
+      body.querySelectorAll('.bt').forEach(t=>t.oninput=()=>rows[+t.dataset.i].title=t.value);
+      body.querySelectorAll('.bp').forEach(t=>{
+        const g=()=>{t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';};g();
+        t.oninput=()=>{rows[+t.dataset.i].purpose=t.value;g();};});
+      body.querySelectorAll('.bx').forEach(x=>x.onclick=()=>{rows.splice(+x.dataset.x,1);draw();});
+      document.getElementById('bwBack').onclick=form;
+      document.getElementById('bwMake').onclick=()=>build(rows);
+    };
+    draw();
+  }
+  function build(rows){
+    if(!rows.length){toast('Nothing left to build');return;}
+    S={id:(b.title||'deck').toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||'deck',
+       title:b.title||'Untitled',
+       meta:{},style:{},figs:{},
+       slides:rows.map(r=>({tag:'S',group:r.group||'',sub:null,title:r.title||'Untitled',
+         fig:null,layout:'text',figScale:100,textScale:100,
+         body:'',notes:'',summary:r.purpose||'',skip:false,flags:[]}))};
+    normalise();cur=0;fileHandle=null;fileName=srvDeck?srvDeck.path:null;
+    document.getElementById('welcome').classList.add('hidden');
+    closeDialog();touch();paint();
+    banner(`${S.slides.length} slides, each with what it is for. `+
+           `Open one and press “Rewrite it to do this”.`,'Got it',()=>{});
+  }
+  form();
+}
+
 /* ---------- gallery ---------- */
 /* Adding a picture is two different wishes: one you already have, or one that
    does not exist yet. Both live here so the choice is in front of you. */
@@ -2587,7 +2797,8 @@ async function ask(instr,host,btn){
   const prog=progress(host,'rewriting the slide','');
   const sys=`You edit one slide of a technical presentation. House style: plain, precise, no marketing adjectives; every claim carries a number, a named system or a citation, or it is cut; honest about limits. Where the instruction and the house style disagree, the instruction wins — do not hand back what was already there.
 Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.
-If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.`;
+If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.
+If a change needs a different title, make the FIRST line exactly "TITLE: <the new title>" and put the body after it. Otherwise do not mention the title.`;
   const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
   try{
     let t=(await llm(sys,usr)).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
@@ -2596,6 +2807,8 @@ If the instruction asks for a figure the slide does not have, put a line contain
     propose(host,t+(news.length?`\n\n— and ${news.length===1?'a figure':news.length+' figures'} to draw: ${news.join(', ')}`:''),
       async()=>{
         snap('AI edit');
+        const tm=/^TITLE:[ \t]*(.+)\n?/.exec(t);
+        if(tm){s.title=tm[1].trim();t=t.slice(tm[0].length).trim();}
         if(/^\s*notes?\b/i.test(instr)||instr.startsWith('Write speaker notes')){s.notes=t;}
         else if(t.includes('\n---\n')){
           const[a,b]=t.split(/\n---\n/);s.body=a.trim();
@@ -4375,6 +4588,8 @@ document.getElementById('bSaveNow').onclick=()=>{
 document.getElementById('bOpen').onclick=openDeckFile;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
 document.getElementById('bImport').onclick=()=>importWizard(null);
+document.getElementById('bBrief').onclick=briefWizard;
+document.getElementById('wBrief').onclick=briefWizard;
 document.getElementById('wOpen').onclick=()=>document.getElementById('picker2').click();
 document.getElementById('picker2').onchange=e=>ingest([...e.target.files]);
 document.getElementById('picker').onchange=e=>ingest([...e.target.files]);

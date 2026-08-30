@@ -51,7 +51,7 @@ addEventListener('load',async()=>{
   w.cur=ci0;w.paint();await wait(150);
   ok('a written slide gets the box too',!!d.getElementById('deIn'),
      'this is where "make it catchy" used to have nowhere to go');
-  ok('and the button says rewrite',/Rewrite this slide/.test(d.getElementById('bDesign').textContent),
+  ok('and the button says rewrite',/Rewrite it to do this/.test(d.getElementById('bDesign').textContent),
      d.getElementById('bDesign').textContent);
   ok('the tooltip says the author wins',/win/i.test(d.getElementById('bDesign').title));
   calls=[];replies=[JSON.stringify({title:'CATCHY',body:'Something else entirely.',notes:''})];stub();

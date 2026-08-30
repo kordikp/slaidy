@@ -100,11 +100,26 @@ button{cursor:pointer;background:none;border:none}
 .stage .stack{flex:1;min-height:0;display:flex;gap:30px}
 .stage .stack.col{flex-direction:column}
 .stage .stack.rev{flex-direction:row-reverse}
-.stage .fg{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;
+.stage .fg{flex:1;display:flex;align-items:safe center;justify-content:center;min-height:0;overflow:hidden;
  --fs:100%}
-.stage .fg svg{width:var(--fs);height:var(--fs);display:block}
-.stage .stack:not(.col)>.fg{align-items:flex-start}
-.stage .tx{flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C}
+/* side by side, both columns start at the top: whatever the two heights are, they
+   never look adrift from each other. Slack under a short text is a job for Tidy. */
+.stage .stack:not(.col)>.fg,.stage .stack:not(.col)>.fg .hero{align-items:flex-start}
+.stage .stack:not(.col)>.tx{justify-content:flex-start}
+/* Tidy may decide a short slide sits better in the middle of the frame */
+.stage .stack.mid:not(.col){align-items:safe center}
+.stage .stack.mid:not(.col)>.fg,.stage .stack.mid:not(.col)>.fg .hero{align-items:safe center}
+.stage .stack.mid:not(.col)>.tx{justify-content:safe center}
+.stage .stack.mid.col>.tx{justify-content:safe center}
+.stage .stack.mid.col{justify-content:safe center}
+/* height:auto lets the viewBox set the box, so the element is the drawing rather
+   than a column the drawing floats in the middle of */
+.stage .fg svg{width:var(--fs);height:auto;max-height:var(--fs);display:block}
+/* safe center: centred when it fits, top-aligned when it would otherwise be cut */
+.stage .tx{align-self:stretch}
+.stage .tx{flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C;
+ display:flex;flex-direction:column}
+.stage .txin{min-height:0}
 .stage .tx.under{flex:none;max-height:46%;margin-top:20px}
 .stage.bgfig .bgl{position:absolute;inset:0;opacity:.12;display:flex;align-items:center;justify-content:center}
 .stage.bgfig .bgl svg{width:118%;height:auto}
@@ -128,9 +143,9 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx .inlinefig svg{max-width:100%;height:auto}
 
 /* editing affordances live on the same stage, so nothing shifts when you present */
-.stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;justify-content:center}
 .stage .hero:hover{outline:1px dashed #CFD3DA;border-radius:6px}
-.stage .hero svg{width:var(--fs);height:var(--fs);display:block}
+.stage .hero svg{width:var(--fs);height:auto;max-height:var(--fs);display:block}
 .stage .hero .empty{color:var(--faint);font-size:16px;padding:28px;border:1px dashed var(--line);
  border-radius:10px;text-align:center}
 .figtools{position:absolute;top:6px;right:6px;display:none;gap:5px;z-index:2}
@@ -350,6 +365,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .runout{border:1px solid var(--line);border-radius:var(--r6);padding:11px 13px;background:#FAFAFB}
 
 /* ---------- print / PDF ---------- */
+#measure.measure{position:fixed;left:-4000px;top:0;width:1280px;height:720px;transform:none;
+ pointer-events:none;visibility:hidden}
 #printroot{display:none}
 @media print{
   @page{size:297mm 167mm;margin:0}
@@ -600,16 +617,9 @@ function scopeSvg(svg,uid){
   });
 }
 let uidN=0;
-function fig(id,align){
+function fig(id){
   const svg=S.figs[id];
-  if(!svg)return '';
-  const out=scopeSvg(svg,'f'+(++uidN));
-  /* Beside text, pin the drawing to the top of its box. The element fills the
-     column, so by default preserveAspectRatio centres the drawing inside it —
-     which is why a figure next to text sat lower than the text it belongs to. */
-  return align==='top'&&!/preserveAspectRatio=/.test(out.slice(0,400))
-    ? out.replace('<svg','<svg preserveAspectRatio="xMidYMin meet"')
-    : out;
+  return svg?scopeSvg(svg,'f'+(++uidN)):'';
 }
 
 /* ---------- markdown ---------- */
@@ -676,9 +686,11 @@ function importMarkdown(name,text){
       const nt=[...bd.matchAll(/^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$/gm)].map(x=>x[1]).join(' ');
       const sm=bd.match(/^\*Summary:\*\s*(.+)$/m);
       const sk=/^\*Skip:\*\s*(?:yes|true|1|ano)\b/mi.test(bd);
+      const tsm=bd.match(/^\*Text:\*\s*(\d{2,3})%/m);
       const flm=bd.match(/^\*Flags:\*\s*(.+)$/m);
       const fl=flm?flm[1].split(',').map(x=>x.trim()).filter(Boolean):[];
       bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
+           .replace(/^\*Text:\*.*$/gm,'')
            .replace(/^\*\*Figure:\*\*.*$/gm,'').replace(/^\*(?:Delivery note|Transition)[^:]*:\*.*$/gm,'')
            .replace(/^---\s*$/gm,'').replace(/^#{1,6}\s+.*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
       slides.push({tag:m[2],group:act,sub:subAt(m.index),title:m[3],fig:f?f[1]:null,
@@ -711,7 +723,7 @@ function importMarkdown(name,text){
   });
   return slides;
 }
-function normalise(){ S.slides.forEach((s,i)=>{s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;}); }
+function normalise(){ S.slides.forEach((s,i)=>{s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;s.textScale=s.textScale||100;}); }
 
 async function ingest(files){
   const mds=[],svgs=[];let bundle=null;
@@ -880,21 +892,24 @@ function moveSlide(d){
 function stageHtml(s,edit){
   const has=s.fig&&S.figs[s.fig];
   const beside=s.layout==='split-l'||s.layout==='split-r';
-  const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig,beside?'top':null):'');
+  const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig):'');
   const fsz=s.figScale&&s.figScale!==100?` style="--fs:${s.figScale}%"`:'';
-  const bodyHtml=edit?'<div id="bd"></div>':body2html(s.body);
+  const tsz=s.textScale&&s.textScale!==100
+    ? ` style="font-size:calc(var(--d-body)*${s.textScale/100})"` : '';
+  const bodyHtml='<div class="txin">'+(edit?'<div id="bd"></div>':body2html(s.body))+'</div>';
   const hasBody=edit||(s.body||'').trim();
+  const mid=(s.flags||[]).includes('center')?' mid':'';
   let stack;
   if(s.layout==='background'&&has)
-    stack=`<div class="bgl">${figHtml}</div><div class="stack col"><div class="tx">${bodyHtml}</div></div>`;
+    stack=`<div class="bgl">${figHtml}</div><div class="stack col${mid}"><div class="tx">${bodyHtml}</div></div>`;
   else if(beside&&has)
-    stack=`<div class="stack${s.layout==='split-r'?' rev':''}"><div class="fg"${fsz}>${figHtml}</div>`+
-          `<div class="tx">${bodyHtml}</div></div>`;
+    stack=`<div class="stack${s.layout==='split-r'?' rev':''}${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
+          `<div class="tx"${tsz}>${bodyHtml}</div></div>`;
   else if(has&&s.layout!=='text')
-    stack=`<div class="stack col"><div class="fg"${fsz}>${figHtml}</div>`+
-          (hasBody?`<div class="tx under">${bodyHtml}</div>`:'')+`</div>`;
+    stack=`<div class="stack col${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
+          (hasBody?`<div class="tx under"${tsz}>${bodyHtml}</div>`:'')+`</div>`;
   else
-    stack=`<div class="stack col"><div class="tx">${bodyHtml}</div></div>`;
+    stack=`<div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
   return `<div class="hdr">${hdrHtml(s)}</div>`+
     (edit?`<h2 class="hd" contenteditable spellcheck="false"></h2>`:`<h2>${inl(s.title)}</h2>`)+
     stack;
@@ -950,8 +965,7 @@ function checkFit(){
 }
 function paintHero(s){
   const el=document.getElementById('hero');if(!el)return;
-  const beside=s.layout==='split-l'||s.layout==='split-r';
-  el.innerHTML=(s.fig&&S.figs[s.fig]?fig(s.fig,beside?'top':null):'<div class="empty">no figure — click to choose</div>')+
+  el.innerHTML=(s.fig&&S.figs[s.fig]?fig(s.fig):'<div class="empty">no figure — click to choose</div>')+
    `<div class="figtools"><button data-a="pick">Change</button>${s.fig?'<button data-a="ai">Edit</button><button data-a="x">Remove</button>':''}</div>`;
   el.onclick=e=>{const a=e.target.dataset?.a;
     if(a==='x'){snap('remove figure');s.fig=null;s.layout='text';touch();paint();return;}
@@ -1070,6 +1084,93 @@ function clock(sec){
   return Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':'');
 }
 
+/* ---------- Tidy -----------------------------------------------------------
+   Layout is arranged by measuring, not by guessing. The slide is drawn into a
+   hidden stage at full size, once per candidate arrangement, and the one that
+   fills the frame without clipping anything wins. Nothing in the body is
+   touched: the only dials are the layout, the size of the figure, whether the
+   whole thing sits in the middle, and — only to rescue an overflow — the body
+   size. Everything it decides is written back into the markdown.
+--------------------------------------------------------------------------- */
+const TIDY_FIG=[100,92,84,76,68,60,52],TIDY_TXT=[100,94,88,82];
+function measureStage(s){
+  let m=document.getElementById('measure');
+  if(!m){m=document.createElement('div');m.id='measure';document.body.appendChild(m);}
+  m.className=stageClass(s)+' measure';
+  m.innerHTML=stageHtml(s,false);
+  const stack=m.querySelector('.stack');
+  if(!stack)return null;
+  const box=stack.getBoundingClientRect();
+  const tx=m.querySelector('.tx'),fg=m.querySelector('.fg svg')||m.querySelector('.bgl svg');
+  let bottom=box.top, over=false, figH=0;
+  if(tx){
+    /* the column is stretched, so its own box says nothing about how much is in
+       it — the last thing painted does */
+    const inner=tx.querySelector('.txin')||tx;
+    const kids=[...inner.children].filter(k=>k.getBoundingClientRect().height);
+    if(kids.length)bottom=Math.max(bottom,...kids.map(k=>k.getBoundingClientRect().bottom));
+    over=tx.scrollHeight>tx.clientHeight+2;
+  }
+  if(fg){const r=fg.getBoundingClientRect();bottom=Math.max(bottom,r.bottom);figH=r.height;}
+  const txW=tx?tx.getBoundingClientRect().width:0;
+  return{frame:box.height,slack:box.bottom-bottom,over,figH,txW,
+         fill:(bottom-box.top)/Math.max(1,box.height)};
+}
+function tidyScore(m,s,words){
+  if(!m)return 1e9;
+  if(m.over)return 1e9;
+  if(m.slack<-1)return 1e9;                       // something is hanging out of the frame
+  const emptiness=Math.max(0,m.slack)/Math.max(1,m.frame);
+  const small=m.figH?Math.max(0,0.45-m.figH/m.frame):0;
+  /* A line of prose 1100 px wide is hard to follow however neatly it fills the
+     frame, so more than a couple of lines wants a column, not the full width. */
+  const wide=(words>28&&m.txW>900)?0.14:0;
+  return emptiness*100+small*90+wide*100;
+}
+const TIDY_KEYS=['layout','figScale','textScale','flags'];
+function tidySlide(i){
+  const s=S.slides[i];
+  const before=JSON.stringify(TIDY_KEYS.map(k=>s[k]));
+  const has=s.fig&&S.figs[s.fig];
+  const body=(s.body||'').trim();
+  const others=(s.flags||[]).filter(f=>f!=='center');
+
+  const layouts = !has ? ['text']
+    : !body ? ['figure']
+    : s.layout==='background' ? ['background']     // a deliberate choice, left alone
+    : ['figure','split-r','split-l'];
+  const figs = has?TIDY_FIG:[100];
+
+  const words=stats(s).words;
+  const was={L:s.layout,F:s.figScale||100,tx:s.textScale||100,mid:(s.flags||[]).includes('center')};
+  let best=null;
+  for(const tx of TIDY_TXT){
+    for(const L of layouts) for(const F of figs) for(const mid of [false,true]){
+      s.layout=L;s.figScale=F;s.textScale=tx;s.flags=mid?[...others,'center']:others;
+      let sc=tidyScore(measureStage(s),s,words);
+      /* a nudge towards what the author already chose, so a tie does not churn the deck */
+      if(sc<1e9&&L===was.L&&F===was.F&&tx===was.tx&&mid===was.mid)sc-=2.5;
+      if(!best||sc<best.sc)best={sc,L,F,tx,mid};
+    }
+    if(best&&best.sc<1e9)break;                    // only shrink the type to rescue an overflow
+  }
+  if(!best||best.sc>=1e9){                          // nothing fit: keep the roomiest we saw
+    s.layout=layouts[0];s.figScale=has?60:100;s.textScale=82;
+    s.flags=others;
+  }else{
+    s.layout=best.L;s.figScale=best.F;s.textScale=best.tx;
+    s.flags=best.mid?[...others,'center']:others;
+  }
+  return JSON.stringify(TIDY_KEYS.map(k=>s[k]))!==before;
+}
+function tidyDeck(only){
+  const idx=only??S.slides.map((_,i)=>i);
+  let n=0;
+  idx.forEach(i=>{ if(tidySlide(i))n++; });
+  document.getElementById('measure')?.remove();
+  return n;
+}
+
 function paintSide(){
   const s=S.slides[cur],el=document.getElementById('side');
   if(!s){el.innerHTML='';return;}
@@ -1107,6 +1208,13 @@ function paintSide(){
       <button class="b p" id="bYes">Apply</button><button class="b" id="bNo">Discard</button></div>
   </div>
 
+  <div class="sec"><div class="sect">Tidy</div>
+    <button class="b p" id="bTidy" style="width:100%">Tidy this slide</button>
+    <button class="b" id="bTidyAll" style="width:100%;margin-top:5px">Tidy every slide…</button>
+    <div class="tip">Arranges the layout, the size of the figure and the type by measuring what fits.
+      It never changes a word.</div>
+  </div>
+
   <div class="sec">
     <button class="b" id="bMd" style="width:100%">Edit as markdown</button>
     <button class="b" id="bSkip" style="width:100%;margin-top:5px">${s.skip?'⊘ Hidden — show it':'Hide this slide'}</button>
@@ -1138,6 +1246,13 @@ function paintSide(){
   el.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>ask(AI_ACTS[+b.dataset.i].p));
   el.querySelector('#bAsk').onclick=()=>ask(document.getElementById('aiIn').value.trim());
   el.querySelector('#bMd').onclick=editMarkdown;
+  el.querySelector('#bTidy').onclick=()=>{
+    snap('tidy');
+    const changed=tidyDeck([cur]);
+    touch();paint();
+    toast(changed?`Tidied — ${LAYNAME[S.slides[cur].layout]}, figure ${S.slides[cur].figScale} %`
+                 :'Already as good as it gets');};
+  el.querySelector('#bTidyAll').onclick=tidyAllDialog;
   el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
 }
 
@@ -2199,6 +2314,27 @@ function trimDialog(){
   document.getElementById('tmAll').onclick=()=>{
     snap('show all');S.slides.forEach(s=>s.skip=false);touch();closeDialog();paint();toast('Nothing hidden');};
 }
+function tidyAllDialog(){
+  dialog(`<h3>Tidy every slide</h3>
+   <p class="tip">Draws each slide at full size in every sensible arrangement and keeps the one that
+    fills the frame without clipping anything. It changes the layout, the size of the figure, whether
+    the slide sits in the middle, and — only where the text would otherwise be cut — the body size.
+    <b>No word of any slide is touched.</b> One <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the lot.</p>
+   <div id="tdOut" class="runout" style="margin-top:14px">${S.slides.length} slides to look at.</div>
+   <div class="rw" style="margin-top:12px">
+     <button class="b p" id="tdGo">Tidy them</button>
+     <button class="b" id="tdNo">Cancel</button></div>`,'tall');
+  document.getElementById('tdNo').onclick=closeDialog;
+  document.getElementById('tdGo').onclick=async()=>{
+    const out=document.getElementById('tdOut');
+    out.innerHTML='<span class="spin"></span> measuring…';
+    await new Promise(r=>setTimeout(r,30));
+    snap('tidy every slide');
+    const t0=Date.now(), n=tidyDeck();
+    touch();paint();closeDialog();
+    toast(`${n} of ${S.slides.length} slides rearranged in ${((Date.now()-t0)/1000).toFixed(1)} s`);
+  };
+}
 function shortcuts(){
   const R=[['↑ ↓','previous / next slide'],['Alt + ↑ ↓','move this slide in the deck'],
    ['drag in the list','move it anywhere, section and all'],
@@ -2241,10 +2377,108 @@ function closeDialog(){document.getElementById('veil').classList.remove('on');}
 document.getElementById('veil').onclick=e=>{if(e.target.id==='veil')closeDialog();};
 
 /* ---------- export ---------- */
+/* ---------- the deck as an article ----------------------------------------
+   Slides do not read as prose: the words on them are labels, and the argument
+   lives in the speaker notes. So the article is assembled the other way round —
+   the figure, then what would have been said about it, then the line that was
+   meant to land. Hidden slides stay out; they are not part of the talk.
+   The HTML is self-contained and pastes into Substack or Medium with the
+   figures intact.
+--------------------------------------------------------------------------- */
+/* A title slide restates the article's own heading and byline, and its notes are
+   a direction to the speaker, not a sentence for a reader. Leave it out. */
+function articleSlides(){
+  const v=S.slides.filter(s=>!s.skip);
+  const t=(S.title||'').toLowerCase();
+  while(v.length&&t&&(v[0].body||'').toLowerCase().includes(t))v.shift();
+  return v;
+}
+function articleParts(s){
+  const bs=blocks(s.body);
+  const quote=bs.filter(b=>b.kind==='quote');
+  const rest=bs.filter(b=>b.kind!=='quote');
+  return{quote,rest,notes:(s.notes||'').trim()};
+}
+const ARTICLE_SHELL=(title,body)=>`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>${esc(title||'Article')}</title><style>
+:root{color-scheme:light}
+body{max-width:44rem;margin:3rem auto;padding:0 1.25rem;background:#fff;color:#1a1a1a;
+ font:18px/1.65 Georgia,"Iowan Old Style","Times New Roman",serif}
+h1{font:700 2.1rem/1.15 system-ui,-apple-system,sans-serif;letter-spacing:-.02em;margin:0 0 .6rem}
+h2{font:700 1.5rem/1.2 system-ui,sans-serif;letter-spacing:-.015em;margin:3.2rem 0 .4rem;
+ padding-top:1.6rem;border-top:1px solid #e5e5e5}
+h3{font:650 1.1rem/1.3 system-ui,sans-serif;color:#555;margin:2rem 0 .3rem}
+h4{font:650 1.22rem/1.3 system-ui,sans-serif;margin:2.2rem 0 .5rem}
+p.by{font:15px/1.5 system-ui,sans-serif;color:#666;margin:.1rem 0}
+figure{margin:1.2rem 0}
+figure svg{width:100%;height:auto;display:block}
+blockquote{margin:1.2rem 0;padding:.1rem 0 .1rem 1.1rem;border-left:3px solid #1a1a1a;
+ font-size:1.08em;font-style:italic}
+table{border-collapse:collapse;width:100%;font:16px/1.5 system-ui,sans-serif;margin:1rem 0}
+th{text-align:left;font-size:.78em;letter-spacing:.06em;text-transform:uppercase;color:#666;
+ border-bottom:1px solid #ddd;padding:0 .8rem .35rem 0}
+td{padding:.5rem .8rem .5rem 0;border-bottom:1px solid #f0f0f0;vertical-align:top}
+code{font:.88em ui-monospace,monospace;background:#f4f4f4;padding:1px 5px;border-radius:4px}
+a{color:#0b5fa5}
+ul,ol{padding-left:1.2rem}
+li{margin:.25rem 0}
+</style></head><body>${body}</body></html>`;
+
+function articleHtml(){
+  const M=S.meta||{};
+  const line=[M.author,M.affiliation].filter(Boolean).join(' · ');
+  const where=[M.event,M.venue,M.date].filter(Boolean).join(' · ');
+  let out='',sec=null,sub=null;
+  articleSlides().forEach(s=>{
+    if(s.group!==sec){sec=s.group;sub=null;out+=`<h2>${esc(sec||'')}</h2>\n`;}
+    if((s.sub||null)!==sub){sub=s.sub||null;if(sub)out+=`<h3>${esc(sub)}</h3>\n`;}
+    const{quote,rest,notes}=articleParts(s);
+    out+=`<h4>${inl(s.title)}</h4>\n`;
+    if(s.fig&&S.figs[s.fig])out+=`<figure>${fig(s.fig)}</figure>\n`;
+    if(notes)out+=`<p>${inl(notes)}</p>\n`;
+    quote.forEach(b=>{out+=`<blockquote>${inl(b.src.split('\n').map(l=>l.replace(/^>\s?/,'')).join(' '))}</blockquote>\n`;});
+    rest.forEach(b=>{out+=block(b)+'\n';});
+  });
+  return `<article>
+<h1>${esc(S.title||'Untitled')}</h1>
+${line?`<p class="by">${esc(line)}</p>`:''}
+${where?`<p class="by">${esc(where)}</p>`:''}
+${out}</article>`;
+}
+function articleMd(){
+  const M=S.meta||{};
+  let out=`# ${S.title||'Untitled'}\n\n`;
+  const line=[M.author,M.affiliation].filter(Boolean).join(' · ');
+  const where=[M.event,M.venue,M.date].filter(Boolean).join(' · ');
+  if(line)out+=`*${line}*\n\n`;
+  if(where)out+=`*${where}*\n\n`;
+  let sec=null,sub=null;
+  articleSlides().forEach(s=>{
+    if(s.group!==sec){sec=s.group;sub=null;out+=`\n## ${sec||''}\n\n`;}
+    if((s.sub||null)!==sub){sub=s.sub||null;if(sub)out+=`### ${sub}\n\n`;}
+    const{quote,rest,notes}=articleParts(s);
+    out+=`#### ${s.title}\n\n`;
+    if(s.fig&&S.figs[s.fig])out+=`![${s.title.replace(/[\[\]]/g,'')}](images/${s.fig}.svg)\n\n`;
+    if(notes)out+=notes+'\n\n';
+    quote.forEach(b=>{out+=b.src+'\n\n';});
+    rest.forEach(b=>{
+      out+=(b.kind==='fig'
+        ? `![](images/${b.src.replace(/^!\[\[|\]\]$/g,'')}.svg)`
+        : b.src)+'\n\n';});
+  });
+  return out.replace(/\n{3,}/g,'\n\n');
+}
+function downloadText(name,text,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:type||'text/plain'}));
+  a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
 function slideMd(s){
   let m=`### ${s.n}. \`[${s.tag}]\` ${s.title}\n\n`;
   if(s.fig)m+=`**Figure:** \`${s.fig}\`${s.layout&&s.layout!=='figure'?' · '+s.layout:''}${
     s.figScale&&s.figScale!==100?' · '+s.figScale+'%':''}\n\n`;
+  if(s.textScale&&s.textScale!==100)m+=`*Text:* ${s.textScale}%\n\n`;
   if((s.summary||'').trim())m+=`*Summary:* ${s.summary.trim()}\n\n`;
   if(s.flags&&s.flags.length)m+=`*Flags:* ${s.flags.join(', ')}\n\n`;
   if(s.skip)m+=`*Skip:* yes\n\n`;
@@ -2260,6 +2494,12 @@ function save(){
      <button class="b" id="eMd">Markdown</button>
      <button class="b" id="eBundle">Deck bundle (.json)</button>
      <button class="b" id="eMeta">deck.meta.json</button></div>
+   <p class="tip" style="margin-top:14px">The deck as something to read: the figure, what you would have
+    said about it, then the line meant to land. Hidden slides stay out. Open the HTML, select all, and
+    paste — Substack and Medium take the figures with it.</p>
+   <div class="rw" style="margin-top:8px">
+     <button class="b" id="eArtH">Article (HTML)</button>
+     <button class="b" id="eArtM">Article (Markdown)</button></div>
    <p class="tip" style="margin-top:8px"><code>deck.meta.json</code> carries the title, the event details and
    the visual style. Put it in <code>slides/</code> and <code>build_bundle.py</code> picks it up, so rebuilding
    from markdown never loses these settings.</p>
@@ -2282,6 +2522,13 @@ function save(){
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
       a.download=name;setTimeout(()=>{a.click();URL.revokeObjectURL(a.href);},n*250);n++;});
     closeDialog();toast(`Exporting ${n} files — allow multiple downloads`);};
+  const slug=(S.title||'deck').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  document.getElementById('eArtH').onclick=()=>{
+    downloadText(slug+'-article.html',ARTICLE_SHELL(S.title,articleHtml()),'text/html');
+    closeDialog();toast('Open it, select all, paste');};
+  document.getElementById('eArtM').onclick=()=>{
+    downloadText(slug+'-article.md',articleMd(),'text/markdown');
+    closeDialog();toast('Figures are referenced as images/<id>.svg');};
   document.getElementById('eMeta').onclick=()=>{
     const j=JSON.stringify({title:S.title,meta:S.meta||{},style:S.style||{}},null,2);
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([j],{type:'application/json'}));

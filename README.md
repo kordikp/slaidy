@@ -130,8 +130,17 @@ means, and word overlap cannot tell that apart from an echo.
 lists, tables and key lines stay on the slide, prose moves to the speaker notes — and
 picks the layout from what is left.
 
+**Tidy.** Layout is arranged by measuring, not by guessing: the slide is drawn into a hidden
+stage at full size once per candidate arrangement, and the one that fills the frame without
+clipping anything wins. The dials are the layout, the size of the figure, whether the slide
+sits in the middle, and — only to rescue an overflow — the body size. **It never changes a
+word.** One button does the slide, another does the deck; one undo reverses either.
+
 **Export.** PDF through the browser's own print engine (nothing is uploaded), markdown
-in the shape you started with, or one `.json` bundle carrying slides and figures.
+in the shape you started with, one `.json` bundle carrying slides and figures, or the deck
+**as an article**: the figure, what you would have said about it, then the line meant to
+land. Hidden slides stay out. The HTML is self-contained — open it, select all, paste, and
+Substack or Medium take the figures with it.
 
 **AI.** Optional, and off unless you give it an endpoint. `studio.sh` runs a small
 proxy that forwards to OpenAI using `OPENAI_KEY`, so the key stays on your machine and

@@ -78,7 +78,7 @@ addEventListener('load',async()=>{
   w.figEdit&&0; d.getElementById('veil').classList.remove('on');
   w.paint(); await wait(200);
   const secs=d.querySelectorAll('#side .sec');
-  ok('inspector is sectioned',secs.length===4,secs.length+' sections');
+  ok('inspector is sectioned',secs.length===5,secs.length+' sections');
   ok('inspector has padding',parseFloat(getComputedStyle(secs[0]).paddingLeft)>8);
 
   // --- undo ---

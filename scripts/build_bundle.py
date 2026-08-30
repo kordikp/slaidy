@@ -22,7 +22,8 @@ FIG_NONE_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:none|žádná).*$", re.M | re.I
 NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$", re.M)
 SUM_RE = re.compile(r"^\*Summary:\*\s*(.+)$", re.M)
 SKIP_RE = re.compile(r"^\*Skip:\*\s*(\S+)[^\n]*$", re.M)      # hidden when presenting
-FLAGS_RE = re.compile(r"^\*Flags:\*\s*([^\n]+)$", re.M)        # keep = never auto-hide, ours = our own work      # what the slide is for, in one or two lines
+FLAGS_RE = re.compile(r"^\*Flags:\*\s*([^\n]+)$", re.M)        # keep = never auto-hide, ours = our own work
+TEXT_RE = re.compile(r"^\*Text:\*\s*(\d{2,3})%[^\n]*$", re.M)   # body size, as a percentage      # what the slide is for, in one or two lines
 FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
 # A section name per file. Anything not listed here is derived from the filename,
@@ -51,9 +52,11 @@ def parse_slides(text, group):
         sm = SUM_RE.search(body)
         sk = SKIP_RE.search(body)
         fl = FLAGS_RE.search(body)
+        ts = TEXT_RE.search(body)
         body = SUM_RE.sub("", body)
         body = SKIP_RE.sub("", body)
         body = FLAGS_RE.sub("", body)
+        body = TEXT_RE.sub("", body)
         body = FIG_RE.sub("", body)
         body = FIG_NONE_RE.sub("", body)
         body = NOTE_RE.sub("", body)
@@ -64,6 +67,7 @@ def parse_slides(text, group):
                        "fig": f.group(1) if f else None,
                        "layout": (f.group(2) if f and f.group(2) in LAYOUTS else "figure") if f else "text",
                        "figScale": int(f.group(3)) if f and f.group(3) else 100,
+                       "textScale": int(ts.group(1)) if ts else 100,
                        "body": body, "notes": notes, "summary": sm.group(1).strip() if sm else "",
                        "skip": bool(sk) and sk.group(1).lower() in ("yes", "true", "1", "ano"),
                        "flags": [x.strip() for x in fl.group(1).split(",") if x.strip()] if fl else []})

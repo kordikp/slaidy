@@ -71,6 +71,7 @@ addEventListener('load',async()=>{
   // ---------- a deck from a brief ----------
   w.briefWizard();await wait(200);
   ok('the wizard asks for the abstract',!!d.getElementById('bwAbs'));
+  ok('and for the questions it answers',!!d.getElementById('bwQs'));
   ok('and for the arc',!!d.getElementById('bwStory'));
   ok('and how long the talk is',!!d.getElementById('bwMin'),d.getElementById('bwMin').value+' minutes');
   d.getElementById('bwGo').click();await wait(200);
@@ -78,6 +79,7 @@ addEventListener('load',async()=>{
 
   d.getElementById('bwTitle').value='The Great Convergence';
   d.getElementById('bwAbs').value='Search, recommendation and conversation collapsed onto one architecture.';
+  d.getElementById('bwQs').value='What is IR in 2026?\nIs generative AI used in IR?';
   d.getElementById('bwStory').value='Four rooms, one question, the walls, the bill.';
   d.getElementById('bwMin').value='30';
   calls=[];replies=[JSON.stringify({title:'The Great Convergence',sections:[
@@ -91,6 +93,10 @@ addEventListener('load',async()=>{
   ok('the brief reaches the model',/collapsed onto one architecture/.test(calls[0].user||''));
   ok('so does the arc',/Four rooms, one question/.test(calls[0].user||''));
   ok('and the length',/30 minutes/.test(calls[0].user||''));
+  ok('the questions it must answer go with it',
+     /What is IR in 2026\?/.test(calls[0].user||'')&&/QUESTIONS IT MUST ANSWER/.test(calls[0].user||''));
+  ok('and the outline is told to answer every one',
+     /must answer every one of them/.test(calls[0].system||''));
   ok('it asks for shape, not words',/SHAPE — not its words/.test(calls[0].system||''));
 
   const rows=d.querySelectorAll('.brow');

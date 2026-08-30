@@ -2048,43 +2048,58 @@ const DESIGN_SEEDS=[
    sits in the deck — the section, the slides either side — and comes back with
    named ideas and enough of a specification that picking one is a decision, not
    a leap. */
-let SUGG=null;
-async function suggestSlides(btn){
+let SUGG=null,SUGG_AT=-1,SUGG_SEEN=[];
+/* "Three more ideas" sent the identical prompt and got the identical three
+   back. A second round has to say where it has already been. */
+async function suggestSlides(btn,more){
   const s=S.slides[cur],host=document.getElementById('dsOut');
-  if(btn){btn.disabled=true;btn.textContent='Thinking…';}
-  const prog=progress(host,'reading where this slide sits','');
+  if(SUGG_AT!==cur){SUGG_SEEN=[];SUGG_AT=cur;}
+  const label=btn&&btn.isConnected?btn.textContent:null;
+  if(btn&&btn.isConnected){btn.disabled=true;btn.textContent='Thinking…';}
+  const prog=progress(host,more?'looking somewhere else':'reading where this slide sits','');
   const near=S.slides.map((x,i)=>[i,x])
     .filter(([i])=>i!==cur&&Math.abs(i-cur)<=4)
     .map(([i,x])=>`${String(i+1).padStart(3)} ${i<cur?'◀':'▶'} ${x.title}${
        x.summary?' — '+x.summary:''}`).join('\n');
   try{
     const raw=await llm(
-`You propose slides for a technical talk. Read the deck and the slides on either side of the gap,
-then propose THREE different slides that would earn their place there — different angles, not three
-phrasings of one idea. For each give:
-  title  — how it appears on the slide, under 8 words, no colon-subtitle
-  angle  — one line saying what this slide does that the neighbours do not
-  spec   — 4 to 6 short lines: what goes on the slide, whether it wants a figure and what that
-           figure would show, whether the content is really a table and what its columns are,
-           which paper or system it should cite, and the one line that must land
+`You propose what a slide could be, at the level a speaker thinks in: a MOVE in the talk, not a
+paragraph. "A short history of information retrieval." "What IR means in 2026." "Where generative
+models actually sit in the stack."
+
+Read the deck and the slides either side of the gap, then propose THREE slides that would earn
+their place there — three different moves, not three phrasings of one. For each give:
+  title     — how it reads on the slide, under 8 words, no colon-subtitle
+  question  — the question this slide answers, in the audience's own words, ending in "?"
+  spec      — 3 to 5 short lines: what it takes to answer that question. The claim, the evidence it
+              needs, whether it wants a figure or a table and of what, what it should cite.
+
+Prefer big moves: a history, a definition the field disagrees about, a comparison, a claim with a
+number behind it, an honest limitation, a prediction you would defend. Never a slide whose move is
+"introduce the next section".
 House style: plain and precise; every claim carries a number, a named system or a citation.
-Return ONLY a JSON array of three objects with keys title, angle, spec. No fences, no commentary.`,
-`DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n\nSLIDES AROUND THE GAP:\n${near||'(the deck is empty)'}`,
+Return ONLY a JSON array of three objects with keys title, question, spec. No fences, no commentary.`,
+`DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n\n`+
+`SLIDES AROUND THE GAP:\n${near||'(the deck is empty)'}`+
+(SUGG_SEEN.length?`\n\nALREADY PROPOSED FOR THIS GAP — go somewhere else entirely:\n`+
+  SUGG_SEEN.map(t=>'· '+t).join('\n'):''),
       1800);
     const a=raw.indexOf('['),b=raw.lastIndexOf(']');
     if(a<0||b<0)throw new Error('no suggestions came back');
-    SUGG=JSON.parse(raw.slice(a,b+1)).filter(x=>x&&x.title).slice(0,3);
+    SUGG=JSON.parse(raw.slice(a,b+1)).filter(x=>x&&x.title).slice(0,3)
+      .map(x=>({title:x.title,question:x.question||x.angle||'',spec:x.spec||''}));
     if(!SUGG.length)throw new Error('no suggestions came back');
+    SUGG_SEEN.push(...SUGG.map(x=>x.title));
     prog.done();
     host.classList.remove('hidden');
     /* the title and the specification are both editable here. A proposal you
-       cannot adjust is a proposal you either take whole or throw away, and the
-       useful case is almost always "yes, but" */
+       cannot adjust is one you either take whole or throw away, and the useful
+       case is almost always "yes, but" */
     host.classList.add('ideas');
     host.innerHTML=`<div class="tip" style="margin:0 0 7px">Edit before you build — this is what gets built.</div>`+
       SUGG.map((x,i)=>`<div class="idea">
         <input class="ih" data-i="${i}" value="${esc(x.title)}" spellcheck="false">
-        <div class="ia">${esc(x.angle||'')}</div>
+        <div class="ia">${esc(x.question||'')}</div>
         <textarea class="is" data-i="${i}" rows="1">${esc((x.spec||'').trim())}</textarea>
         <button class="b p" data-i="${i}">Design this one</button></div>`).join('')+
       `<button class="b" id="bMore" style="width:100%;margin-top:8px">Three more ideas</button>`;
@@ -2095,10 +2110,11 @@ Return ONLY a JSON array of three objects with keys title, angle, spec. No fence
     host.querySelectorAll('.idea button').forEach(bt=>bt.onclick=()=>{
       const x=SUGG[+bt.dataset.i];
       if(!(x.spec||'').trim()){toast('Say what the slide should contain');return;}
-      designSlide(`${x.angle||''}\n${x.spec||''}`.trim(),bt,(x.title||'').trim()||null);});
-    document.getElementById('bMore').onclick=e=>suggestSlides(e.target);
+      designSlide(`${x.question?'It answers: '+x.question+'\n':''}${x.spec||''}`.trim(),
+                  bt,(x.title||'').trim()||null);});
+    document.getElementById('bMore').onclick=e=>suggestSlides(e.target,true);
   }catch(e){prog.fail('Failed: '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent='Suggest what goes here';}}
+  finally{if(btn&&btn.isConnected&&label!==null){btn.disabled=false;btn.textContent=label;}}
 }
 
 /* Real links only. A slide citing a paper the deck does not have is worse than
@@ -2122,21 +2138,21 @@ Return ONLY a JSON object, no fences, no commentary:
   {"title": "...", "body": "...", "notes": "..."}
 
 body is the slide in markdown, carrying whatever the content actually calls for:
- · a line containing only ![[fig-<short-slug>]] where a picture carries the point better than
-   words can — it will be drawn for you, to this deck's own design system. At most two, and
-   invent the slug from the subject.
- · a markdown table when the content is really a comparison. On a slide a table usually beats
-   the same facts written out.
+ · a line containing only ![[fig-<short-slug>]] where a picture carries the point better than words
+   can — it will be drawn for you, to this deck's own design system. At most two, and invent the
+   slug from the subject.
+ · a markdown table when the content is really a comparison. On a slide a table usually beats the
+   same facts written out.
  · a short list, three to five items, for an enumeration.
  · > one line at the end that must land.
  · *** for a divider, <!-- gap --> for breathing room. Sparingly.
- · links, but ONLY ones from the list you are given. Never invent a URL or an arXiv id. If
-   nothing in the list fits, name the paper or the system in plain text instead.
+ · links, but ONLY ones from the list you are given. Never invent a URL or an arXiv id. If nothing
+   in the list fits, name the paper or the system in plain text instead.
 Three bullet points is not a finished slide. Give it a structure and something to look at.
 Do not repeat the title as the first line of the body.
 
-notes is what is said out loud and not printed: two to four sentences — the argument behind
-the slide, and what to drop when short on time.
+notes is what is said out loud and not printed: two to four sentences — the argument behind the
+slide, and what to drop when short on time.
 
 House style: plain and precise, no marketing adjectives; every claim carries a number, a named
 system or a citation, or it is cut; honest about limits.
@@ -2551,7 +2567,7 @@ function editMarkdown(){
 --------------------------------------------------------------------------- */
 let BRIEF=null;
 function briefWizard(){
-  const b=BRIEF||{title:'',abstract:'',story:'',minutes:45};
+  const b=BRIEF||{title:'',abstract:'',questions:'',story:'',minutes:45};
   dialog(`<div class="mdhead"><h3>A deck from a brief</h3>
       <span class="tip">The abstract and the arc; it comes back with the shape.</span>
       <span style="flex:1"></span><button class="b" id="bwNo">Cancel</button></div>
@@ -2564,6 +2580,8 @@ function briefWizard(){
         <input id="bwTitle" value="${esc(b.title)}" placeholder="The Great Convergence"></label>
       <label>The abstract — what it is about, and for whom
         <textarea id="bwAbs" rows="7" placeholder="Recommendation, search and conversation were four separate fields with four vocabularies. Between 2021 and 2025 they collapsed onto one architecture. This talk maps that convergence, what it cost, and what still breaks.">${esc(b.abstract)}</textarea></label>
+      <label>The questions it answers — one per line
+        <textarea id="bwQs" rows="4" placeholder="What is information retrieval in 2026?&#10;Is generative AI actually used in IR, or only talked about?&#10;What did the merge cost at serving time?">${esc(b.questions)}</textarea></label>
       <label>The storyline, if you have one — the arc, act by act
         <textarea id="bwStory" rows="6" placeholder="Open in four rooms that cannot hear each other. Ask the one question they all answer. Show the walls coming down, then the bill.">${esc(b.story)}</textarea></label>
       <label class="bwshort">How long do you have
@@ -2576,6 +2594,7 @@ function briefWizard(){
   const read=()=>{
     b.title=document.getElementById('bwTitle').value.trim();
     b.abstract=document.getElementById('bwAbs').value.trim();
+    b.questions=document.getElementById('bwQs').value.trim();
     b.story=document.getElementById('bwStory').value.trim();
     b.minutes=Math.max(5,Math.min(180,+document.getElementById('bwMin').value||45));
     BRIEF=b;
@@ -2598,16 +2617,23 @@ Return ONLY JSON:
 title    — the talk's title, kept if one was given
 name     — a section name, in the deck's own voice, e.g. "I · Four Rooms"
 title    — how the slide reads on screen, under 8 words, no colon-subtitle
-purpose  — ONE line saying what that slide is there to do. This is a brief for
+purpose  — ONE line saying what that slide is there to do. This is the brief for
            writing the slide later, so make it specific: the claim it carries,
            the evidence it needs, whether it wants a figure or a table.
+
+If questions were given, the deck must answer every one of them, and each slide
+that answers one should say so in its purpose — "answers: what is IR in 2026?".
+Work at the level of moves in a talk: a history, a definition the field argues
+about, a comparison, a claim with a number behind it, an honest limitation.
 
 About ${n} slides across 4 to 8 sections. Open with a title slide and close with
 a takeaway. Every slide must do something the ones either side do not — no slide
 whose purpose is "introduce the next section". House style: plain and precise,
 every claim carrying a number, a named system or a citation.`,
         `TITLE: ${b.title||'(none given)'}\nLENGTH: ${b.minutes} minutes\n\n`+
-        `ABSTRACT:\n${b.abstract}\n\nSTORYLINE:\n${b.story||'(none given — propose one)'}`,4000);
+        `ABSTRACT:\n${b.abstract}\n\n`+
+        `QUESTIONS IT MUST ANSWER:\n${b.questions||'(none given — derive them from the abstract)'}\n\n`+
+        `STORYLINE:\n${b.story||'(none given — propose one)'}`,4000);
       const a=raw.indexOf('{'),z=raw.lastIndexOf('}');
       if(a<0||z<0)throw new Error('no outline came back');
       const o=JSON.parse(raw.slice(a,z+1));

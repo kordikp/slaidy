@@ -190,11 +190,16 @@ picks the layout from what is left.
 
 **Design with AI.** What the panel offers depends on what is on the slide.
 
-An **empty slide** does not hand you a blank box. **Suggest what goes here** reads where the
-slide sits — the deck, the section, the four slides either side — and comes back with three
-named ideas: a title, one line on what this slide does that its neighbours do not, and a
-specification of what goes on it, what a figure would show, what a table would compare and
-what it should cite.
+An **empty slide** does not hand you a blank box. **Suggest what goes here** reads where the slide
+sits — the deck, the section, the four slides either side — and comes back with three ideas at the
+level a speaker thinks in: *A short history of information retrieval*, *What IR means in 2026*,
+*Where generative models actually sit in the stack*. Each is a **move in the talk**, named, with
+**the question it answers** — *Is generative AI used in IR, or only talked about?* — and a
+specification of what it takes to answer it.
+
+**Three more ideas** goes somewhere else: the request carries what has already been proposed for
+that gap and asks for different territory. It used to send the identical prompt and get the
+identical three back.
 
 **The title and the specification are editable before you build.** A proposal you cannot
 adjust is one you take whole or throw away, and the useful case is almost always *yes, but*.
@@ -327,9 +332,10 @@ Everything here exists because a version of it once failed.
 ### A deck from a brief
 
 The blank deck is the worst screen in any presentation tool. `Start from a brief…` on the welcome
-screen, or `⋯ → New deck from a brief…`, takes the abstract, the arc if you have one, and how long
-you have, and comes back with **the shape**: the sections, and for each slide a title and the one
-line it is there to do.
+screen, or `⋯ → New deck from a brief…`, takes the abstract, **the questions the talk must answer**,
+the arc if you have one, and how long you have — and comes back with **the shape**: the sections,
+and for each slide a title and the one line it is there to do. Every question you give it has to be
+answered somewhere in the deck, and the slide that answers one says so in its purpose.
 
 Deliberately not forty finished slides. What is seeded is each slide's **purpose** — which is
 exactly what the panel's top box holds — so every seeded slide arrives one press of *Write this
@@ -337,6 +343,11 @@ slide* away from being written, and you read and edit the arc before a word is s
 are editable and droppable before anything is built.
 
 ## Development
+
+`tests/preflight.py` runs before the browser does. It checks that every name the test hook exposes
+actually exists in the app — cutting a block out by index has twice swallowed a neighbouring
+definition, and the only symptom was `window.__api` never being assigned, so all 582 assertions
+failed with *cannot read properties of undefined* and none of them said why.
 
 ```bash
 python3 scripts/test_roundtrip.py     # markdown -> bundle, content loss

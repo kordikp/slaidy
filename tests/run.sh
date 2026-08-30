@@ -50,6 +50,8 @@ window.__ready=new Promise(r=>{const t=setInterval(()=>{
 open(p, "w", encoding="utf-8").write(s[:i] + hook + ready + "\n" + s[i:])
 PY
 
+python3 tests/preflight.py || { echo "  preflight failed — the suite would report nothing useful"; exit 1; }
+
 # exec, so $SRV is the server itself — killing the subshell leaves the child
 # holding the port, and the next run then talks to a server whose root is gone
 # the real server, so the tests exercise the save path the app actually uses

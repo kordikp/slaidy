@@ -120,11 +120,16 @@ addEventListener('load',async()=>{
   // ---------- suggestions arrive as editable cards ----------
   w.cur=NEW;w.paint();await wait(120);
   calls=[];replies=[JSON.stringify([
-    {title:'Why The Walls Came Down',angle:'names the mechanism',spec:'· the three systems\n· a figure'},
-    {title:'What It Cost',angle:'the price',spec:'· latency and serving cost'},
-    {title:'Who Paid',angle:'who absorbed it',spec:'· a table of four companies'}])];
+    {title:'Why The Walls Came Down',question:'What actually merged, and when?',
+     spec:'· the three systems\n· a figure'},
+    {title:'What It Cost',question:'What did the merge cost at serving time?',
+     spec:'· latency and serving cost'},
+    {title:'Who Paid',question:'Who absorbed the bill?',spec:'· a table of four companies'}])];
   stub();
   d.getElementById('bSugg').click();await wait(400);
+  ok('an idea is framed as the question it answers',
+     /What actually merged, and when\?/.test(d.getElementById('dsOut').textContent));
+  ok('and the prompt asks for moves, not paragraphs',/a MOVE in the talk/.test(calls[0].system||''));
   const cards=d.querySelectorAll('#dsOut .idea');
   ok('three ideas come back',cards.length===3,cards.length+' cards');
   ok('each names itself in an editable field',
@@ -140,9 +145,48 @@ addEventListener('load',async()=>{
   await wait(60);
   ok('the edits are held on the suggestion',
      w.SUGG[0].title==='A Title I Chose Myself'&&/exactly what I asked/.test(w.SUGG[0].spec));
+
+  // ---------- three more ideas must actually be more ----------
+  calls=[];replies=[JSON.stringify([
+    {title:'A Short History Of Retrieval',question:'How did we get here?',spec:'· a timeline'},
+    {title:'What IR Means In 2026',question:'What is IR in 2026?',spec:'· a definition the field argues about'},
+    {title:'Where GenAI Actually Sits',question:'Is generative AI used in IR, or only talked about?',
+     spec:'· the stack, with the generative box marked'}])];
+  d.getElementById('bMore').click();await wait(500);
+  ok('a second round asks the model again',calls.length===1,calls.length+' calls');
+  ok('and tells it where it has already been',
+     /ALREADY PROPOSED/.test(calls[0].user||'')&&/Why The Walls Came Down/.test(calls[0].user||''),
+     (calls[0].user||'').slice(-90));
+  const titles=()=>[...d.querySelectorAll('#dsOut .idea input.ih')].map(x=>x.value);
+  ok('it comes back with different ideas',titles().includes('A Short History Of Retrieval'),
+     titles().join(' | '));
+  ok('and the old ones are gone',!titles().includes('What It Cost'),titles().join(' | '));
+  ok('the question is what the slide answers',
+     /Is generative AI used in IR/.test(d.getElementById('dsOut').textContent));
+  // and it carries into the brief that builds the slide
+  calls=[];replies=[JSON.stringify({title:'x',body:'y',notes:''})];
+  d.querySelectorAll('#dsOut .idea')[1].querySelector('button').click();await wait(400);
+  ok('the question travels into the brief',
+     /It answers: What is IR in 2026\?/.test(calls[0].user||''),
+     (calls[0].user||'').slice(-80));
+  [...d.getElementById('dsOut').querySelectorAll('button')][1].click();
   unstub();
 
   // ---------- design a slide end to end, figure and all ----------
+  // a fresh round, and edit the card that is on screen now
+  w.cur=NEW;w.paint();await wait(150);
+  calls=[];replies=[JSON.stringify([
+    {title:'Why The Walls Came Down',question:'What actually merged?',spec:'· the three systems'},
+    {title:'What It Cost',question:'What did it cost?',spec:'· latency'},
+    {title:'Who Paid',question:'Who paid?',spec:'· a table'}])];
+  stub();
+  d.getElementById('bSugg').click();await wait(500);
+  const card=d.querySelector('#dsOut .idea');
+  ok('a fresh round of ideas is on screen',!!card);
+  const ti2=card.querySelector('input.ih'),sp2=card.querySelector('textarea.is');
+  ti2.value='A Title I Chose Myself';ti2.dispatchEvent(new W.Event('input'));
+  sp2.value='· exactly what I asked for';sp2.dispatchEvent(new W.Event('input'));
+  await wait(60);
   calls=[];replies=[JSON.stringify({
       title:'ignored — the card decided',
       body:'Three systems merged.\n\n![[fig-walls]]\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n'+
@@ -150,7 +194,7 @@ addEventListener('load',async()=>{
            '[made up](https://example.com/nope).\n\n> One index, one model.',
       notes:'Say the walls were organisational before they were technical.'}),SVG];
   stub();
-  cards[0].querySelector('button').click();
+  card.querySelector('button').click();
   await wait(500);
   const o1=d.getElementById('dsOut');
   ok('the brief carried the edited spec',/exactly what I asked/.test(calls[0].user||''));

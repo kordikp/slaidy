@@ -27,6 +27,17 @@ addEventListener('load',async()=>{
   try{ await w.llm('s','u',10); }catch(e){ m2=e.message; }
   ok('a wrong endpoint names itself',/\/nope/.test(m2)&&/404|not JSON/.test(m2),m2.slice(0,58)+'…');
   W.localStorage.removeItem('studio:cfg');
+
+  // ---------- where a call goes ----------
+  ok('with nothing configured it asks the page\'s own server',
+     w.cfgUrl({})==='/api/generate',w.cfgUrl({}));
+  ok('a configured endpoint wins',w.cfgUrl({url:'https://x/y'})==='https://x/y');
+  ok('the demo has no key baked into it',w.DEMO_AI===''||/^https:\/\//.test(w.DEMO_AI),
+     JSON.stringify(w.DEMO_AI));
+  ok('and no key anywhere in the file',
+     !/sk-[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9_-]{20,}/.test(W.document.documentElement.innerHTML),
+     'a static page cannot keep a secret, so it does not hold one');
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

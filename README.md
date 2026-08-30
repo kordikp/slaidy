@@ -20,10 +20,15 @@ with an example deck beside it. Everything works there except the AI, which need
 endpoint of your own — `⋯ → AI usage` has one-click presets for **CESNET e-INFRA** and
 OpenAI, and you paste your key into the browser, where it stays.
 
-> The demo cannot ship a key. It is a static page with no server to keep a secret in, so
-> a key in it would be a key given away. Run it locally with `./studio.sh` and the key
-> stays in your shell environment — the page never sees it, and it never appears on a
-> command line where `ps` would show it.
+> **The demo cannot ship a key**, and no arrangement of environment variables changes
+> that: it is a static page, so anything it can read, so can anyone who opens it. There
+> is a way round — [`demo/proxy`](demo/proxy) is a worker that holds the key and
+> forwards to e-INFRA, rate-limited to twenty calls an hour per address and a daily
+> budget, because behind it is somebody's academic quota. Deploy it and set `DEMO_AI` to
+> turn the demo's AI on; leave it and the demo has no AI, which breaks nothing.
+>
+> Locally, `./studio.sh` keeps the key in your shell environment — the page never sees
+> it, and it never appears on a command line where `ps` would show it.
 
 ```bash
 git clone https://github.com/kordikp/slaidy

@@ -3298,9 +3298,23 @@ function useFail(){const u=useLoad();u.fails++;useSave();}
 /* The kind travels as an argument, not as a global set around the call: two
    calls in flight at once would otherwise credit each other's work. */
 
+/* The demo has no server to keep a key in, so its AI goes through a worker that
+   holds one — see demo/proxy. Left empty, the demo simply has no AI, which is
+   what it had before and breaks nothing: the editor, the presenter and every
+   export work without it. Set it here to turn the demo's AI on. */
+const DEMO_AI='';
+const DEMO_HOSTS=['kordikp.github.io'];
+function cfgUrl(c){
+  if(c.url)return c.url;
+  if(DEMO_AI&&DEMO_HOSTS.includes(location.hostname))return DEMO_AI;
+  return '/api/generate';
+}
+
 async function llm(system,user,maxTok,kind){
   const c=cfg();
-  const url=c.url||'/api/generate';
+  const url=cfgUrl(c);
+  /* the proxy and the local server take the same small shape; only a bare
+     OpenAI-compatible endpoint gets the chat-completions body */
   const body=c.url
     ? {model:c.model||'gpt-5.6-sol',max_completion_tokens:maxTok||4000,
        messages:[{role:'system',content:system},{role:'user',content:user}]}

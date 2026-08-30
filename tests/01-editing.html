@@ -78,7 +78,12 @@ addEventListener('load',async()=>{
   w.figEdit&&0; d.getElementById('veil').classList.remove('on');
   w.paint(); await wait(200);
   const secs=d.querySelectorAll('#side .sec');
-  ok('inspector is sectioned',secs.length===5,secs.length+' sections');
+  ok('inspector is sectioned',secs.length===4,secs.length+' sections');
+  ok('and carries no paragraph of explanation',
+     ![...d.querySelectorAll('#side .tip')].some(t=>t.textContent.trim().length>90),
+     Math.max(0,...[...d.querySelectorAll('#side .tip')].map(t=>t.textContent.trim().length))+' chars');
+  ok('the explanation is on the control instead',
+     /measuring what fits/.test(d.getElementById('bTidy').title),d.getElementById('bTidy').title.slice(0,40));
   ok('inspector has padding',parseFloat(getComputedStyle(secs[0]).paddingLeft)>8);
 
   // --- undo ---

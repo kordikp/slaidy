@@ -33,7 +33,7 @@ addEventListener('load',async()=>{
 
   // ---------- markdown editor ----------
   w.editMarkdown();await wait(250);
-  const src=d.getElementById('mdSrc'),pv=d.getElementById('mdPv');
+  const src=d.getElementById('seSrc'),pv=d.getElementById('sePv');
   ok('editor opened',!!src&&!!pv);
   ok('preview sits on the left of the source',
      pv.getBoundingClientRect().left<src.getBoundingClientRect().left);
@@ -57,8 +57,8 @@ addEventListener('load',async()=>{
   src.value=two;src.dispatchEvent(new W.Event('input'));await wait(400);
   ok('two headings render two frames',pv.querySelectorAll('.pvwrap').length===2,
      pv.querySelectorAll('.pvwrap').length+'');
-  ok('and it says so',/Splits into 2/.test(d.getElementById('mdMsg').textContent),
-     d.getElementById('mdMsg').textContent.trim());
+  ok('and it says so',/Splits into 2/.test(d.getElementById('seMsg').textContent),
+     d.getElementById('seMsg').textContent.trim());
 
   // broken input
   src.value='no heading here at all';src.dispatchEvent(new W.Event('input'));await wait(400);
@@ -68,12 +68,12 @@ addEventListener('load',async()=>{
   src.dispatchEvent(new W.Event('input'));await wait(400);
   ok('a bare ### heading is accepted',!!pv.querySelector('.stage h2')&&
      /Just a title/.test(pv.textContent),pv.querySelector('.stage h2')?.textContent);
-  ok('Apply is not blocked by it',!d.getElementById('mdOk').disabled);
+  ok('Apply is not blocked by it',!d.getElementById('seOk').disabled);
 
   // apply the split
   src.value=two;src.dispatchEvent(new W.Event('input'));await wait(300);
   const n0=w.S.slides.length;
-  d.getElementById('mdOk').click();await wait(300);
+  d.getElementById('seOk').click();await wait(300);
   ok('applying the split adds a slide',w.S.slides.length===n0+1,w.S.slides.length+' vs '+n0);
   ok('the new one keeps the section',w.S.slides[at+1].group===w.S.slides[at].group&&
      w.S.slides[at+1].sub===w.S.slides[at].sub,String(w.S.slides[at+1].sub));

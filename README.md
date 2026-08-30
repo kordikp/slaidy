@@ -112,8 +112,15 @@ arrow that **re-routes itself** when either of them moves — the join is stored
 
 The **Source** tab reads the drawing as structure rather than coordinates: the element, then its
 words, then the attributes worth editing by hand, with geometry dimmed and long values cut short.
-Selecting on the canvas scrolls the source to that element; clicking a line selects it. `Edit as
-text` is still there when you want the raw thing.
+Selecting on the canvas scrolls the source to that element; clicking a line selects it.
+
+`Edit as text` opens **the same editor a slide's markdown opens** — the thing on the left, its
+source on the right, the same Apply, Cancel and Copy in the same places, `Ctrl-Enter` to apply and
+`Esc` to leave. A slide as markdown and a figure as SVG are the same act, and they used to be two
+different experiences: the slide had a live preview and Apply, the figure had a Render button and
+no preview at all, so what you learned in one was no use in the other. The drawing now redraws as
+you type, invalid XML says so instead of drawing nothing, and applying leaves you back in the
+figure editor with Undo able to step behind the edit.
 
 > No SVG library is vendored, and that is deliberate. The editing ones — Fabric and its kin — parse
 > a document into their own object model and re-serialise on export, which would not survive figures
@@ -131,6 +138,12 @@ the screen. Inside a frame they cannot reach the page at all.
 
 **Presenting.** `P` goes full screen. `N` shows notes, `O` an overview grid, `B`
 switches between the whole deck and the short run.
+
+**Deleting.** `Delete this slide`, under `Hide this slide` in the panel. It takes a snapshot
+first, so `Ctrl-Z` puts the slide back, and only stops to ask when there is something on the slide
+to lose — a dialog you click through every time protects nothing. It used to go straight to a
+splice with a `confirm()` standing in for an undo that did not exist. Duplicating is undoable now
+too, for the same reason.
 
 **Hiding slides.** Hide a slide and the presentation walks past it; it stays in the file
 and in the list, greyed. `H` hides the current one, and `H` while presenting walks the

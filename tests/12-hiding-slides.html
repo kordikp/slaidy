@@ -91,6 +91,43 @@ addEventListener('load',async()=>{
   ok('the grid leaves hidden slides out',d.querySelectorAll('#grid .gcell').length===R.length,
      d.querySelectorAll('#grid .gcell').length+' of '+R.length);
   await w.present(false);
+
+  // ---------- removing a slide, under hiding it ----------
+  W.confirm=()=>true;                       // the dialog itself is not what is under test
+  w.cur=3;w.paint();await wait(150);
+  const drop=d.getElementById('bDrop');
+  ok('the panel offers to delete, under Hide',!!drop&&/Delete this slide/.test(drop.textContent));
+  ok('and it sits after the hide button',
+     !!drop&&drop.previousElementSibling&&drop.previousElementSibling.id==='bSkip');
+  ok('it says the way back',/Ctrl-Z/.test(drop.title),drop.title);
+
+  const n0=w.S.slides.length,gone=w.S.slides[3].title,keep=w.S.slides[4].title;
+  drop.click();await wait(200);
+  ok('the slide goes',w.S.slides.length===n0-1&&!w.S.slides.some(x=>x.title===gone),
+     w.S.slides.length+' left');
+  ok('the deck renumbers',w.S.slides.every((x,i)=>x.n===i+1));
+  ok('and the one after it is still there',w.S.slides.some(x=>x.title===keep));
+
+  w.undo();await wait(200);
+  ok('Ctrl-Z puts it back',w.S.slides.length===n0&&w.S.slides.some(x=>x.title===gone),
+     w.S.slides.length+' slides');
+  ok('in its place',w.S.slides[3].title===gone,w.S.slides[3].title);
+
+  // duplicating is undoable too — it was not either
+  const n1=w.S.slides.length;
+  w.duplicateSlide(3);await wait(150);
+  ok('duplicate lands after the original',w.S.slides[4].title===gone+' (copy)',w.S.slides[4].title);
+  w.undo();await wait(150);
+  ok('and undoes',w.S.slides.length===n1);
+
+  // the last slide is not deletable
+  const all=w.S.slides.slice();
+  w.S.slides=[all[0]];w.cur=0;w.paint();await wait(150);
+  ok('the last slide cannot be deleted',!!d.getElementById('bDrop').disabled);
+  w.deleteSlide(0);await wait(100);
+  ok('and calling it anyway does nothing',w.S.slides.length===1);
+  w.S.slides=all;w.cur=0;w.paint();await wait(150);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

@@ -40,7 +40,8 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
   aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
   get srvDeck(){return srvDeck},get dirty(){return dirty},get fileName(){return fileName},
-  snapDiff,history_,snapshot,downloadDeck,deckLinks,DESIGN_SYS,get SUGG(){return SUGG}};"""
+  snapDiff,history_,snapshot,downloadDeck,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
+  deleteSlide,duplicateSlide,srcEditor,feEditText,scalePreview};"""
 ready = """
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}

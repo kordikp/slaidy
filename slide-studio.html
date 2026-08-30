@@ -35,6 +35,8 @@ button{cursor:pointer;background:none;border:none}
 .b:hover{border-color:#C7CBD3;background:#FCFCFD}
 .b.p{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:550}
 .b.p:hover{background:#2A2E37;border-color:#2A2E37}
+.b.danger:hover:not([disabled]){border-color:#E6A9AC;color:#B4232A;background:#FDF7F7}
+.b[disabled]{opacity:.45;cursor:default}
 .ic{width:26px;height:26px;border-radius:var(--r6);color:var(--gray);font-size:13px;line-height:1;
  display:grid;place-items:center;transition:.12s}
 .ic:hover{background:#F1F2F5;color:var(--ink)}
@@ -305,6 +307,9 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .mdpv{overflow-y:auto;padding:18px;background:#F7F8FA;display:flex;flex-direction:column;gap:12px}
 .mdsrc{border:0;border-left:1px solid var(--line);padding:16px 18px;resize:none;outline:none;
  font:12.5px/1.7 ui-monospace,SFMono-Regular,monospace;color:#3A404C;background:#fff;tab-size:2}
+/* a figure preview is 800×450 and needs no stage scaling — just a box */
+.pvwrap.figpv{aspect-ratio:800/450;background:#fff;display:block;padding:0}
+.pvwrap.figpv svg{width:100%;height:100%;display:block}
 .pvwrap{border:1px solid var(--line);border-radius:var(--r10);overflow:hidden;flex:none;
  box-shadow:0 1px 2px rgba(15,18,26,.04),0 5px 16px rgba(15,18,26,.05)}
 .pvmeta{font-size:11px;line-height:1.5;color:var(--gray);padding:0 4px}
@@ -412,7 +417,6 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .fepanel textarea{width:100%;border:1px solid var(--line);border-radius:var(--r6);padding:6px 8px;
  font:12px/1.5 system-ui;resize:vertical;outline:none}
 .fepanel textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
-.fesrc{font:11.5px/1.55 ui-monospace,SFMono-Regular,monospace!important;height:calc(92vh - 230px);resize:none}
 .srcsec{display:flex;flex-direction:column;min-height:0;height:100%}
 .srcview{flex:1;min-height:0;overflow:auto;margin-top:8px;border:1px solid var(--line);
  border-radius:var(--r6);background:#FCFCFD;padding:6px 0;
@@ -1158,6 +1162,32 @@ function toggleSkip(i){
   s.skip=!s.skip;touch();paintNav();paintSide();
   if(showing)paintDeck();
 }
+/* Deleting was the one gesture Ctrl-Z could not undo: it went straight to
+   splice, with a confirm() standing in for the undo that did not exist. That is
+   the wrong protection — a dialog you click through every time stops protecting
+   anything. It snaps first now, so the slide comes back, and it only asks when
+   there is something on the slide to lose. */
+function deleteSlide(i){
+  i=i??cur;
+  const s=S.slides[i];
+  if(!s)return;
+  if(S.slides.length<2){toast('This is the only slide — a deck needs one');return;}
+  const named=(s.title||'').trim()&&!/^(new slide|untitled)$/i.test((s.title||'').trim());
+  const written=!blankSlide(s)||named;
+  if(written&&!confirm(`Delete slide ${s.n} — “${s.title||'untitled'}”?\n\nCtrl-Z puts it back.`))return;
+  snap('delete slide');
+  S.slides.splice(i,1);
+  cur=Math.min(Math.max(0,i-1),S.slides.length-1);
+  normalise();touch();paint();
+  toast('Deleted — Ctrl-Z puts it back');
+}
+function duplicateSlide(i){
+  i=i??cur;
+  if(!S.slides[i])return;
+  snap('duplicate slide');
+  const c=structuredClone(S.slides[i]);c.title=(c.title||'')+' (copy)';
+  S.slides.splice(i+1,0,c);cur=i+1;normalise();touch();paint();
+}
 
 /* the speaker needs position, not a taxonomy label */
 function where(s){
@@ -1802,8 +1832,7 @@ Return ONLY a JSON array of three objects with keys title, angle, spec. No fence
        cannot adjust is a proposal you either take whole or throw away, and the
        useful case is almost always "yes, but" */
     host.classList.add('ideas');
-    host.innerHTML=`<div class="tip" style="margin:0 0 7px">Change anything here before designing —
-      the specification is what gets built.</div>`+
+    host.innerHTML=`<div class="tip" style="margin:0 0 7px">Edit before you build — this is what gets built.</div>`+
       SUGG.map((x,i)=>`<div class="idea">
         <input class="ih" data-i="${i}" value="${esc(x.title)}" spellcheck="false">
         <div class="ia">${esc(x.angle||'')}</div>
@@ -1935,24 +1964,21 @@ function paintSide(){
   el.innerHTML=`
   <div class="sec"><div class="sect">Design with AI</div>
     ${empty
-      ? `<div class="tip">This slide is empty. AI can read where it sits in the deck and come back
-           with named ideas — or say it yourself and it writes the slide, figure included.</div>
-         <button class="b p" id="bSugg" style="width:100%;margin-top:8px">Suggest what goes here</button>
+      ? `<button class="b p" id="bSugg" style="width:100%"
+           title="Reads the deck, the section and the slides either side, and comes back with three named ideas">Suggest what goes here</button>
          <div class="chips" id="seeds" style="margin-top:9px">${DESIGN_SEEDS.map((d,i)=>
             `<button data-i="${i}" title="${esc(d.p)}">${d.l}</button>`).join('')}</div>
          <textarea id="deIn" rows="3" placeholder="…or say what this slide should say"></textarea>
          <button class="b" id="bDesign" style="width:100%;margin-top:6px">Design this slide</button>`
       : !(s.summary||'').trim()
-        ? `<div class="tip">Have AI read the slide and say, in one line, what it is for.
-             Edit that line and it will rewrite the slide to match.</div>
-           <button class="b p" id="bSum" style="width:100%;margin-top:8px">Summarise this slide</button>`
+        ? `<button class="b p" id="bSum" style="width:100%"
+             title="One line saying what this slide is for. Edit that line and it rewrites the slide to match.">Summarise this slide</button>`
         : `<textarea id="fSum" rows="3">${esc(s.summary)}</textarea>
            <div class="rw" style="margin-top:6px">
              <button class="b p" id="bMatch" disabled title="Edit the line first">Update the slide</button>
              <button class="b" id="bSum" title="Read the slide again">↻</button>
            </div>
-           <div class="tip" id="sumHint">Change the line, then update. One <kbd>Ctrl</kbd>+<kbd>Z</kbd>
-             puts the slide back.</div>`}
+           <div class="tip" id="sumHint">Change the line, then update.</div>`}
     <div class="aiout hidden" id="dsOut"></div>
   </div>
 
@@ -1975,15 +2001,14 @@ function paintSide(){
     <div class="aiout hidden" id="aiout"></div>
   </div>`}
 
-  <div class="sec"><div class="sect">Tidy</div>
-    <button class="b" id="bTidy" style="width:100%">Tidy this slide</button>
-    <div class="tip">Arranges the layout, the size of the figure and the type by measuring what fits.
-      It never changes a word. For the whole deck, see <b>⋯ → Tidy every slide</b>.</div>
-  </div>
-
   <div class="sec">
-    <button class="b" id="bMd" style="width:100%">Edit as markdown</button>
+    <button class="b" id="bTidy" style="width:100%"
+      title="Arranges the layout, the figure size and the type by measuring what fits. Never changes a word. The whole deck: ⋯ → Tidy every slide">Tidy this slide</button>
+    <button class="b" id="bMd" style="width:100%;margin-top:5px">Edit as markdown</button>
     <button class="b" id="bSkip" style="width:100%;margin-top:5px">${s.skip?'⊘ Hidden — show it':'Hide this slide'}</button>
+    <button class="b danger" id="bDrop" style="width:100%;margin-top:5px"
+      title="${S.slides.length<2?'A deck needs one slide':'Ctrl-Z puts it back'}"${
+      S.slides.length<2?' disabled':''}>Delete this slide</button>
     <div class="foot">${clock(stats(s).secs)} on this slide · ${
       liveStats().hidden
         ? `${liveStats().n} shown, ${clock(liveStats().secs)} · ${liveStats().hidden} hidden`
@@ -2001,7 +2026,7 @@ function paintSide(){
       btn.disabled=!changed;
       btn.title=changed?'Rewrite the slide to deliver this':'Edit the line first';
       el.querySelector('#sumHint').textContent=changed
-        ? 'Ready — this will rewrite the body and the title to match.'
+        ? 'Ready — rewrites the body and the title.'
         : 'Change the line, then update.';
     };
   }
@@ -2042,6 +2067,7 @@ function paintSide(){
                  :'Already as good as it gets');};
 
   el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
+  el.querySelector('#bDrop').onclick=()=>deleteSlide(cur);
 }
 
 async function askSummary(){
@@ -2097,47 +2123,83 @@ function mdPreview(txt,base){
     (g.summary?`<div class="pvmeta"><b>For:</b> ${esc(g.summary)}</div>`:'')+
     (g.notes?`<div class="pvmeta"><b>Notes:</b> ${esc(g.notes)}</div>`:'')).join('');
 }
-function editMarkdown(){
-  const s=S.slides[cur];
+/* ---------- editing the source of anything ------------------------------
+   A slide as markdown and a figure as SVG are the same act: read the text that
+   the thing is made of, change it, see what it became. They used to be two
+   different experiences — the slide got a live preview and Apply, the figure
+   got a Render button and no preview at all — so what you had learned in one
+   was of no use in the other. One shell now, whatever the language.
+
+   opts: title, hint, text, preview(txt) → html, check(txt) → [problems],
+         note(txt) → a line that is news rather than a fault, apply(txt) → truthy
+         to close, onClose
+------------------------------------------------------------------------- */
+function srcEditor(opts){
   dialog(`<div class="mdhead">
-      <h3>Slide ${s.n}</h3>
-      <span class="tip" id="mdMsg">One <code>###</code> heading per slide. Add a second and it splits.</span>
+      <h3>${esc(opts.title)}</h3>
+      <span class="tip" id="seMsg">${opts.hint||''}</span>
       <span style="flex:1"></span>
-      <button class="b" id="mdCopy">Copy</button>
-      <button class="b" id="mdNo">Cancel</button>
-      <button class="b p" id="mdOk">Apply</button>
+      <button class="b" id="seCopy">Copy</button>
+      <button class="b" id="seNo">Cancel</button>
+      <button class="b p" id="seOk">Apply</button>
     </div>
     <div class="mdwrap">
-      <div class="mdpv" id="mdPv"></div>
-      <textarea id="mdSrc" class="mdsrc" spellcheck="false">${esc(slideMd(s))}</textarea>
+      <div class="mdpv" id="sePv"></div>
+      <textarea id="seSrc" class="mdsrc" spellcheck="false">${esc(opts.text)}</textarea>
     </div>`,'md');
-  const src=document.getElementById('mdSrc'),pv=document.getElementById('mdPv'),msg=document.getElementById('mdMsg');
+  const src=document.getElementById('seSrc'),pv=document.getElementById('sePv'),
+        msg=document.getElementById('seMsg');
   const draw=()=>{
-    pv.innerHTML=mdPreview(src.value,s);
-    pv.querySelectorAll('.pvwrap').forEach(w=>{
-      const k=w.clientWidth/1280,st=w.querySelector('.stage');
-      if(st){st.style.transform=`scale(${k})`;w.style.height=(720*k)+'px';}});
-    const n=mdParse(src.value,s).length;
-    msg.innerHTML=n>1?`<b>Splits into ${n} slides.</b>`:
-      'One <code>###</code> heading per slide. Add a second and it splits.';
+    pv.innerHTML=opts.preview(src.value);
+    scalePreview(pv);
+    /* a fault is red; something merely worth knowing — "this splits into two
+       slides" — is not a fault and must not be dressed as one */
+    const bad=opts.check?opts.check(src.value):[];
+    const note=!bad.length&&opts.note?opts.note(src.value):'';
+    msg.innerHTML=bad.length?`<b style="color:var(--b)">${esc(bad.join('; '))}</b>`
+      :note?`<b>${esc(note)}</b>`:(opts.hint||'');
   };
   draw();
-  const scalePv=()=>pv.querySelectorAll('.pvwrap').forEach(w=>{
-    const k=w.clientWidth/1280,st=w.querySelector('.stage');
-    if(st){st.style.transform=`scale(${k})`;w.style.height=(720*k)+'px';}});
-  scalePv();
-  src.oninput=()=>{clearTimeout(src.t);src.t=setTimeout(draw,140);};
-  document.getElementById('mdNo').onclick=closeDialog;
-  document.getElementById('mdCopy').onclick=()=>{navigator.clipboard.writeText(src.value);toast('Copied');};
-  document.getElementById('mdOk').onclick=()=>{
-    const got=mdParse(src.value,s);
-    if(!got.length){msg.innerHTML='<b style="color:var(--b)">No slide heading found.</b>';return;}
-    snap('markdown');
-    got.forEach(g=>{g.group=s.group;g.sub=s.sub;});
-    S.slides.splice(cur,1,...got);
-    normalise();touch();closeDialog();paint();
-    toast(got.length>1?`Became ${got.length} slides`:'Applied');
+  src.oninput=()=>{clearTimeout(src.t);src.t=setTimeout(draw,160);};
+  const shut=()=>{closeDialog();opts.onClose&&opts.onClose();};
+  document.getElementById('seNo').onclick=shut;
+  document.getElementById('seCopy').onclick=()=>{navigator.clipboard.writeText(src.value);toast('Copied');};
+  const go=()=>{ if(opts.apply(src.value,msg))shut(); };
+  document.getElementById('seOk').onclick=go;
+  src.onkeydown=e=>{
+    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();go();}
+    if(e.key==='Escape'){e.preventDefault();shut();}
   };
+  src.focus();
+  return {src,pv,msg,draw};
+}
+/* a .pvwrap holds a 1280×720 stage; scale it to whatever width it got */
+function scalePreview(pv){
+  pv.querySelectorAll('.pvwrap').forEach(w=>{
+    const st=w.querySelector('.stage');
+    if(!st)return;
+    const k=w.clientWidth/1280;
+    st.style.transform=`scale(${k})`;w.style.height=(720*k)+'px';});
+}
+
+function editMarkdown(){
+  const s=S.slides[cur];
+  const hint='One <code>###</code> heading per slide. Add a second and it splits.';
+  srcEditor({
+    title:`Slide ${s.n} · markdown`, hint, text:slideMd(s),
+    preview:txt=>mdPreview(txt,s),
+    check:txt=>mdParse(txt,s).length?[]:['no ### Title line — that is what makes it a slide'],
+    note:txt=>{const n=mdParse(txt,s).length;return n>1?`Splits into ${n} slides.`:'';},
+    apply:(txt,msg)=>{
+      const got=mdParse(txt,s);
+      if(!got.length){msg.innerHTML='<b style="color:var(--b)">No slide heading found.</b>';return false;}
+      snap('markdown');
+      got.forEach(g=>{g.group=s.group;g.sub=s.sub;});
+      S.slides.splice(cur,1,...got);
+      normalise();touch();paint();
+      toast(got.length>1?`Became ${got.length} slides`:'Applied');
+      return true;
+    }});
 }
 
 /* ---------- gallery ---------- */
@@ -3209,6 +3271,40 @@ function srcSync(){
 }
 
 /* ---- tabs ---- */
+/* The same editor the slide gets — live preview on the left, the source on the
+   right, Apply and Cancel in the same places. It replaces the figure editor's
+   dialog, so cancelling and applying both put it back. */
+function feEditText(){
+  /* figEdit() rebuilds FE from the saved figure, so the editor's own state —
+     unsaved source and undo history — is carried across by hand. Reopening it
+     is what puts the figure editor back on screen after this dialog replaces it. */
+  const keep={slide:FE.slide,id:FE.id,src:feHtml(),onRename:FE.onRename,hist:FE.hist.slice()};
+  const reopen=(src,hist)=>{
+    figEdit(keep.slide,keep.id,keep.onRename);
+    FE.hist=hist;FE.src=src;feMount();
+  };
+  srcEditor({
+    title:`${keep.id} · svg`,
+    hint:'The drawing on the left redraws as you type.',
+    text:keep.src,
+    check:checkSvg,
+    preview:txt=>{
+      const bad=checkSvg(txt);
+      if(bad.includes('invalid XML')||bad.includes('unparseable'))
+        return `<div class="pvbad">${esc(bad.join('; '))}</div>`;
+      return `<div class="pvwrap figpv">${txt}</div>`;
+    },
+    apply:(txt,msg)=>{
+      const bad=checkSvg(txt);
+      if(bad.includes('invalid XML')||bad.includes('unparseable')){
+        msg.innerHTML=`<b style="color:var(--b)">${esc(bad.join('; '))}</b>`;return false;}
+      reopen(txt.trim(),keep.hist.concat([keep.src]));   /* Undo goes back to before this */
+      toast('Redrawn — Undo steps back');
+      return false;                                     /* reopen swapped the dialog already */
+    },
+    onClose:()=>reopen(keep.src,keep.hist)
+  });
+}
 function feTab(t){
   FE.tab=t;
   document.querySelector('.fewrap')?.classList.toggle('src',t==='source');
@@ -3222,28 +3318,13 @@ function feTab(t){
         <button class="b" id="feSrcEdit">Edit as text</button></div>
       <div class="tip">Click a line to select it on the canvas. Coordinates are dimmed —
         that is what the mouse is for.</div>
-      <div id="feSrcView" class="srcview">${srcHtml()}</div>
-      <textarea id="feSrc" class="fesrc hidden" spellcheck="false">${esc(feHtml())}</textarea>
-      <div class="rw hidden" id="feSrcAct" style="margin-top:6px">
-        <button class="b p" id="feSrcGo">Render</button>
-        <button class="b" id="feSrcBack">Back</button></div>
-      <div id="feSrcMsg" class="tip"></div></div>`;
-    const view=document.getElementById('feSrcView'),ta=document.getElementById('feSrc');
+      <div id="feSrcView" class="srcview">${srcHtml()}</div></div>`;
+    const view=document.getElementById('feSrcView');
     view.onclick=e=>{
       const row=e.target.closest('.srcline');if(!row||row.classList.contains('srcend'))return;
       const el=FE.srcMap[+row.dataset.i];if(el)feSelect([el]);
     };
-    document.getElementById('feSrcEdit').onclick=()=>{
-      view.classList.add('hidden');ta.classList.remove('hidden');
-      document.getElementById('feSrcAct').classList.remove('hidden');ta.focus();
-    };
-    document.getElementById('feSrcBack').onclick=()=>feTab('source');
-    document.getElementById('feSrcGo').onclick=()=>{
-      const v=ta.value.trim(),bad=checkSvg(v);
-      document.getElementById('feSrcMsg').innerHTML=bad.length?
-        `<span style="color:var(--b)">${esc(bad.join('; '))}</span>`:'ok';
-      if(bad.includes('invalid XML')||bad.includes('unparseable'))return;
-      fePush();FE.src=v;feMount();};
+    document.getElementById('feSrcEdit').onclick=()=>feEditText();
     srcSync();
     return;
   }
@@ -4046,11 +4127,8 @@ document.getElementById('bSave').onclick=()=>S.slides.length&&save();
 document.getElementById('bNew').onclick=()=>{const s=S.slides[cur]||{};
   S.slides.splice(cur+1,0,{tag:'S',group:s.group||'',title:'New slide',body:'',notes:'',fig:null,layout:'text'});
   cur++;normalise();touch();paint();};
-document.getElementById('bDup').onclick=()=>{if(!S.slides.length)return;
-  const c=structuredClone(S.slides[cur]);c.title+=' (copy)';S.slides.splice(cur+1,0,c);cur++;normalise();touch();paint();};
-document.getElementById('bDel').onclick=()=>{if(S.slides.length<2)return;
-  if(!confirm('Delete slide '+S.slides[cur].n+'?'))return;
-  S.slides.splice(cur,1);cur=Math.max(0,cur-1);normalise();touch();paint();};
+document.getElementById('bDup').onclick=()=>duplicateSlide(cur);
+document.getElementById('bDel').onclick=()=>deleteSlide(cur);
 
 function paint(){
   applyStyle();

@@ -105,8 +105,42 @@ addEventListener('load',async()=>{
      w.FE.sels[0]&&w.FE.sels[0].tagName);
   ok('editor marks never appear in the source',
      ![...view.querySelectorAll('.srcline')].some(r=>/fe-mark|fe-h"|fe-end/.test(r.textContent)));
-  d.getElementById('feSrcEdit').click();await wait(120);
-  ok('and it can still be edited as text',!d.getElementById('feSrc').classList.contains('hidden'));
+  // ---------- one source editor, shared with the slide's markdown ----------
+  const svgBefore=w.FE.src;
+  d.getElementById('feSrcEdit').click();await wait(200);
+  ok('editing as text opens the same editor the slide gets',
+     !!d.getElementById('seSrc')&&!!d.getElementById('sePv')&&!!d.getElementById('seOk'));
+  const ta=d.getElementById('seSrc'),pv2=d.getElementById('sePv');
+  ok('the source is the figure',/<svg/.test(ta.value));
+  ok('the drawing previews beside it',!!pv2.querySelector('.figpv svg'));
+  ok('preview sits on the left of the source',
+     pv2.getBoundingClientRect().left<ta.getBoundingClientRect().left);
+
+  ta.value=ta.value.replace('</svg>','<text x="60" y="300" font-size="14">typed in</text></svg>');
+  ta.dispatchEvent(new W.Event('input'));await wait(400);
+  ok('the preview redraws as you type',/typed in/.test(pv2.innerHTML));
+
+  ta.value='<svg><not xml';ta.dispatchEvent(new W.Event('input'));await wait(400);
+  ok('broken svg says so rather than drawing nothing',!!pv2.querySelector('.pvbad'),
+     pv2.textContent.slice(0,40));
+  d.getElementById('seOk').click();await wait(250);
+  ok('and cannot be applied',!!d.getElementById('seSrc'),'still in the editor');
+
+  // cancel puts the figure editor back, untouched
+  d.getElementById('seNo').click();await wait(300);
+  ok('cancelling returns to the figure editor',!!d.getElementById('fecanvas'));
+  ok('with the drawing as it was',!/not xml|typed in/.test(w.FE.src||''),
+     (w.FE.src||'').slice(0,40));
+
+  // apply lands the change and leaves you in the figure editor
+  w.feTab('source');await wait(150);
+  d.getElementById('feSrcEdit').click();await wait(250);
+  const ta2=d.getElementById('seSrc');
+  ta2.value=ta2.value.replace('</svg>','<text x="60" y="300" font-size="14">applied</text></svg>');
+  d.getElementById('seOk').click();await wait(300);
+  ok('applying returns to the figure editor',!!d.getElementById('fecanvas'));
+  ok('carrying the edit',/applied/.test(w.FE.src));
+  ok('and Undo can step back',!d.getElementById('feUndo').disabled);
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

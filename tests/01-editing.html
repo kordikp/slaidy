@@ -1,7 +1,8 @@
 <!doctype html><meta charset=utf-8><style>html,body{margin:0}iframe{width:1440px;height:900px;border:0}</style>
 <iframe id=f src="/index.html"></iframe>
 <script>
-const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument;

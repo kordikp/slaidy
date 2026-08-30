@@ -1,0 +1,153 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(150); const w=W.__api;
+ try{
+  // ---------- TeX in, MathML out ----------
+  const m=x=>w.tex2mml(x,false);
+  ok('a subscript becomes msub',/<msub><mi>e<\/mi><mi>q<\/mi><\/msub>/.test(m('e_q')),m('e_q'));
+  ok('a superscript becomes msup',/<msup>/.test(m('x^2')));
+  ok('both at once become msubsup',/<msubsup>/.test(m('x_i^2')));
+  ok('a fraction becomes mfrac',/<mfrac>/.test(m('\\frac{a}{b}')));
+  ok('a root becomes msqrt',/<msqrt>/.test(m('\\sqrt{n}')));
+  ok('an indexed root becomes mroot',/<mroot>/.test(m('\\sqrt[3]{n}')));
+  ok('greek resolves',/α/.test(m('\\alpha')),m('\\alpha'));
+  ok('mathbf marks the variant',/mathvariant="bold"/.test(m('\\mathbf{e}')),m('\\mathbf{e}'));
+  ok('a vector gets an accent',/<mover accent="true">/.test(m('\\vec{v}')));
+  ok('a sum takes its limits under and over',
+     /<munderover><mo class="big">∑<\/mo>/.test(m('\\sum_{i=1}^{n}')),m('\\sum_{i=1}^{n}').slice(0,60));
+  ok('argmax is one operator, set with a thin space',
+     /<mo class="big">arg\u2009max<\/mo>/.test(m('\\argmax')),
+     JSON.stringify(m('\\argmax').match(/>([^<]+)</)[1]));
+  ok('a named function stays upright',/mathvariant="normal">log/.test(m('\\log')));
+  ok('the deck\'s own formula renders',/mathvariant="bold"/.test(m('\\mathbf{e}_q')),m('\\mathbf{e}_q'));
+  ok('a real scoring function renders whole',
+     /<math/.test(m('\\hat{r}_{ui} = \\mathbf{p}_u^\\top \\mathbf{q}_i + b_u'))
+     &&!/class="tex"/.test(m('\\hat{r}_{ui} = \\mathbf{p}_u^\\top \\mathbf{q}_i + b_u')));
+
+  // it refuses honestly rather than mangling
+  const bad=m('\\notacommand{x}');
+  ok('an unknown command comes back as the TeX you typed',
+     /class="tex"/.test(bad)&&/notacommand/.test(bad),bad.slice(0,70));
+  ok('and says why',/title="[^"]+"/.test(bad));
+  ok('unbalanced braces do not throw',/class="tex"/.test(m('\\frac{a')),m('\\frac{a').slice(0,50));
+
+  // ---------- inline maths in a slide ----------
+  const html=w.inl('the query embedding $\\mathbf{e}_q$ and $5 < x$');
+  ok('inline $…$ renders as maths',(html.match(/<math/g)||[]).length===2,html.slice(0,80));
+  ok('and its < survives being maths, not markup',/&lt;|<mo>&lt;<\/mo>/.test(html));
+  ok('a price is left alone',!/math/.test(w.inl('it costs $5 and $9')),w.inl('it costs $5 and $9'));
+  ok('strikethrough works too',/<s>gone<\/s>/.test(w.inl('~~gone~~')));
+
+  // ---------- blocks the editor now understands ----------
+  const B=w.blocks;
+  ok('#### is a heading, not a paragraph',B('#### A head')[0].kind==='head');
+  ok('### is left alone — it starts a slide',B('### Not a head')[0].kind!=='head');
+  const cb=B('```python\nx = 1\ny = 2\n```');
+  ok('a fenced block is one block',cb.length===1&&cb[0].kind==='code',JSON.stringify(cb.map(x=>x.kind)));
+  ok('and keeps its lines',/x = 1\ny = 2/.test(cb[0].src));
+  ok('markdown inside a fence is not markdown',
+     /\* not a list/.test(B('```\n* not a list\n```')[0].src));
+  const mb=B('$$ x^2 $$');
+  ok('a display formula on one line is one block',mb.length===1&&mb[0].kind==='math');
+  const mb2=B('$$\n\\frac{a}{b}\n$$');
+  ok('and across lines too',mb2.length===1&&mb2[0].kind==='math',JSON.stringify(mb2.map(x=>x.kind)));
+
+  ok('a heading renders as a heading',/<h3 class="bh/.test(w.block(B('#### Head')[0])));
+  ok('##### is the smaller one',/<h4 class="bh/.test(w.block(B('##### Small')[0])));
+  ok('code renders as pre',/<pre class="cb"/.test(w.block(cb[0])));
+  ok('and names its language',/data-lang="python"/.test(w.block(cb[0])));
+  ok('a display formula centres',/mathblock/.test(w.block(mb[0]))&&/display="block"/.test(w.block(mb[0])));
+
+  // ---------- they are offered in the editor ----------
+  w.cur=0;w.paint();await wait(200);
+  const keys=[...d.querySelectorAll('#plus button')].map(b=>b.dataset.k);
+  ['head','math','code'].forEach(k=>
+    ok('the insert row offers '+w.SNIP[k].l,keys.includes(k),keys.join(',')));
+  ok('every offered block has an icon',
+     [...d.querySelectorAll('#plus button svg')].length===keys.length);
+
+  // ---------- round trip: nothing is lost through markdown ----------
+  const body='#### Scoring\n\n$$ \\hat{r}_{ui} = \\mathbf{p}_u^\\top \\mathbf{q}_i $$\n\n'+
+             '```python\nscore = p @ q.T\n```\n\nInline $\\alpha$ too.';
+  w.S.slides[0].body=body;
+  const md=w.slideMd(w.S.slides[0]);
+  const back=w.importMarkdown('x.md','# G\n\n'+md);
+  ok('a slide with a formula survives markdown',back[0].body===body,
+     JSON.stringify(back[0].body||'').slice(0,90));
+
+  // ---------- the markdown editor points at what you clicked ----------
+  w.cur=0;w.editMarkdown();await wait(350);
+  const src=d.getElementById('seSrc'),pv=d.getElementById('sePv');
+  ok('the preview is linked',pv.classList.contains('linked'));
+  const marked=pv.querySelectorAll('[data-b]');
+  ok('rendered blocks say which block they are',marked.length>=3,marked.length+' tagged');
+  const rs=w.slideRanges(src.value,w.S.slides[0]);
+  ok('each block has a place in the source',rs.length>=3&&rs.every(r=>r&&r.start>=0),
+     JSON.stringify(rs.slice(0,3)));
+  ok('and that place really is that block',
+     src.value.slice(rs[0].start,rs[0].end)==='#### Scoring',
+     JSON.stringify(src.value.slice(rs[0].start,rs[0].end)));
+  const target=marked[1];
+  target.dispatchEvent(new W.MouseEvent('click',{bubbles:true}));
+  await wait(120);
+  ok('clicking a block selects its source',
+     src.selectionStart===rs[+target.dataset.b].start&&src.selectionEnd===rs[+target.dataset.b].end,
+     src.value.slice(src.selectionStart,src.selectionEnd).slice(0,30));
+  ok('and the block is outlined',!!pv.querySelector('.srcon'));
+  // and the other way
+  src.setSelectionRange(rs[0].start+2,rs[0].start+2);
+  src.dispatchEvent(new W.Event('keyup'));await wait(120);
+  ok('putting the caret in the source outlines that block',
+     pv.querySelector('.srcon')===pv.querySelector('[data-b="0"]'));
+  d.getElementById('seNo').click();await wait(150);
+
+  // ---------- it is not just markup: the browser lays it out ----------
+  w.S.slides[0].body='A line of ordinary text.';w.cur=0;w.paint();await wait(250);
+  const plain=d.querySelector('#sheet .tx p').getBoundingClientRect().height;
+  w.S.slides[0].body='$$ \\frac{a}{b} $$';w.paint();await wait(250);
+  const mel=d.querySelector('#sheet math');
+  ok('a formula reaches the slide as MathML',!!mel,mel&&mel.tagName);
+  const box=mel.getBoundingClientRect();
+  ok('and the browser gives it a size',box.width>4&&box.height>4,
+     Math.round(box.width)+'×'+Math.round(box.height));
+  ok('a fraction is taller than a line of text',box.height>plain,
+     Math.round(box.height)+' vs '+Math.round(plain));
+  w.S.slides[0].body='Inline $x^2$ here.';w.paint();await wait(250);
+  const inm=d.querySelector('#sheet .tx math');
+  ok('inline maths sits in the paragraph',!!inm&&!!inm.closest('p'));
+  ok('and stays on the line',inm.getBoundingClientRect().height<plain*2.2,
+     Math.round(inm.getBoundingClientRect().height)+' vs line '+Math.round(plain));
+  w.S.slides[0].body='```js\nconst x = 1;\n```';w.paint();await wait(250);
+  ok('a code block reaches the slide',!!d.querySelector('#sheet pre.cb code'),
+     (d.querySelector('#sheet pre.cb code')||{}).textContent);
+  w.S.slides[0].body='#### A heading inside the slide\n\nAnd a line under it.';
+  w.paint();await wait(250);
+  ok('a sub-head reaches the slide',!!d.querySelector('#sheet .tx h3.bh'),
+     (d.querySelector('#sheet .tx h3.bh')||{}).textContent);
+  ok('and is heavier than the text under it',
+     parseInt(getComputedStyle(d.querySelector('#sheet .tx h3.bh')).fontWeight)
+     > parseInt(getComputedStyle(d.querySelector('#sheet .tx p')).fontWeight));
+
+  // ---------- and no browser dialogs anywhere ----------
+  let popped=0;
+  W.confirm=()=>{popped++;return true;};
+  W.alert=()=>{popped++;};
+  const n0=w.S.slides.length;
+  w.cur=2;w.deleteSlide(2);await wait(200);
+  ok('deleting opens no window',popped===0);
+  ok('it just deletes',w.S.slides.length===n0-1);
+  ok('and offers the way back where you can see it',
+     !!d.getElementById('nudge')&&/Undo/.test(d.getElementById('nudge').textContent),
+     (d.getElementById('nudge')||{}).textContent);
+  d.getElementById('nudgeGo').click();await wait(200);
+  ok('which puts the slide back',w.S.slides.length===n0);
+  ok('the app has no confirm() left in it',
+     !/[^a-zA-Z.]confirm\(/.test(W.document.documentElement.innerHTML.replace(/confirm\(\) standing/g,'')));
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

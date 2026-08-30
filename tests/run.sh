@@ -41,7 +41,8 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
   get srvDeck(){return srvDeck},get dirty(){return dirty},get fileName(){return fileName},
   snapDiff,history_,snapshot,downloadDeck,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
-  deleteSlide,duplicateSlide,srcEditor,feEditText,scalePreview};"""
+  deleteSlide,duplicateSlide,srcEditor,feEditText,scalePreview,tex2mml,slideRanges,block,inl,
+  get BLOCKIX(){return BLOCKIX},set BLOCKIX(v){BLOCKIX=v},SNIP};"""
 ready = """
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}
@@ -72,6 +73,11 @@ for t in "${FILES[@]}"; do
         --dump-dom "http://localhost:$PORT/$t.html" 2>/dev/null \
         | sed -n '/<pre id="out">/,/<\/pre>/p' | sed 's/<[^>]*>//g')
   p=$(grep -cE '^PASS' <<<"$out"); f=$(grep -cE '^(FAIL|ERROR)' <<<"$out")
+  # a file that asserts nothing is a broken file, not a clean run — a syntax
+  # error in a test used to report "0 passed, 0 failed" and read as success
+  if [ "$p" -eq 0 ] && [ "$f" -eq 0 ]; then
+    f=1; out="ERROR $t produced no assertions — syntax error, or it never loaded"
+  fi
   pass=$((pass+p)); fail=$((fail+f))
   printf '  %-32s %3d passed  %d failed\n' "$t" "$p" "$f"
   grep -E '^(FAIL|ERROR)' <<<"$out" | sed 's/^/       /'

@@ -147,6 +147,24 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx td{padding:8px 14px 8px 0;border-bottom:1px solid var(--hair);vertical-align:top}
 .stage .tx code{font:.86em ui-monospace,monospace;background:#F1F2F5;padding:1px 6px;border-radius:4px}
 .stage .tx a{color:var(--e);text-decoration:none}
+/* headings inside a slide, code, and formulas */
+.stage .tx h3.bh{font-size:1.02em;font-weight:650;letter-spacing:-.01em;color:var(--d-ink);
+ margin:.5em 0 .3em;line-height:1.25}
+.stage .tx h4.bh{font-size:.78em;font-weight:650;letter-spacing:.07em;text-transform:uppercase;
+ color:var(--gray);margin:.7em 0 .25em}
+.stage .tx h5.bh{font-size:.8em;font-weight:600;color:var(--gray);margin:.6em 0 .2em}
+.stage .tx h3.bh:first-child,.stage .tx h4.bh:first-child{margin-top:0}
+.stage .tx pre.cb{background:#F6F7F9;border:1px solid var(--hair);border-radius:6px;
+ padding:10px 13px;margin:.5em 0;overflow-x:auto;position:relative}
+.stage .tx pre.cb code{font:.78em/1.5 ui-monospace,SFMono-Regular,monospace;background:none;
+ padding:0;white-space:pre;display:block}
+.stage .tx pre.cb[data-lang]::after{content:attr(data-lang);position:absolute;top:5px;right:9px;
+ font:600 8.5px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.stage .tx .mathblock{margin:.6em 0;text-align:center;overflow-x:auto}
+.stage .tx math{font-size:1.06em}
+.stage .tx .mathblock math{font-size:1.25em}
+/* what a browser without MathML, or a formula this cannot parse, shows instead */
+.stage .tx code.tex{background:#FEF3C7;color:#92400E;border:1px solid #F3DFA6}
 .stage .tx .gap{height:34px}
 .stage .tx .rule{border:0;border-top:1px solid var(--line);margin:20px 0}
 .stage .tx .inlinefig{margin:12px 0;--fs:100%;--fsn:1;display:flex;justify-content:center}
@@ -315,6 +333,9 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .pvmeta{font-size:11px;line-height:1.5;color:var(--gray);padding:0 4px}
 .pvmeta b{color:var(--faint);font:650 9px/1 system-ui;letter-spacing:.12em;text-transform:uppercase;
  margin-right:5px}
+/* what the caret is in, and what you clicked */
+.mdpv.linked [data-b]{cursor:pointer}
+.mdpv .srcon{outline:2px solid var(--acc);outline-offset:3px;border-radius:3px}
 .pvbad{background:#FDF0F0;border:1px solid #F0B4B7;border-radius:var(--r6);padding:11px 13px;
  font-size:12.5px;color:#B4232A}
 
@@ -719,7 +740,10 @@ async function openDeckFile(){
   try{[h]=await window.showOpenFilePicker({
     types:[{description:'Deck',accept:{'application/json':['.json']}}],multiple:false});}
   catch(e){return;}                                  /* the picker was dismissed */
-  if(dirty&&!confirm('This deck has changes that are not saved. Open another one anyway?'))return;
+  /* save what is open rather than asking whether to abandon it */
+  if(dirty){await persist();
+    if(saveErr){banner(`Not opening — the deck you have is not saved (${saveErr}).`,
+      'Download a copy',()=>downloadDeck());return;}}
   try{
     const b=JSON.parse(await (await h.getFile()).text());
     if(!b.slides)throw new Error('that file is not a deck');
@@ -899,14 +923,164 @@ function notesHtml(t){
     (m,pre,u)=>pre+`<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//,'')}</a>`);
   return h;
 }
+
+/* ---------- formulas ------------------------------------------------------
+   A slide that argues about scoring functions needs to be able to write one.
+   No library: browsers render MathML natively, so the job is TeX in, MathML
+   out — a subset wide enough for the mathematics a systems talk actually uses
+   (subscripts, fractions, roots, sums with limits, vectors, argmax), and an
+   honest refusal for the rest. Anything it cannot parse comes back as the TeX
+   you typed, in monospace, rather than as something quietly wrong.
+--------------------------------------------------------------------------- */
+const TEX_SYM={
+  alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',varepsilon:'ε',zeta:'ζ',eta:'η',
+  theta:'θ',vartheta:'ϑ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',
+  rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',
+  Gamma:'Γ',Delta:'Δ',Theta:'Θ',Lambda:'Λ',Xi:'Ξ',Pi:'Π',Sigma:'Σ',Upsilon:'Υ',Phi:'Φ',
+  Psi:'Ψ',Omega:'Ω',
+  times:'×',cdot:'⋅',div:'÷',pm:'±',mp:'∓',ast:'∗',star:'⋆',circ:'∘',bullet:'∙',
+  leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',equiv:'≡',sim:'∼',simeq:'≃',
+  propto:'∝',ll:'≪',gg:'≫',
+  to:'→',rightarrow:'→',leftarrow:'←',Rightarrow:'⇒',Leftarrow:'⇐',leftrightarrow:'↔',
+  mapsto:'↦',uparrow:'↑',downarrow:'↓',
+  in:'∈',notin:'∉',ni:'∋',subset:'⊂',subseteq:'⊆',supset:'⊃',supseteq:'⊇',
+  cup:'∪',cap:'∩',setminus:'∖',emptyset:'∅',varnothing:'∅',
+  forall:'∀',exists:'∃',neg:'¬',land:'∧',lor:'∨',
+  infty:'∞',partial:'∂',nabla:'∇',hbar:'ℏ',ell:'ℓ',Re:'ℜ',Im:'ℑ',
+  ldots:'…',dots:'…',cdots:'⋯',vdots:'⋮',ddots:'⋱',
+  angle:'∠',perp:'⊥',parallel:'∥',degree:'°',prime:'′',
+  oplus:'⊕',otimes:'⊗',odot:'⊙',
+  top:'⊤',bot:'⊥',intercal:'⊺',dagger:'†',
+  langle:'⟨',rangle:'⟩',lfloor:'⌊',rfloor:'⌋',lceil:'⌈',rceil:'⌉',
+  '|':'∣',backslash:'\\',
+  hat:'^',
+  quad:' ',qquad:'  ',',':' ',';':' ',':':' ',' ':' '
+};
+const TEX_BIG={sum:'∑',prod:'∏',coprod:'∐',int:'∫',iint:'∬',oint:'∮',
+               bigcup:'⋃',bigcap:'⋂',bigoplus:'⨁',lim:'lim',max:'max',min:'min',
+               argmax:'arg max',argmin:'arg min',sup:'sup',inf:'inf'};
+const TEX_FN=['log','ln','exp','sin','cos','tan','det','dim','ker','deg','gcd','mod','Pr','softmax','sigmoid'];
+const TEX_VAR={mathbf:'bold',mathbb:'double-struck',mathcal:'script',mathrm:'normal',
+               mathit:'italic',mathsf:'sans-serif',mathtt:'monospace',boldsymbol:'bold-italic'};
+const TEX_ACC={hat:'^',bar:'‾',vec:'→',tilde:'~',dot:'˙',ddot:'¨',widehat:'^',overline:'‾'};
+
+function texTokens(t){
+  const out=[];let i=0;
+  while(i<t.length){
+    const c=t[i];
+    if(c==='\\'){
+      const m=/^\\([a-zA-Z]+|.)/.exec(t.slice(i));
+      if(!m)throw new Error('stray backslash');
+      out.push({t:'cmd',v:m[1]});i+=m[0].length;continue;
+    }
+    if(c==='{'||c==='}'||c==='^'||c==='_'||c==='&'){out.push({t:c});i++;continue;}
+    if(/\s/.test(c)){i++;continue;}
+    if(/[0-9]/.test(c)){const m=/^[0-9]+(\.[0-9]+)?/.exec(t.slice(i));out.push({t:'num',v:m[0]});i+=m[0].length;continue;}
+    if(/[a-zA-Z]/.test(c)){out.push({t:'id',v:c});i++;continue;}
+    out.push({t:'op',v:c});i++;
+  }
+  return out;
+}
+function texParse(tk,end){
+  const out=[];
+  while(tk.length){
+    if(end&&tk[0].t===end){tk.shift();return out;}
+    if(tk[0].t==='}'){if(!end)throw new Error('unbalanced }');tk.shift();return out;}
+    out.push(texAtomSup(tk));
+  }
+  if(end)throw new Error('unbalanced {');
+  return out;
+}
+function texGroup(tk){
+  if(!tk.length)throw new Error('nothing to apply that to');
+  if(tk[0].t==='{'){tk.shift();return texParse(tk,'}');}
+  return [texAtom(tk)];
+}
+function texWrap(a){return a.length===1?a[0]:`<mrow>${a.join('')}</mrow>`;}
+function texAtomSup(tk){
+  let base=texAtom(tk),sub=null,sup=null;
+  for(let g=0;g<2&&tk.length;g++){
+    if(tk[0].t==='_'&&sub===null){tk.shift();sub=texWrap(texGroup(tk));}
+    else if(tk[0].t==='^'&&sup===null){tk.shift();sup=texWrap(texGroup(tk));}
+    else break;
+  }
+  const big=/^<munder|^<mo class="big"/.test(base);
+  if(sub&&sup)return big?`<munderover>${base}${sub}${sup}</munderover>`:`<msubsup>${base}${sub}${sup}</msubsup>`;
+  if(sub)return big?`<munder>${base}${sub}</munder>`:`<msub>${base}${sub}</msub>`;
+  if(sup)return big?`<mover>${base}${sup}</mover>`:`<msup>${base}${sup}</msup>`;
+  return base;
+}
+function texAtom(tk){
+  const x=tk.shift();
+  if(x.t==='num')return `<mn>${x.v}</mn>`;
+  if(x.t==='id') return `<mi>${x.v}</mi>`;
+  if(x.t==='op'){
+    if(x.v==='(' ||x.v===')'||x.v==='['||x.v===']'||x.v==='|')
+      return `<mo stretchy="false">${esc(x.v)}</mo>`;
+    return `<mo>${esc(x.v)}</mo>`;
+  }
+  if(x.t==='{'){return texWrap(texParse(tk,'}'));}
+  if(x.t==='cmd'){
+    const c=x.v;
+    if(c==='frac'||c==='tfrac'||c==='dfrac')
+      return `<mfrac>${texWrap(texGroup(tk))}${texWrap(texGroup(tk))}</mfrac>`;
+    if(c==='sqrt'){
+      if(tk[0]&&tk[0].t==='op'&&tk[0].v==='['){
+        tk.shift();const idx=[];
+        while(tk.length&&!(tk[0].t==='op'&&tk[0].v===']'))idx.push(texAtom(tk));
+        tk.shift();
+        return `<mroot>${texWrap(texGroup(tk))}${texWrap(idx)}</mroot>`;
+      }
+      return `<msqrt>${texWrap(texGroup(tk))}</msqrt>`;
+    }
+    if(TEX_VAR[c])
+      return `<mi mathvariant="${TEX_VAR[c]}">${texGroup(tk).join('').replace(/<\/?m[a-z]+[^>]*>/g,'')}</mi>`;
+    if(c==='text'||c==='textrm'||c==='operatorname')
+      return `<mtext>${texGroup(tk).join('').replace(/<\/?m[a-z]+[^>]*>/g,'')}</mtext>`;
+    if(TEX_ACC[c])return `<mover accent="true">${texWrap(texGroup(tk))}<mo>${TEX_ACC[c]}</mo></mover>`;
+    if(TEX_BIG[c])return `<mo class="big">${TEX_BIG[c]}</mo>`;
+    if(TEX_FN.includes(c))return `<mi mathvariant="normal">${c}</mi>`;
+    if(c==='left'||c==='right'){
+      const d=tk.shift();
+      if(!d)throw new Error('\\'+c+' with nothing after it');
+      if(d.t==='cmd'&&d.v==='.')return '';
+      return `<mo>${esc(d.v||'')}</mo>`;
+    }
+    if(c==='\\')return '<mspace linebreak="newline"/>';
+    if(TEX_SYM[c]!==undefined)return `<mo>${esc(TEX_SYM[c])}</mo>`;
+    throw new Error('\\'+c+' is not one this understands');
+  }
+  if(x.t==='^'||x.t==='_')throw new Error('a stray '+x.t);
+  return '<mo>&#8203;</mo>';
+}
+/* TeX in, MathML out — or the TeX back, visibly unrendered, if it cannot. */
+function tex2mml(tex,display){
+  try{
+    const body=texParse(texTokens(tex),null).join('');
+    if(!body)throw new Error('empty');
+    return `<math xmlns="http://www.w3.org/1998/Math/MathML"${
+      display?' display="block"':''}>${body}</math>`;
+  }catch(e){
+    return `<code class="tex" title="${esc(e.message)}">${esc(display?'$$'+tex+'$$':'$'+tex+'$')}</code>`;
+  }
+}
 function inl(s){
+  /* Maths comes out before escaping — TeX contains < and > and \, and running
+     it through esc() first would turn the formula into entities. It goes back
+     in as rendered MathML at the end. */
+  const math=[];
+  s=String(s).replace(/\$([^$\n]+?)\$/g,(m,tex)=>{
+    if(/^\s|\s$/.test(tex)||/^\d+(\.\d+)?$/.test(tex))return m;   /* $5 and $ 5 are not maths */
+    math.push(tex);return `\u0000M${math.length-1}\u0000`;
+  });
   s=esc(s);
   s=s.replace(/!\[\[([a-zA-Z0-9._-]+)(\|\d{2,3}%)?\]\]/g,''); // inline figures handled at block level
   s=s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s=s.replace(/~~(.+?)~~/g,'<s>$1</s>');
   s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   s=s.replace(/(^|[^\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/g,'$1<em>$2</em>');
   s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
-  s=s.replace(/\$\$(.+?)\$\$/g,'<code>$1</code>');
+  s=s.replace(/\u0000M(\d+)\u0000/g,(m,i)=>tex2mml(math[+i],false));
   return s;
 }
 /* ![[fig-id]] or ![[fig-id|70%]] — the size rides with the reference, so each
@@ -917,10 +1091,23 @@ const figRef=src=>{
 };
 const figMark=(id,size)=>`![[${id}${size&&size!==100?'|'+size+'%':''}]]`;
 function blocks(md){
-  const out=[];let buf=[],kind=null;
+  const out=[];let buf=[],kind=null,fence=null;
   const flush=()=>{if(buf.length){out.push({kind,src:buf.join('\n')});buf=[];kind=null;}};
   for(const raw of String(md||'').split('\n')){
     const l=raw.replace(/\s+$/,''),t=l.trim();
+    /* inside a fence or a display formula every line is taken literally */
+    if(fence){
+      buf.push(l);
+      if((fence==='code'&&/^```/.test(t))||(fence==='math'&&/\$\$\s*$/.test(t))){flush();fence=null;}
+      continue;
+    }
+    if(/^```/.test(t)){flush();kind='code';buf.push(l);fence='code';continue;}
+    if(/^\$\$/.test(t)){
+      flush();
+      if(/^\$\$.*\$\$$/.test(t)&&t.length>4){out.push({kind:'math',src:t});continue;}
+      kind='math';buf.push(l);fence='math';continue;
+    }
+    if(/^#{4,6}\s+\S/.test(t)){flush();out.push({kind:'head',src:t});continue;}
     if(/^!\[\[[a-zA-Z0-9._-]+(\|\d{2,3}%)?\]\]$/.test(t)){flush();out.push({kind:'fig',src:t});continue;}
     /* an HTML comment renders as nothing everywhere else, so the markdown stays clean */
     if(/^<!--\s*gap\s*-->$/.test(t)){flush();out.push({kind:'gap',src:'<!-- gap -->'});continue;}
@@ -932,26 +1119,46 @@ function blocks(md){
   }
   flush();return out;
 }
-function block(b){
-  if(b.kind==='gap')return '<div class="gap"></div>';
-  if(b.kind==='rule')return '<hr class="rule">';
+/* Each rendered block carries the index of the block it came from, so the
+   markdown editor can point at the source of whatever you clicked — the same
+   link the figure editor has between its canvas and its source. It is an
+   attribute, never a wrapper: a wrapper would change the layout, and the whole
+   promise here is that the editor and the projector draw the same stage. */
+let BLOCKIX=null;
+function block(b,ix){
+  const at=(ix==null||BLOCKIX===null)?'':` data-b="${ix}"`;
+  if(b.kind==='gap')return `<div class="gap"${at}></div>`;
+  if(b.kind==='rule')return `<hr class="rule"${at}>`;
   const L=b.src.split('\n');
+  if(b.kind==='head'){
+    const m=/^(#{4,6})\s+(.*)$/.exec(b.src.trim())||[,'####',b.src];
+    return `<h${m[1].length-1} class="bh h${m[1].length}"${at}>${inl(m[2])}</h${m[1].length-1}>`;
+  }
+  if(b.kind==='code'){
+    const lang=(L[0].replace(/^```/,'').trim()||'');
+    const code=L.slice(1,/^```/.test((L[L.length-1]||'').trim())?-1:undefined).join('\n');
+    return `<pre class="cb"${at}${lang?` data-lang="${esc(lang)}"`:''}><code>${esc(code)}</code></pre>`;
+  }
+  if(b.kind==='math'){
+    const tex=b.src.trim().replace(/^\$\$/,'').replace(/\$\$$/,'').trim();
+    return `<div class="mathblock"${at}>${tex2mml(tex,true)}</div>`;
+  }
   if(b.kind==='fig'){
     const{id,size}=figRef(b.src);
-    return `<div class="inlinefig"${size!==100?` style="--fsn:${size/100}"`:''}>${
+    return `<div class="inlinefig"${at}${size!==100?` style="--fsn:${size/100}"`:''}>${
       fig(id)||`<div class="undrawn"><b>${esc(id)}</b><span>not drawn yet</span>
         <span class="ubtns"><button data-a="draw">Draw it</button><button data-a="pick">Pick one</button
           ><button data-a="drop">Remove</button></span></div>`}</div>`;}
   if(b.kind==='table'){
     const r=L.map(l=>l.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
     const body=r.slice(1).filter(x=>!x.every(c=>/^[-: ]*$/.test(c)));
-    return '<table><thead><tr>'+r[0].map(c=>'<th>'+inl(c)+'</th>').join('')+'</tr></thead><tbody>'+
+    return `<table${at}><thead><tr>`+r[0].map(c=>'<th>'+inl(c)+'</th>').join('')+'</tr></thead><tbody>'+
       body.map(x=>'<tr>'+x.map(c=>'<td>'+inl(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
   }
   if(b.kind==='list'){const o=/^\s*\d+\./.test(L[0]);
-    return `<${o?'ol':'ul'}>`+L.map(l=>'<li>'+inl(l.replace(/^\s*(?:[-*]|\d+\.)\s+/,''))+'</li>').join('')+`</${o?'ol':'ul'}>`;}
-  if(b.kind==='quote')return '<blockquote>'+inl(L.map(l=>l.replace(/^>\s?/,'')).join(' '))+'</blockquote>';
-  return '<p>'+inl(L.join(' '))+'</p>';
+    return `<${o?'ol':'ul'}${at}>`+L.map(l=>'<li>'+inl(l.replace(/^\s*(?:[-*]|\d+\.)\s+/,''))+'</li>').join('')+`</${o?'ol':'ul'}>`;}
+  if(b.kind==='quote')return `<blockquote${at}>`+inl(L.map(l=>l.replace(/^>\s?/,'')).join(' '))+'</blockquote>';
+  return `<p${at}>`+inl(L.join(' '))+'</p>';
 }
 const body2html=md=>blocks(md).map(block).join('');
 
@@ -979,7 +1186,10 @@ function importMarkdown(name,text){
       bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
            .replace(/^\*Text:\*.*$/gm,'')
            .replace(/^\*\*Figure:\*\*.*$/gm,'').replace(/^\*(?:Delivery note|Transition)[^:]*:\*.*$/gm,'')
-           .replace(/^---\s*$/gm,'').replace(/^#{1,6}\s+.*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
+           .replace(/^---\s*$/gm,'')
+           /* #, ## and ### structure the file; #### and deeper are a heading
+              inside the slide and must survive the round trip */
+           .replace(/^#{1,3}\s+.*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
       slides.push({tag:m[2],group:act,sub:subAt(m.index),title:m[3],fig:f?f[1]:null,
                    layout:f?(LAYOUTS.includes(f[2])?f[2]:'figure'):'text',body:bd,notes:nt,
                    figScale:f&&f[3]?+f[3]:100,summary:sm?sm[1].trim():'',skip:sk,flags:fl});
@@ -1058,7 +1268,9 @@ async function importWizard(files){
           <button class="b" id="iwNo">Cancel</button></div>`,'tall');
       document.getElementById('iwNo').onclick=closeDialog;
       document.getElementById('iwGo').onclick=async()=>{
-        if(dirty&&!confirm('The open deck has unsaved changes. Replace it?'))return;
+        if(dirty){await persist();
+          if(saveErr){banner(`Not replacing it — the deck you have is not saved (${saveErr}).`,
+            'Download a copy',()=>downloadDeck());return;}}
         const b=r.bundle;
         S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
            meta:b.meta||{},style:b.style||{}};
@@ -1094,8 +1306,9 @@ async function importWizard(files){
         <button class="b" id="iwNo">Cancel</button></div>`,'tall');
     document.getElementById('iwNo').onclick=closeDialog;
     document.getElementById('iwGo').onclick=async()=>{
-      if(dirty&&S.slides.length&&
-         !confirm('The open deck has unsaved changes. Replace it with the import?'))return;
+      if(dirty&&S.slides.length){await persist();
+        if(saveErr){banner(`Not importing — the deck you have is not saved (${saveErr}).`,
+          'Download a copy',()=>downloadDeck());return;}}
       const t=document.getElementById('iwTitle').value.trim()||'Imported deck';
       S={id:t.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||'deck',
          title:t,slides:p.slides,figs:{...(S.figs||{})},meta:S.meta||{},style:S.style||{}};
@@ -1172,14 +1385,13 @@ function deleteSlide(i){
   const s=S.slides[i];
   if(!s)return;
   if(S.slides.length<2){toast('This is the only slide — a deck needs one');return;}
-  const named=(s.title||'').trim()&&!/^(new slide|untitled)$/i.test((s.title||'').trim());
-  const written=!blankSlide(s)||named;
-  if(written&&!confirm(`Delete slide ${s.n} — “${s.title||'untitled'}”?\n\nCtrl-Z puts it back.`))return;
   snap('delete slide');
+  const was=s.title||'untitled';
   S.slides.splice(i,1);
   cur=Math.min(Math.max(0,i-1),S.slides.length-1);
   normalise();touch();paint();
-  toast('Deleted — Ctrl-Z puts it back');
+  /* no dialog: the undo is real, so offer it rather than ask permission for it */
+  banner(`Deleted “${was}”.`,'Undo',()=>undo());
 }
 function duplicateSlide(i){
   i=i??cur;
@@ -1307,7 +1519,7 @@ function paintBoard(){
   if(!s){sh.innerHTML='';return;}
   sh.innerHTML=`<div class="stagewrap" id="stagewrap">
       <div class="${stageClass(s)}" id="stage">${stageHtml(s,true)}</div></div>
-    <div class="ins" id="plus">${['para','list','quote','gap','rule','table','fig'].map(k=>
+    <div class="ins" id="plus">${['para','head','list','quote','table','math','code','fig','rule','gap'].map(k=>
       `<button data-k="${k}" title="${SNIP[k].l}" aria-label="${SNIP[k].l}">${ico(k)}</button>`).join('')}</div>
     <div id="overflag"><span>past the edge of the slide</span>
       <button data-fix="tidy">Fit it</button>
@@ -1470,7 +1682,10 @@ const ICO={
   table:'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/><path d="M1.9 5.9h10.2M7 2.9v8.2"/>',
   fig  :'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/>'+
         '<circle cx="5" cy="5.9" r="1" fill="currentColor" stroke="none"/>'+
-        '<path d="M2.4 10.1 5.2 7.6l2.3 1.9 1.9-1.5 2.3 2.1"/>'
+        '<path d="M2.4 10.1 5.2 7.6l2.3 1.9 1.9-1.5 2.3 2.1"/>',
+  head :'<path d="M2.4 2.6v8.8M7 2.6v8.8M2.4 7h4.6"/><path d="M9.6 7.4h2.6M9.6 11.4h2.6M10.9 7.4v4"/>',
+  code :'<path d="M4.8 4.2 2 7l2.8 2.8M9.2 4.2 12 7l-2.8 2.8"/>',
+  math :'<path d="M2.2 2.8h4.6L3.4 7l3.4 4.2H2.2"/><path d="M8.6 5.4h3.4M8.6 9.2h3.4M10.3 3.7v3.4"/>'
 };
 const ico=k=>`<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor"
   stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[k]}</svg>`;
@@ -1482,7 +1697,11 @@ const SNIP={
   quote:{l:'Quote',     src:'> The line that has to land.'},
   rule :{l:'Divider',   src:'***'},
   gap  :{l:'Space',     src:'<!-- gap -->'},
-  fig  :{l:'Figure',    src:null}
+  fig  :{l:'Figure',    src:null},
+  /* #### and deeper only: ### is what starts a slide, so a body cannot use it */
+  head :{l:'Sub-head',  src:'#### A heading inside the slide'},
+  code :{l:'Code',      src:'```python\nscore = user_emb @ item_emb.T\n```'},
+  math :{l:'Formula',   src:'$$ \\hat{r}_{ui} = \\mathbf{p}_u^\\top \\mathbf{q}_i + b_u + b_i $$'}
 };
 function insertBlock(kind,at){
   const s=S.slides[cur];
@@ -1970,26 +2189,20 @@ function paintSide(){
 
   el.innerHTML=`
   <div class="sec"><div class="sect">Design with AI</div>
-    ${empty
-      ? `<button class="b p" id="bSugg" style="width:100%"
+    ${empty?`<button class="b p" id="bSugg" style="width:100%"
            title="Reads the deck, the section and the slides either side, and comes back with three named ideas">Suggest what goes here</button>
          <div class="chips" id="seeds" style="margin-top:9px">${DESIGN_SEEDS.map((d,i)=>
-            `<button data-i="${i}" title="${esc(d.p)}">${d.l}</button>`).join('')}</div>
-         `
-      : !(s.summary||'').trim()
-        ? `<button class="b p" id="bSum" style="width:100%"
-             title="One line saying what this slide is for. Edit that line and it rewrites the slide to match.">Summarise this slide</button>`
-        : `<textarea id="fSum" rows="2">${esc(s.summary)}</textarea>
-           <div class="rw" style="margin-top:6px">
-             <button class="b p" id="bMatch" disabled title="Edit the line first">Update the slide</button>
-             <button class="b" id="bSum" title="Read the slide again">↻</button>
-           </div>
-           <div class="tip" id="sumHint">Change the line, then update.</div>`}
-    <textarea id="deIn" rows="2" style="margin-top:${empty?0:8}px"
-      placeholder="${empty?'…or say what this slide should say':'Say how it should change — a table, a figure, a different angle'}"></textarea>
-    <button class="b${empty?'':' p'}" id="bDesign" style="width:100%;margin-top:6px"
-      title="Rewrites the whole slide — title, body, notes and a figure if it needs one. Your words win over the house style.">${
-      empty?'Design this slide':'Redesign this slide'}</button>
+            `<button data-i="${i}" title="${esc(d.p)}">${d.l}</button>`).join('')}</div>`:''}
+    <textarea id="deIn" rows="${empty?2:3}" style="margin-top:${empty?6:0}px"
+      placeholder="${empty?'…or say what this slide should say'
+        :'What is this slide for — or how should it change? A table, a figure, a different angle.'}"
+      >${empty?'':esc(s.summary||'')}</textarea>
+    <div class="rw" style="margin-top:6px">
+      <button class="b${empty?'':' p'}" id="bDesign" style="flex:1"
+        title="Rewrites the whole slide — title, body, notes and a figure if it needs one. Your words win over the house style.">${
+        empty?'Design this slide':'Rewrite this slide'}</button>
+      ${empty?'':`<button class="b" id="bSum" title="Have AI read the slide and fill this in">↻</button>`}
+    </div>
     <div class="aiout hidden" id="dsOut"></div>
   </div>
 
@@ -2026,20 +2239,14 @@ function paintSide(){
         : `${clock(deckSecs)} for the whole deck`}</div>
   </div>`;
 
-  const sum=el.querySelector('#fSum');
-  if(sum){
-    const original=sum.value;
-    sum.onfocus=()=>snap('summary');
-    sum.oninput=()=>{
-      s.summary=sum.value;touch();
-      const btn=el.querySelector('#bMatch');
-      const changed=sum.value.trim()&&sum.value.trim()!==original.trim();
-      btn.disabled=!changed;
-      btn.title=changed?'Rewrite the slide to deliver this':'Edit the line first';
-      el.querySelector('#sumHint').textContent=changed
-        ? 'Ready — rewrites the body and the title.'
-        : 'Change the line, then update.';
-    };
+  /* The one box is also where the slide's summary lives. There used to be two —
+     a summary field and a redesign field, side by side, and nobody could say
+     what the difference was. There is only one thing to say here: what this
+     slide is for. Saying it is also how you ask for it to be rewritten. */
+  const de0=el.querySelector('#deIn');
+  if(de0&&!empty){
+    de0.onfocus=()=>snap('summary');
+    de0.oninput=()=>{s.summary=de0.value;touch();};
   }
   const fz=el.querySelector('#fSize');
   if(fz){
@@ -2060,12 +2267,6 @@ function paintSide(){
   if(de)de.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))
     designSlide(de.value.trim(),el.querySelector('#bDesign'));};
   el.querySelector('#bSum')?.addEventListener('click',askSummary);
-  el.querySelector('#bMatch')?.addEventListener('click',e=>{
-    const v=sum.value.trim();
-    if(!v)return;
-    ask(`Rewrite this slide so it delivers exactly this, and nothing else: "${v}"`,
-        el.querySelector('#dsOut'),e.target);
-  });
   el.querySelectorAll('#acts button').forEach(b=>b.onclick=e=>ask(AI_ACTS[+b.dataset.i].p,null,e.target));
   el.querySelector('#bAsk')?.addEventListener('click',e=>
     ask(document.getElementById('aiIn').value.trim(),null,e.target));
@@ -2092,7 +2293,9 @@ async function askSummary(){
       `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nNOTES:\n${s.notes||''}`,400))
       .replace(/^["']|["']$/g,'').trim();
     prog.done();
-    snap('summary');s.summary=t;touch();paintSide();toast('Summarised');
+    snap('summary');s.summary=t;touch();paintSide();
+    document.getElementById('deIn')?.focus();
+    toast('Read it — edit that, then rewrite');
   }catch(e){prog.fail('Failed: '+e.message);}
 }
 
@@ -2124,6 +2327,21 @@ function mdParse(txt,base){
   if(!/^###[ \t]+\S/m.test(txt))return[];
   return importMarkdown('x.md',
     `# ${base.group||'Deck'}\n\n${base.sub?'## '+base.sub+'\n\n':''}${mdNormalise(txt,base)}`);
+}
+/* Where each rendered block of the slide sits in the markdown you are editing.
+   The block sources are verbatim slices of the body, and the body is the
+   markdown with its meta lines removed, so walking forward with indexOf lands
+   on the right one even when two blocks read the same. */
+function slideRanges(txt,base){
+  let got;try{got=mdParse(txt,base);}catch(e){return[];}
+  if(!got.length)return[];
+  const out=[];let at=0;
+  for(const b of blocks(got[0].body||'')){
+    const i=txt.indexOf(b.src,at);
+    if(i<0){out.push(null);continue;}
+    out.push({start:i,end:i+b.src.length});at=i+b.src.length;
+  }
+  return out;
 }
 function mdPreview(txt,base){
   let got;try{got=mdParse(txt,base);}catch(e){got=[];}
@@ -2160,9 +2378,12 @@ function srcEditor(opts){
     </div>`,'md');
   const src=document.getElementById('seSrc'),pv=document.getElementById('sePv'),
         msg=document.getElementById('seMsg');
+  pv.classList.toggle('linked',!!opts.link);
+  let sync=()=>{};                     /* declared before draw(), which calls it */
   const draw=()=>{
     pv.innerHTML=opts.preview(src.value);
     scalePreview(pv);
+    sync();
     /* a fault is red; something merely worth knowing — "this splits into two
        slides" — is not a fault and must not be dressed as one */
     const bad=opts.check?opts.check(src.value):[];
@@ -2172,6 +2393,33 @@ function srcEditor(opts){
   };
   draw();
   src.oninput=()=>{clearTimeout(src.t);src.t=setTimeout(draw,160);};
+  /* Selecting on the canvas scrolls the figure's source to that element. The
+     slide's markdown had none of that — you read one pane and hunted in the
+     other. opts.link(txt) returns a character range per rendered block, and
+     that is enough to point each pane at the other. */
+  if(opts.link){
+    const lineH=parseFloat(getComputedStyle(src).lineHeight)||18;
+    const mark=i=>{
+      pv.querySelectorAll('.srcon').forEach(x=>x.classList.remove('srcon'));
+      if(i==null||i<0)return;
+      const el=pv.querySelector(`[data-b="${i}"]`);
+      if(el){el.classList.add('srcon');el.scrollIntoView({block:'nearest'});}
+    };
+    sync=()=>{
+      const rs=opts.link(src.value),p=src.selectionStart;
+      mark(rs.findIndex(r=>r&&p>=r.start&&p<=r.end));
+    };
+    pv.addEventListener('click',e=>{
+      const el=e.target.closest('[data-b]');if(!el)return;
+      const r=opts.link(src.value)[+el.dataset.b];if(!r)return;
+      src.focus();src.setSelectionRange(r.start,r.end);
+      const line=src.value.slice(0,r.start).split('\n').length-1;
+      src.scrollTop=Math.max(0,line*lineH-src.clientHeight/3);
+      mark(+el.dataset.b);
+    });
+    src.addEventListener('click',sync);
+    src.addEventListener('keyup',sync);
+  }
   const shut=()=>{closeDialog();opts.onClose&&opts.onClose();};
   document.getElementById('seNo').onclick=shut;
   document.getElementById('seCopy').onclick=()=>{navigator.clipboard.writeText(src.value);toast('Copied');};
@@ -2198,7 +2446,8 @@ function editMarkdown(){
   const hint='One <code>###</code> heading per slide. Add a second and it splits.';
   srcEditor({
     title:`Slide ${s.n} · markdown`, hint, text:slideMd(s),
-    preview:txt=>mdPreview(txt,s),
+    preview:txt=>{BLOCKIX=1;try{return mdPreview(txt,s);}finally{BLOCKIX=null;}},
+    link:txt=>slideRanges(txt,s),
     check:txt=>mdParse(txt,s).length?[]:['no ### Title line — that is what makes it a slide'],
     note:txt=>{const n=mdParse(txt,s).length;return n>1?`Splits into ${n} slides.`:'';},
     apply:(txt,msg)=>{
@@ -4099,14 +4348,14 @@ async function history_(){
   document.getElementById('hDl').onclick=()=>{downloadDeck(S.id+'-'+new Date().toISOString().slice(0,10));toast('Downloaded');};
   document.getElementById('hSave').onclick=async()=>{lastSnap=0;await persist();closeDialog();toast('Snapshot saved');};
   document.querySelectorAll('.snap button[data-k]').forEach(b=>b.onclick=async()=>{
-    if(!confirm('Restore this version? The current state is snapshotted first.'))return;
     lastSnap=0;await snapshot().catch(()=>{});
     const v=await IDB.get(b.dataset.k);
     if(v&&v.deck){
       snap('restore version',Object.fromEntries(              /* so Ctrl-Z undoes it too */
         [...new Set([...Object.keys(S.figs||{}),...Object.keys(v.deck.figs||{})])]
           .map(k=>[k,S.figs&&S.figs[k]!==undefined?S.figs[k]:null])));
-      S=v.deck;normalise();cur=0;closeDialog();await persist();paint();toast('Restored');}
+      S=v.deck;normalise();cur=0;closeDialog();await persist();paint();
+      banner('Restored that version.','Undo',()=>undo());}
   });
 }
 const pop=document.getElementById('pop');

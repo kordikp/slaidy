@@ -91,6 +91,17 @@ a picture alone, or a table — which is the thing worth seeing when you are sca
 hundred of them. A hidden slide stays in the list, greyed and struck through, rather than
 disappearing.
 
+**Formulas.** `$x^2$` inline, `$$ … $$` on its own line. TeX in, **MathML out** — the browser
+renders maths natively, so nothing is vendored for it. The subset is the one a systems talk uses:
+sub- and superscripts, fractions, roots, sums and products with limits, `\mathbf`, `\hat` and
+`\vec`, `argmax`, greek, the usual relations and arrows. What it cannot parse comes back as **the
+TeX you typed**, marked, with the reason in its tooltip — never as something quietly wrong. `$5`
+is left alone; a price is not a formula.
+
+**Blocks.** Text, sub-head, bullets, numbers, quote, table, formula, code, figure, divider, space.
+`####` and deeper are a heading *inside* a slide — `###` is what starts a new one, so a body cannot
+use it. Fenced code keeps its lines and labels its language.
+
 **Editing.** Click the title on the slide to change it. Speaker notes sit under the slide and
 render as text, so a link to the paper behind the slide is clickable while you write and
 while you present; click the text to edit it. Hover a paragraph for move and
@@ -114,7 +125,12 @@ The **Source** tab reads the drawing as structure rather than coordinates: the e
 words, then the attributes worth editing by hand, with geometry dimmed and long values cut short.
 Selecting on the canvas scrolls the source to that element; clicking a line selects it.
 
-`Edit as text` opens **the same editor a slide's markdown opens** — the thing on the left, its
+`Edit as text` opens **the same editor a slide's markdown opens** — and the slide's markdown got
+the link that was the figure's alone: click any block in the preview and the source selects it;
+put the caret in the source and that block is outlined. Before, you read one pane and hunted in
+the other. Under the hood every rendered block carries the index it came from, as an attribute
+rather than a wrapper, because a wrapper would change the layout and the whole promise is that the
+editor and the projector draw the same stage. In detail it is — the thing on the left, its
 source on the right, the same Apply, Cancel and Copy in the same places, `Ctrl-Enter` to apply and
 `Esc` to leave. A slide as markdown and a figure as SVG are the same act, and they used to be two
 different experiences: the slide had a live preview and Apply, the figure had a Render button and
@@ -139,9 +155,11 @@ the screen. Inside a frame they cannot reach the page at all.
 **Presenting.** `P` goes full screen. `N` shows notes, `O` an overview grid, `B`
 switches between the whole deck and the short run.
 
-**Deleting.** `Delete this slide`, under `Hide this slide` in the panel. It takes a snapshot
-first, so `Ctrl-Z` puts the slide back, and only stops to ask when there is something on the slide
-to lose — a dialog you click through every time protects nothing. It used to go straight to a
+**No browser dialogs.** Not for deleting, not for restoring a version, not for opening a deck over
+unsaved work. `Delete this slide`, under `Hide this slide`, takes a snapshot and deletes, then
+offers **Undo** where you can see it. Opening or importing over unsaved work **saves first** and
+only stops if that save fails. A dialog you click through every time protects nothing; a real undo
+does. It used to go straight to a
 splice with a `confirm()` standing in for an undo that did not exist. Duplicating is undoable now
 too, for the same reason.
 

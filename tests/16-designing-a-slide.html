@@ -1,6 +1,7 @@
 <!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
 <script>
-const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">'+
   '<rect width="800" height="450" fill="#FAFAF7"/>'+
@@ -50,7 +51,7 @@ addEventListener('load',async()=>{
   w.cur=ci0;w.paint();await wait(150);
   ok('a written slide gets the box too',!!d.getElementById('deIn'),
      'this is where "make it catchy" used to have nowhere to go');
-  ok('and the button says redesign',/Redesign this slide/.test(d.getElementById('bDesign').textContent),
+  ok('and the button says rewrite',/Rewrite this slide/.test(d.getElementById('bDesign').textContent),
      d.getElementById('bDesign').textContent);
   ok('the tooltip says the author wins',/win/i.test(d.getElementById('bDesign').title));
   calls=[];replies=[JSON.stringify({title:'CATCHY',body:'Something else entirely.',notes:''})];stub();

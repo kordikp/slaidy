@@ -1,6 +1,7 @@
 <!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
 <script>
-const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
@@ -14,23 +15,24 @@ addEventListener('load',async()=>{
 
   const ni=w.S.slides.findIndex(x=>(x.body||'').trim()&&!(x.summary||'').trim());
   w.cur=ni;w.paint();await wait(150);
-  ok('a slide with content offers Summarise',!!d.getElementById('bSum'));
-  ok('and shows no text box yet',!d.getElementById('fSum'));
-  ok('nor an Update button',!d.getElementById('bMatch'));
+  ok('a written slide offers to read itself',!!d.getElementById('bSum'));
+  ok('and one box to say what it is for',!!d.getElementById('deIn'));
+  ok('with one button that builds it',!!d.getElementById('bDesign')
+     &&/Rewrite this slide/.test(d.getElementById('bDesign').textContent),
+     d.getElementById('bDesign').textContent);
+  ok('and no second box competing with it',!d.getElementById('fSum')&&!d.getElementById('bMatch'),
+     'there used to be two, and nobody could say what the difference was');
 
   const si=w.S.slides.findIndex(x=>(x.summary||'').trim());
   w.cur=si;w.paint();await wait(150);
-  const box=d.getElementById('fSum'),upd=d.getElementById('bMatch');
-  ok('with a summary, the text box appears',!!box,box&&box.value.slice(0,26));
-  ok('Update starts disabled',!!upd&&upd.disabled);
+  const box=d.getElementById('deIn');
+  ok('the box is prefilled with what the slide is for',
+     !!box&&box.value===w.S.slides[si].summary,box&&box.value.slice(0,30));
   box.value=box.value+' and then some.';
   box.dispatchEvent(new W.Event('input'));await wait(80);
-  ok('editing enables Update',!d.getElementById('bMatch').disabled);
-  ok('and the hint changes',/Ready/i.test(d.getElementById('sumHint').textContent),
-     d.getElementById('sumHint').textContent.slice(0,30));
+  ok('typing in it keeps the summary with the slide',
+     w.S.slides[si].summary===box.value,w.S.slides[si].summary.slice(-16));
   box.value=w.S.slides[si].summary=box.value.replace(' and then some.','');
-  box.dispatchEvent(new W.Event('input'));await wait(80);
-  ok('putting it back disables Update again',d.getElementById('bMatch').disabled);
 
   // ---------- tidy every slide moved out of the panel ----------
   ok('the panel tidies only this slide',!!d.querySelector('#side #bTidy')&&!d.querySelector('#side #bTidyAll'));

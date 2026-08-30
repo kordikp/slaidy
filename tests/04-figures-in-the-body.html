@@ -1,6 +1,7 @@
 <!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:900px;border:0"></iframe>
 <script>
-const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
@@ -45,14 +46,18 @@ addEventListener('load',async()=>{
 
   // --- icons ---
   const ins=d.querySelectorAll('#plus button');
-  ok('insert bar has 7 buttons',ins.length===7,ins.length+'');
+  ok('every button on the insert bar is a real block',
+     [...ins].every(b=>w.SNIP[b.dataset.k]),[...ins].map(b=>b.dataset.k).join(','));
+  ok('and the bar reaches headings, formulas and code',
+     ['head','math','code'].every(k=>[...ins].some(b=>b.dataset.k===k)));
   ok('they are icons now',[...ins].every(b=>b.querySelector('svg')&&!b.textContent.trim()));
   ok('each keeps a readable label',[...ins].every(b=>b.title&&b.getAttribute('aria-label')),
      [...ins].map(b=>b.title).join(', '));
   w.insertMenu(ins[0],1); await wait(80);
   const pop=d.querySelector('.inspop');
-  ok('popup pairs icon with text',!!pop&&pop.querySelectorAll('button svg').length===8&&
-     /Divider/.test(pop.textContent));
+  ok('popup pairs icon with text',!!pop&&
+     pop.querySelectorAll('button svg').length===Object.keys(w.SNIP).length&&
+     /Divider/.test(pop.textContent)&&/Formula/.test(pop.textContent));
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
 });

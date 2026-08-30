@@ -1,6 +1,7 @@
 <!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1440px;height:920px;border:0"></iframe>
 <script>
-const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+n+(x?'  '+x:''));
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
@@ -8,7 +9,8 @@ addEventListener('load',async()=>{
   w.cur=w.S.slides.findIndex(x=>x.fig&&x.body.trim());w.paint();await wait(200);
 
   // ---------- the panel is what was asked for ----------
-  ok('summary field is at the top',!!d.getElementById('fSum'));
+  ok('the one box is at the top',!!d.getElementById('deIn')
+     &&d.querySelector('#side .sec').contains(d.getElementById('deIn')));
   ok('figure section is gone',!d.getElementById('bGal')&&!d.querySelector('#side .thumb'));
   ok('no word-count block',!d.querySelector('#side .glance')&&!d.querySelector('#side .flags'));
   const chips=[...d.querySelectorAll('#side .chips button')];
@@ -20,7 +22,7 @@ addEventListener('load',async()=>{
 
   // ---------- the summary round-trips ----------
   const at=w.cur, s=w.S.slides[at];
-  const sum=d.getElementById('fSum');
+  const sum=d.getElementById('deIn');
   sum.value='Both kinds of feedback fail, in opposite ways.';
   sum.dispatchEvent(new W.Event('input'));await wait(80);
   ok('typing stores it',s.summary==='Both kinds of feedback fail, in opposite ways.');

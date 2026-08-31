@@ -165,7 +165,11 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx blockquote{border-left:4px solid var(--d-accent);padding-left:20px;margin:.5em 0;
  font-size:1.16em;color:var(--d-ink)}
 .stage .tx table{border-collapse:collapse;width:100%;font-size:.86em}
-.stage .tx th{text-align:left;font-size:.62em;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);
+/* A header row is a label, so it is set quieter than the cells — but .62em of
+   .86em is half the body size, which at the back of a room is a header nobody
+   reads. Quiet is the colour and the tracking; the size stays legible. */
+.stage .tx th{text-align:left;font-size:.82em;font-weight:600;letter-spacing:.05em;
+ text-transform:uppercase;color:var(--gray);
  border-bottom:1px solid var(--line);padding:0 14px 7px 0}
 .stage .tx td{padding:8px 14px 8px 0;border-bottom:1px solid var(--hair);vertical-align:top}
 .stage .tx code{font:.86em ui-monospace,monospace;background:#F1F2F5;padding:1px 6px;border-radius:4px}
@@ -2467,6 +2471,19 @@ function blankSlide(s){
 }
 
 const FIGREF=/!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]/g;
+/* Move the first figure in the body up to be the slide's own, size and all.
+   Returns its id, or '' when the body has none. */
+function hoistFig(s){
+  const first=[...String(s.body||'').matchAll(FIGREF)][0];
+  if(!first)return '';
+  const id=first[1], q=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const line=new RegExp(`^[ \t]*!\\[\\[${q}(?:\\|(\\d{2,3})%)?\\]\\][ \t]*$\n?`,'m');
+  const m=String(s.body).match(line);
+  s.fig=id;
+  if(m&&m[1])s.figScale=+m[1];
+  s.body=String(s.body).replace(line,'').replace(/\n{3,}/g,'\n\n').trim();
+  return id;
+}
 
 async function drawFigure(id,s,brief){
   let t=(await llm(figSys(),
@@ -2827,7 +2844,14 @@ function paintSide(){
   }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
-    if(s.layout!=='text'&&!s.fig)pickFigure(id=>{s.fig=id;touch();paint();});else{touch();paint();}});
+    if(s.layout==='text'||s.fig){touch();paint();return;}
+    /* A figure already drawn into the body is the answer to "which figure" —
+       asking anyway, with every figure in the deck to choose from, was the
+       worst possible moment to open that dialog. Promote it, carrying its size,
+       and take the marker out, or the same drawing appears twice. */
+    const id=hoistFig(s);
+    if(id){touch();paint();toast(`Using ${id}, which was in the body`);return;}
+    pickFigure(i=>{s.fig=i;touch();paint();});});
   el.querySelector('#bSugg')?.addEventListener('click',e=>suggestSlides(e.target));
   const de=el.querySelector('#deIn');
   el.querySelectorAll('#seeds button').forEach(b=>b.onclick=()=>{

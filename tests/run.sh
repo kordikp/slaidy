@@ -34,7 +34,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   fig,measureStage,toggleSkip,liveIdx,liveStats,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},get showing(){return showing},
-  pickFigure,figRef,figMark,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
+  pickFigure,figRef,figMark,hoistFig,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
   srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
   progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,

@@ -385,6 +385,20 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Figures carry their own CSS
+
+An inlined `<svg>` brings its `<style>` with it, and those rules are global — a `.brand`
+class inside a figure will animate the app's own chrome. `scopeSvg` prefixes every selector
+with the figure's unique id and renames the keyframes to match, so a rule can only reach
+inside its own drawing.
+
+Comments are stripped before that runs. The scoper reads a rule as "everything up to the
+next `{`", so a comment in front of `@keyframes` made the head start with `/*` rather than
+with `@`: the block was taken for a selector, cut at the first `}` inside it, and every
+rule after that came out of step. The figure kept its drawing and lost all of its motion —
+which is how the hero on the front page went still while the same file animated perfectly
+in the figure editor, where nothing is scoped. Test 13 holds the line.
+
 ### Links
 
 `[text](url)`, a bare `https://…`, or markdown's `<https://…>` — all three become links, and all

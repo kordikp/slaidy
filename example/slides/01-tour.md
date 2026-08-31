@@ -15,7 +15,7 @@ and to the model you edit it with.
 
 | | |
 |---|---|
-| an animated figure | SVG, `@keyframes`, 6 kB |
+| an animated figure | SVG, `@keyframes`, 12 kB |
 | a formula | $r_{ui} = \mathbf{p}_u^\top \mathbf{q}_i$ |
 | a table | this one |
 | code | below |
@@ -27,9 +27,9 @@ git clone https://github.com/kordikp/slaidy && ./studio.sh
 
 ***
 
-> Everything on this slide is text. The animation is 6 kB of SVG.
+> Everything on this slide is text. The animation is 12 kB of SVG.
 
-*Delivery note:* The figure is a twelve-second loop in four beats — you ask, it works, you correct it, it is pleased with you. All CSS keyframes, and it reads with the animation off, which is the rule every figure in this deck follows; a print takes one frame, so a loop that hides something would lose it.
+*Delivery note:* The figure is a twelve-second loop in four beats — you ask for the intro, it writes six paragraphs too many, you wipe the lot, and it comes back with one line and a chart. All CSS keyframes, and it reads with the animation off, which is the rule every figure in this deck follows; a print takes one frame, so a loop that hides its point would lose it.
 
 ### 2. `[S]` One material, two readers
 

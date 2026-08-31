@@ -1078,6 +1078,13 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
    .brand or .dot inside a figure will animate the app's own chrome. So every rule gets
    prefixed with the figure's unique id, and keyframe names get suffixed to match.      */
 function scopeCss(css,uid){
+  /* Comments first. The parser below reads a rule as "everything up to the next
+     {", so a comment sitting in front of @keyframes made the head start with /*
+     rather than with @ — the block was taken for a selector, cut at the first }
+     inside it, and every rule after that came out of step. The figure kept its
+     drawing and lost all of its motion, which is exactly how the hero on the
+     front page went still. */
+  css=css.replace(/\/\*[\s\S]*?\*\//g,'');
   let out='',i=0;
   const readBlock=s=>{ // returns index just past the balanced { } starting at s
     let d=0; for(let j=s;j<css.length;j++){ if(css[j]==='{')d++; else if(css[j]==='}'){d--; if(!d)return j+1;} }

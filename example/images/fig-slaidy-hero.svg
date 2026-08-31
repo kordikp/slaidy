@@ -1,101 +1,182 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,sans-serif">
   <style>
-    /* Twelve seconds, four beats: you ask, it works, you correct it, it is
-       pleased with you. Everything is drawn in its finished state, so with the
-       animation off — printing, or a reader who asked for less motion — the
-       picture still reads. */
-    @keyframes ask    { 0%{opacity:0;transform:translateY(6px) scale(.9)} 6%,26%{opacity:1;transform:none}
-                        34%,100%{opacity:0;transform:translateY(6px) scale(.9)} }
-    @keyframes hover  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-    @keyframes blink  { 0%,46%,52%,100%{transform:scaleY(1)} 48%,50%{transform:scaleY(.12)} }
-    @keyframes think  { 0%,22%{opacity:.25} 30%,52%{opacity:1} 60%,100%{opacity:.25} }
-    @keyframes place  { 0%,26%{opacity:0;transform:translate(-26px,-14px) scale(.8)}
-                        38%,100%{opacity:1;transform:none} }
-    @keyframes place2 { 0%,32%{opacity:0;transform:translate(-22px,-10px) scale(.8)}
-                        44%,100%{opacity:1;transform:none} }
-    @keyframes drawn  { 0%,36%{stroke-dashoffset:190} 56%,100%{stroke-dashoffset:0} }
-    @keyframes reach  { 0%,58%{transform:translate(0,0) rotate(0)} 68%,76%{transform:translate(52px,-16px) rotate(-12deg)}
-                        88%,100%{transform:translate(0,0) rotate(0)} }
-    @keyframes strike { 0%,70%{stroke-dashoffset:64} 80%,100%{stroke-dashoffset:0} }
-    @keyframes cheer  { 0%,84%{transform:translateY(0) rotate(0)} 90%{transform:translateY(-9px) rotate(-6deg)}
-                        96%,100%{transform:translateY(0) rotate(0)} }
-    @keyframes spark  { 0%,86%{opacity:0;transform:scale(.4)} 92%{opacity:1;transform:scale(1)}
-                        100%{opacity:0;transform:scale(1.3)} }
+    @keyframes ask    { 0%,2%{opacity:0;transform:translateY(8px) scale(.92)}
+                        6%,20%{opacity:1;transform:none}
+                        25%,100%{opacity:0;transform:translateY(8px) scale(.92)} }
+    @keyframes wall   { 0%,7%{opacity:0} 11%,44%{opacity:1} 48%,100%{opacity:0} }
+    @keyframes type   { 0%,8%{transform:scaleX(0)} 15%,100%{transform:scaleX(1)} }
+    @keyframes tag    { 0%,26%{opacity:0} 30%,44%{opacity:1} 48%,100%{opacity:0} }
+    @keyframes tada   { 0%,27%{opacity:0;transform:translateY(6px) scale(.85)}
+                        31%,39%{opacity:1;transform:none}
+                        43%,100%{opacity:0;transform:translateY(6px) scale(.85)} }
+    /* A rubber-hose arm: the sleeve stretches from the shoulder and the hand
+       travels the same distance, so the two stay joined while it reaches
+       clear across the slide. Rotating instead would have swung the hand
+       away from the paper, and translating alone tore the arm off. */
+    @keyframes reachx { 0%,36%{transform:scaleX(1)} 45%,49%{transform:scaleX(2.85)}
+                        56%,100%{transform:scaleX(1)} }
+    @keyframes reachh { 0%,36%{transform:translateX(0)} 45%,49%{transform:translateX(178px)}
+                        56%,100%{transform:translateX(0)} }
+    @keyframes hold   { 0%,33%{opacity:0} 37%,50%{opacity:1} 55%,100%{opacity:0} }
+    @keyframes strike { 0%,37%{opacity:0;stroke-dashoffset:170} 39%{opacity:1}
+                        45%{opacity:1;stroke-dashoffset:0} 50%,100%{opacity:0;stroke-dashoffset:0} }
+    @keyframes poof   { 0%,44%{opacity:0;transform:scale(.3)} 48%{opacity:.8;transform:scale(1)}
+                        55%,100%{opacity:0;transform:scale(1.6)} }
+    @keyframes mood   { 0%,47%{transform:none} 53%,62%{transform:translateY(11px) rotate(4deg)}
+                        68%,81%{transform:none} 87%{transform:translateY(-11px) rotate(-6deg)}
+                        93%,100%{transform:none} }
+    @keyframes sad    { 0%,48%{opacity:0} 53%,63%{opacity:1} 68%,100%{opacity:0} }
+    @keyframes glad   { 0%,48%{opacity:1} 53%,63%{opacity:0} 68%,100%{opacity:1} }
+    @keyframes drip   { 0%,52%{opacity:0;transform:translateY(-2px)} 56%{opacity:1}
+                        64%,100%{opacity:0;transform:translateY(20px)} }
+    @keyframes redo   { 0%,63%{opacity:0} 71%,100%{opacity:1} }
+    @keyframes grow   { 0%,67%{transform:scaleY(0)} 79%,100%{transform:scaleY(1)} }
+    @keyframes heart  { 0%,80%{opacity:0;transform:translateY(0) scale(.5)}
+                        86%{opacity:1;transform:translateY(-18px) scale(1)}
+                        97%,100%{opacity:0;transform:translateY(-40px) scale(1)} }
+    @keyframes spark  { 0%,29%{opacity:0;transform:scale(.4)} 33%{opacity:1;transform:scale(1)}
+                        39%,82%{opacity:0;transform:scale(.4)} 88%{opacity:1;transform:scale(1)}
+                        95%,100%{opacity:0;transform:scale(1.3)} }
+    @keyframes write  { 0%,9%{transform:none} 14%{transform:translate(-9px,-27px)}
+                        19%{transform:translate(-5px,-7px)} 24%{transform:translate(-11px,-31px)}
+                        29%{transform:translate(-5px,-5px)} 34%,64%{transform:none}
+                        70%{transform:translate(-9px,-23px)} 76%,100%{transform:none} }
+    @keyframes bob    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+    @keyframes blink  { 0%,45%,53%,100%{transform:scaleY(1)} 47%,51%{transform:scaleY(.1)} }
+    @keyframes ping   { 0%,9%{opacity:.55;transform:scale(1)} 13%,32%{opacity:1;transform:scale(1.25)}
+                        38%,100%{opacity:.55;transform:scale(1)} }
 
-    .bubble{transform-origin:150px 120px;animation:ask 12s ease-out infinite}
-    .bot   {transform-origin:648px 250px;animation:hover 4s ease-in-out infinite}
-    .botC  {transform-origin:648px 250px;animation:cheer 12s ease-out infinite}
-    .eye   {transform-origin:center;animation:blink 5s ease-in-out infinite}
-    .brain {animation:think 12s ease-in-out infinite}
-    .blk1  {transform-origin:center;animation:place 12s cubic-bezier(.2,1.3,.4,1) infinite}
-    .blk2  {transform-origin:center;animation:place2 12s cubic-bezier(.2,1.3,.4,1) infinite}
-    .art   {stroke-dasharray:190;animation:drawn 12s ease-in-out infinite}
-    .arm   {transform-origin:196px 250px;animation:reach 12s ease-in-out infinite}
-    .cross {stroke-dasharray:64;animation:strike 12s ease-out infinite}
-    .spark {transform-origin:center;animation:spark 12s ease-out infinite}
+    .fb    {transform-box:fill-box}
+    .ask   {transform-origin:146px 111px;animation:ask 12s ease-out infinite}
+    .wall  {animation:wall 12s ease-out infinite}
+    .wl    {transform-box:fill-box;transform-origin:left center;animation:type 12s ease-out infinite backwards}
+    .tag   {animation:tag 12s ease-out infinite}
+    .tada  {transform-origin:608px 96px;animation:tada 12s ease-out infinite}
+    .armX  {transform-box:fill-box;transform-origin:left center;animation:reachx 12s cubic-bezier(.4,0,.3,1) infinite}
+    .hand  {animation:reachh 12s cubic-bezier(.4,0,.3,1) infinite}
+    .rub   {animation:hold 12s ease-out infinite}
+    .strike{stroke-dasharray:170;animation:strike 12s ease-out infinite}
+    .poof  {transform-box:fill-box;transform-origin:center;animation:poof 12s ease-out infinite}
+    .mood  {transform-origin:655px 240px;animation:mood 12s cubic-bezier(.3,1.4,.5,1) infinite}
+    .bob   {transform-origin:655px 240px;animation:bob 4s ease-in-out infinite}
+    .sad   {animation:sad 12s steps(1,end) infinite}
+    .glad  {animation:glad 12s steps(1,end) infinite}
+    .drip  {animation:drip 12s ease-in infinite}
+    .good  {animation:redo 12s ease-out infinite}
+    .bar   {transform-box:fill-box;transform-origin:center bottom;animation:grow 12s cubic-bezier(.2,1.3,.4,1) infinite backwards}
+    .heart {transform-box:fill-box;transform-origin:center;animation:heart 12s ease-out infinite}
+    .spark {transform-box:fill-box;transform-origin:center;animation:spark 12s ease-out infinite}
+    .pen   {animation:write 12s ease-in-out infinite}
+    .eye   {transform-box:fill-box;transform-origin:center;animation:blink 5.5s ease-in-out infinite}
+    .ant   {transform-box:fill-box;transform-origin:center;animation:ping 12s ease-in-out infinite}
     @media print,(prefers-reduced-motion:reduce){
-      .bubble,.bot,.botC,.eye,.brain,.blk1,.blk2,.art,.arm,.cross,.spark{animation:none!important}
-      .bubble{opacity:0} .spark{opacity:0}
+      .ask,.wall,.wl,.tag,.tada,.armX,.hand,.rub,.strike,.poof,.mood,.bob,.sad,.glad,.drip,
+      .good,.bar,.heart,.spark,.pen,.eye,.ant{animation:none!important}
+      .ask,.wall,.tag,.tada,.rub,.strike,.poof,.sad,.drip,.heart,.spark{opacity:0}
     }
   </style>
-  <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
-  <text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">You ask. It makes. You correct it.</text>
 
-  <!-- the slide they are working on -->
-  <rect x="272" y="96" width="256" height="248" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
-  <rect x="294" y="118" width="140" height="11" rx="5.5" fill="#1E1B4B" opacity=".85"/>
-  <g class="blk1"><rect x="294" y="146" width="212" height="8" rx="4" fill="#C9C3F6"/></g>
-  <g class="blk2"><rect x="294" y="164" width="150" height="8" rx="4" fill="#C9C3F6"/></g>
-  <path class="cross" d="M290 168 H452" stroke="#EF4444" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>
-  <g fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round">
-    <path class="art" d="M300 224 h54 v38 h-54 z M382 224 h54 v38 h-54 z M354 243 h28 M436 243 h30 v-30"/>
+  <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
+
+  <!-- the slide the two of them are making -->
+  <rect x="268" y="74" width="272" height="302" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <rect x="290" y="98" width="150" height="13" rx="6.5" fill="#1E1B4B" opacity=".85"/>
+
+  <!-- beat 2: the robot writes far too much of it -->
+  <g class="wall" opacity="0">
+    <rect class="wl" x="290" y="138" width="216" height="9" rx="4.5" fill="#C9C3F6"/>
+    <rect class="wl" x="290" y="160" width="200" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:.35s"/>
+    <rect class="wl" x="290" y="182" width="208" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:.7s"/>
+    <rect class="wl" x="290" y="204" width="186" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:1.05s"/>
+    <rect class="wl" x="290" y="226" width="212" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:1.4s"/>
+    <rect class="wl" x="290" y="248" width="194" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:1.75s"/>
+    <rect class="wl" x="290" y="270" width="152" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:2.1s"/>
   </g>
-  <rect x="294" y="300" width="118" height="8" rx="4" fill="#EDE9FE"/>
-  <text x="400" y="330" text-anchor="middle" font-size="10.5" fill="#9AA1AE">slide 12</text>
+  <text class="tag" x="290" y="300" font-size="12.5" fill="#9AA1AE" opacity="0">+ 6 more paragraphs</text>
+
+  <!-- beat 3: it goes -->
+  <path class="strike" d="M282 252 H448" stroke="#EF4444" stroke-width="3.2" stroke-linecap="round" opacity="0"/>
+  <g fill="#C9C3F6">
+    <circle class="poof" cx="330" cy="196" r="13" opacity="0"/>
+    <circle class="poof" cx="404" cy="176" r="17" opacity="0"/>
+    <circle class="poof" cx="470" cy="212" r="12" opacity="0"/>
+  </g>
+
+  <!-- beat 4: one line and a small chart, which is what it needed all along -->
+  <g class="good">
+    <rect x="290" y="142" width="178" height="9" rx="4.5" fill="#C9C3F6"/>
+    <path d="M290 306 H500" stroke="#E5E7EB" stroke-width="2"/>
+    <g fill="#6366F1">
+      <rect class="bar" x="304" y="252" width="32" height="54" rx="4"/>
+      <rect class="bar" x="352" y="220" width="32" height="86" rx="4" style="animation-delay:.12s"/>
+      <rect class="bar" x="400" y="262" width="32" height="44" rx="4" style="animation-delay:.24s"/>
+      <rect class="bar" x="448" y="204" width="32" height="102" rx="4" style="animation-delay:.36s"/>
+    </g>
+  </g>
+
+  <!-- beat 1: the ask -->
+  <g class="ask" opacity="0">
+    <rect x="58" y="88" width="176" height="46" rx="12" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
+    <path d="M118 133 l6 17 15-17 z" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
+    <text x="146" y="117" text-anchor="middle" font-size="15" fill="#1E1B4B">Write the intro</text>
+  </g>
 
   <!-- the person -->
   <g>
-    <circle cx="150" cy="196" r="30" fill="#FEF3C7" stroke="#D97706" stroke-width="2.2"/>
-    <circle cx="141" cy="192" r="3" fill="#92400E"/><circle cx="159" cy="192" r="3" fill="#92400E"/>
-    <path d="M140 206 q10 8 20 0" fill="none" stroke="#92400E" stroke-width="2.2" stroke-linecap="round"/>
-    <path d="M110 300 q0 -62 40 -62 q40 0 40 62 z" fill="#FEF3C7" stroke="#D97706" stroke-width="2.2"/>
-    <g class="arm"><path d="M186 250 q28 8 42 -6" fill="none" stroke="#D97706" stroke-width="6"
-       stroke-linecap="round"/><circle cx="230" cy="243" r="7" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/></g>
-  </g>
-  <text x="150" y="322" text-anchor="middle" font-size="12" font-weight="600" fill="#92400E">you</text>
-
-  <g class="bubble">
-    <path d="M92 96 h116 a10 10 0 0 1 10 10 v30 a10 10 0 0 1 -10 10 h-52 l-14 14 v-14 h-50
-             a10 10 0 0 1 -10 -10 v-30 a10 10 0 0 1 10 -10 z" fill="#FFFFFF" stroke="#D97706" stroke-width="1.6"/>
-    <text x="150" y="126" text-anchor="middle" font-size="11.5" fill="#92400E">make this one land</text>
-  </g>
-
-  <!-- the little robot -->
-  <g class="botC"><g class="bot">
-    <path d="M648 178 v-16" stroke="#4C1D95" stroke-width="3" stroke-linecap="round"/>
-    <circle class="brain" cx="648" cy="156" r="7" fill="#7C3AED"/>
-    <rect x="604" y="178" width="88" height="72" rx="20" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2.4"/>
-    <rect x="618" y="196" width="60" height="34" rx="12" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.6"/>
-    <g class="eye"><circle cx="634" cy="213" r="5.5" fill="#4C1D95"/></g>
-    <g class="eye"><circle cx="662" cy="213" r="5.5" fill="#4C1D95"/></g>
-    <path d="M642 226 q6 5 12 0" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"/>
-    <rect x="616" y="258" width="64" height="52" rx="16" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2.4"/>
-    <circle cx="648" cy="284" r="10" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.6"/>
-    <path d="M616 276 q-30 4 -44 -18" fill="none" stroke="#7C3AED" stroke-width="5.5" stroke-linecap="round"/>
-    <circle cx="570" cy="256" r="7" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
-    <path d="M680 272 q26 -2 34 -22" fill="none" stroke="#7C3AED" stroke-width="5.5" stroke-linecap="round"/>
-    <g transform="rotate(38 716 246)">
-      <rect x="710" y="222" width="11" height="30" rx="3" fill="#0EA5E9"/>
-      <path d="M710 252 h11 l-5.5 10 z" fill="#1E1B4B"/>
-      <rect x="710" y="216" width="11" height="7" rx="2.5" fill="#075985"/>
+    <rect x="116" y="238" width="16" height="44" fill="#FEF3C7" stroke="#D97706" stroke-width="2.2"/>
+    <path d="M78 342 q0-64 46-64 t46 64 z" fill="#C7D2FE" stroke="#6366F1" stroke-width="2.4"/>
+    <circle cx="124" cy="216" r="32" fill="#FEF3C7" stroke="#D97706" stroke-width="2.4"/>
+    <circle cx="114" cy="210" r="3.4" fill="#92400E"/><circle cx="134" cy="210" r="3.4" fill="#92400E"/>
+    <path d="M113 227 q11 9 22 0" fill="none" stroke="#92400E" stroke-width="2.4" stroke-linecap="round"/>
+    <path class="armX" d="M158 296 q46-10 94-32" fill="none" stroke="#6366F1"
+      stroke-width="9" stroke-linecap="round"/>
+    <g class="hand">
+      <g class="rub" opacity="0"><rect x="240" y="246" width="26" height="15" rx="4"
+        fill="#FCA5A5" stroke="#EF4444" stroke-width="1.8" transform="rotate(-16 253 253)"/></g>
+      <circle cx="252" cy="264" r="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2.2"/>
     </g>
-    <rect x="626" y="310" width="16" height="12" rx="5" fill="#7C3AED"/>
-    <rect x="654" y="310" width="16" height="12" rx="5" fill="#7C3AED"/>
-    <g class="spark" fill="#D97706">
-      <path d="M700 190 l3.5 8 8 3.5 -8 3.5 -3.5 8 -3.5 -8 -8 -3.5 8 -3.5 z"/>
+    <path class="heart" d="M198 246 c-7-9-20-2-20 9 c0 11 20 20 20 20 c0 0 20-9 20-20 c0-11-13-18-20-9 z"
+      fill="#F472B6" opacity="0"/>
+  </g>
+
+  <!-- the robot -->
+  <g class="mood"><g class="bob">
+    <ellipse cx="655" cy="348" rx="50" ry="7" fill="#000000" opacity=".07"/>
+    <rect x="618" y="318" width="28" height="15" rx="7.5" fill="#6366F1" opacity=".8"/>
+    <rect x="664" y="318" width="28" height="15" rx="7.5" fill="#6366F1" opacity=".8"/>
+    <g class="pen">
+      <path d="M610 270 q-28-6-46-22" fill="none" stroke="#6366F1" stroke-width="9" stroke-linecap="round"/>
+      <path d="M556 236 l14 10-6 8z" fill="#F59E0B" stroke="#D97706" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle cx="566" cy="250" r="9" fill="#C7D2FE" stroke="#6366F1" stroke-width="2.2"/>
     </g>
+    <path d="M700 270 q26-6 40-20" fill="none" stroke="#6366F1" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="742" cy="248" r="9" fill="#C7D2FE" stroke="#6366F1" stroke-width="2.2"/>
+    <rect x="608" y="232" width="94" height="88" rx="18" fill="#EDE9FE" stroke="#6366F1" stroke-width="2.4"/>
+    <rect x="630" y="254" width="50" height="30" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
+    <path d="M655 158 V138" stroke="#6366F1" stroke-width="2.4" stroke-linecap="round"/>
+    <circle class="ant" cx="655" cy="131" r="7" fill="#F59E0B" stroke="#D97706" stroke-width="1.6"/>
+    <rect x="614" y="158" width="82" height="66" rx="16" fill="#FFFFFF" stroke="#6366F1" stroke-width="2.4"/>
+    <g class="glad">
+      <circle class="eye" cx="637" cy="188" r="7" fill="#4338CA"/>
+      <circle class="eye" cx="673" cy="188" r="7" fill="#4338CA"/>
+      <path d="M641 204 q14 12 28 0" fill="none" stroke="#4338CA" stroke-width="2.8" stroke-linecap="round"/>
+    </g>
+    <g class="sad" opacity="0" fill="none" stroke="#4338CA" stroke-width="2.8" stroke-linecap="round">
+      <path d="M630 182 l11 6-11 6"/><path d="M680 182 l-11 6 11 6"/>
+      <path d="M641 210 q14-12 28 0"/>
+    </g>
+    <path class="drip" d="M700 176 q7 11 7 15 a7 7 0 0 1-14 0 q0-4 7-15z" fill="#7DD3FC" opacity="0"/>
   </g></g>
-  <text x="648" y="342" text-anchor="middle" font-size="12" font-weight="600" fill="#4C1D95">it</text>
 
-  <text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">It drafts and it draws. Nothing lands until you keep it.</text>
+  <!-- what it says while it is pleased with itself -->
+  <g class="tada" opacity="0">
+    <rect x="548" y="58" width="120" height="42" rx="12" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
+    <path d="M636 99 l16 5-5 16z" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
+    <text x="608" y="85" text-anchor="middle" font-size="15" fill="#6366F1">Ta-da!</text>
+  </g>
+  <g fill="#F59E0B" opacity="0">
+    <!-- a css transform beats the transform attribute, so the stars are drawn at size -->
+    <path class="spark" d="M728 184 l4 7.5 7.5 4-7.5 4-4 7.5-4-7.5-7.5-4 7.5-4z"/>
+    <path class="spark" d="M588 140 l3 6 6 3-6 3-3 6-3-6-6-3 6-3z" style="animation-delay:.25s"/>
+  </g>
 </svg>

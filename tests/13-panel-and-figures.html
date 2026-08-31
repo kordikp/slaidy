@@ -174,6 +174,30 @@ addEventListener('load',async()=>{
   ok('and an empty override is dropped, not left as {}',!w.S.slides[si2].style,
      JSON.stringify(w.S.slides[si2].style));
 
+  // ---------- a figure keeps its motion once it is scoped ----------
+  // The rules inside a figure are global until they are prefixed, and the
+  // prefixer used to read a comment sitting in front of @keyframes as the head
+  // of a selector: the block was cut at the first } inside it and every rule
+  // after that came out of step. The drawing survived; all of its motion died.
+  const moving=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"><style>
+    /* a comment, exactly where it reads best */
+    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    .bob{animation:bob 2s infinite} .dot{fill:#6366F1}
+  </style><circle class="bob dot" cx="50" cy="30" r="8"/></svg>`;
+  const scoped=w.scopeSvg(moving,'u9');
+  ok('the keyframes are renamed for this copy',/@keyframes bob__u9/.test(scoped));
+  ok('and the animation points at the renamed ones',/animation:\s*bob__u9/.test(scoped));
+  ok('the class rule is scoped to this figure',/#u9 \.bob/.test(scoped));
+
+  w.S.figs['fig-moving']=moving;
+  w.S.slides[0].body='![[fig-moving]]';w.cur=0;w.paint();await wait(400);
+  const dot=d.querySelector('#sheet .inlinefig svg circle.bob');
+  ok('it draws',!!dot);
+  const an=dot?W.getComputedStyle(dot).animationName:'';
+  ok('and it actually animates on the slide',/^bob__/.test(an),an||'(none)');
+  ok('while its colour rule stays inside the figure',
+     W.getComputedStyle(d.getElementById('sheet')).fill!=='rgb(99, 102, 241)');
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

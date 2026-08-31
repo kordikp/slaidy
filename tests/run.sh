@@ -46,7 +46,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
   copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,useLoad,useNote,useReset,usageHtml,
-  KIND_LABEL,nfmt,safeUrl,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY};"""
+  KIND_LABEL,nfmt,safeUrl,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY,swipes,step};"""
 ready = """
 /* Transitions never settle under Chrome's virtual time, so getComputedStyle
    reads the value a property is animating *from* — an assertion about a drawer

@@ -275,6 +275,10 @@ The canvas is an `<iframe>`. A figure carries its own `<style>`, and inlined, th
 rules are global — which is how a figure once animated the application's toolbar off
 the screen. Inside a frame they cannot reach the page at all.
 
+**A url is a link.** Written out in full, or as `[text](url)` — either way it is clickable, and it
+is clickable **while presenting**, which is where someone actually follows one. `javascript:` and
+its relatives keep their words and lose their target.
+
 **It takes the room it is given.** The slide is as large as the window allows, bounded by height
 so the notes and the insert bar stay in view — it used to stop at 940px, so a large monitor showed
 a small slide with a wide margin round it, which is an odd thing for an editor whose promise is

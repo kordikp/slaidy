@@ -88,6 +88,51 @@ addEventListener('load',async()=>{
   ok('with nothing hanging off the side',d.documentElement.scrollWidth<=820,
      d.documentElement.scrollWidth+'px');
   f.remove();
+
+  // ---------- a finger can hit the controls ----------
+  f=await open_(390,844); d=f.contentDocument;
+  const cs=f.contentWindow.getComputedStyle(d.getElementById('bNav'));
+  const tap=Math.min(parseFloat(cs.width),parseFloat(cs.height));
+  ok('the control that opens the list is big enough to hit',tap>=36,
+     Math.round(tap)+'px — 26 is a mouse target, a finger needs about 44');
+  const small=[...d.querySelectorAll('#bar .ic')].filter(b=>
+    f.contentWindow.getComputedStyle(b).display!=='none' &&
+    b.getBoundingClientRect().width<34);
+  ok('and so is everything else on the bar',small.length===0,
+     small.map(b=>b.id).join(',')||'none too small');
+  const pill=d.getElementById('status'),pr=pill.getBoundingClientRect();
+  ok('the save state is a dot rather than a truncated word',pr.width<20,
+     Math.round(pr.width)+'px — it read "s…" at full text');
+  ok('with the sentence in its tooltip',/sav|browser|deck/i.test(pill.title||''),
+     (pill.title||'').slice(0,44));
+
+  // ---------- swiping between slides ----------
+  const W2=f.contentWindow, board=d.getElementById('board');
+  const touch=(el,x0,y0,x1,y1)=>{
+    const mk=(t,x,y)=>new W2.TouchEvent(t,{bubbles:true,cancelable:true,
+      touches:t==='touchend'?[]:[new W2.Touch({identifier:1,target:el,clientX:x,clientY:y})],
+      changedTouches:[new W2.Touch({identifier:1,target:el,clientX:x,clientY:y})]});
+    el.dispatchEvent(mk('touchstart',x0,y0));
+    el.dispatchEvent(mk('touchend',x1,y1));
+  };
+  const at=()=>W2.__api.cur;
+  W2.__api.cur=2;W2.__api.paint();await wait(300);
+  touch(board,300,400,120,410);await wait(300);
+  ok('a swipe left goes to the next slide',at()===3,'slide '+(at()+1));
+  touch(board,120,400,300,410);await wait(300);
+  ok('and a swipe right goes back',at()===2,'slide '+(at()+1));
+  touch(board,300,400,290,410);await wait(250);
+  ok('a small movement is not a swipe',at()===2,'slide '+(at()+1));
+  touch(board,300,300,280,600);await wait(250);
+  ok('nor is a scroll down the page',at()===2,'slide '+(at()+1));
+  touch(board,10,400,220,410);await wait(350);
+  ok('a swipe from the very edge opens the list instead',
+     d.body.classList.contains('shownav')&&at()===2,d.body.className+' slide '+(at()+1));
+  d.getElementById('scrim').click();await wait(200);
+  ok('and the swipe hint says the gesture is there',
+     !!d.getElementById('swipehint'),d.getElementById('swipehint').textContent);
+  f.remove();
+
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

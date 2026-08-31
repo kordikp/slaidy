@@ -151,6 +151,27 @@ addEventListener('load',async()=>{
   ok('which puts the slide back',w.S.slides.length===n0);
   ok('the app has no confirm() left in it',
      !/[^a-zA-Z.]confirm\(/.test(W.document.documentElement.innerHTML.replace(/confirm\(\) standing/g,'')));
+  // ---------- one slide can carry all of it at once ----------
+  w.S.slides[0].body=
+    'Words, **bold** and `code`.\n\n#### A heading\n\n'+
+    '| a | b |\n|---|---|\n| 1 | 2 |\n\n'+
+    'A formula inline $x^2$ and a link https://example.org/x\n\n'+
+    '```bash\nrun --it\n```\n\n***\n\n> The line that lands.';
+  w.S.slides[0].layout='text';w.S.slides[0].textScale=100;
+  w.cur=0;w.paint();await wait(400);
+  const sl=d.getElementById('stage');
+  const has={heading:!!sl.querySelector('.tx h3.bh'),table:!!sl.querySelector('.tx table'),
+             maths:!!sl.querySelector('.tx math'),code:!!sl.querySelector('.tx pre.cb'),
+             link:!!sl.querySelector('.tx a'),rule:!!sl.querySelector('.tx hr.rule'),
+             quote:!!sl.querySelector('.tx blockquote')};
+  ok('a heading, a table, a formula, code, a link, a rule and a quote on one slide',
+     Object.values(has).every(Boolean),JSON.stringify(has));
+  const bd2=sl.querySelector('#bd')||sl.querySelector('.txin'),tx2=sl.querySelector('.tx');
+  const kk=sl.getBoundingClientRect().width/1280;
+  ok('and all of it fits on a slide of its own',
+     bd2.getBoundingClientRect().height/kk<=tx2.getBoundingClientRect().height/kk+2,
+     Math.round(bd2.getBoundingClientRect().height/kk)+' in '+Math.round(tx2.getBoundingClientRect().height/kk));
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

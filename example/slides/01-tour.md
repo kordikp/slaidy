@@ -2,17 +2,34 @@
 
 ### 1. `[S]` SlAIdy
 
-*Summary:* Open on what the project is: a deck both a person and a model can read, and the editor that keeps it that way.
+*Summary:* Open on what the project is, and let the slide itself be the argument — everything the format can carry, on one slide.
 
-> **SlAIdy** — slides where the AI is a partner, not a plugin
+**Figure:** `fig-slaidy-hero` · split-l · 88%
 
-An editor in one HTML file. The deck on disk stays markdown and SVG the whole time,
-so nothing is locked inside the application — and if the application disappears, you
-still have a deck.
+*Flags:* center
 
-<!-- gap -->
+Slides where the deck stays **markdown and SVG** — legible to you, to `git`,
+and to the model you edit it with.
 
-*Delivery note:* This is the demo deck. Everything on it was made in the editor you are looking at, and the figures animate — press P to present.
+#### What this one slide is made of
+
+| | |
+|---|---|
+| an animated figure | SVG, `@keyframes`, 6 kB |
+| a formula | $r_{ui} = \mathbf{p}_u^\top \mathbf{q}_i$ |
+| a table | this one |
+| code | below |
+| a link | [kordikp.github.io/slaidy](https://kordikp.github.io/slaidy/) |
+
+```bash
+git clone https://github.com/kordikp/slaidy && ./studio.sh
+```
+
+***
+
+> No bitmaps, no build step, no dependencies — and no video, deliberately.
+
+*Delivery note:* Everything above is in the deck as text. There is no video and there will not be: a video is more opaque than the bitmaps this project already refuses — it cannot be diffed, edited or asked to change. When a talk needs one, it goes in as a link, and links are clickable while presenting.
 
 ### 2. `[S]` One material, two readers
 
@@ -115,6 +132,6 @@ an **article**, figures rasterised, ready to paste into Substack or a `.docx`.
 
 <!-- gap -->
 
-> Try it: **kordikp.github.io/slaidy** · source at **github.com/kordikp/slaidy**
+> Try it: <https://kordikp.github.io/slaidy/> · source: <https://github.com/kordikp/slaidy>
 
 *Delivery note:* The editor is MIT, one file, no dependencies and no build step. The AI runs on capacity from CESNET e-INFRA CZ.

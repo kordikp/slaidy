@@ -1,7 +1,9 @@
 <!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1520px;height:960px;border:0"></iframe>
 <script>
 const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const L=[],ok=(n,c,x)=>{L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+  const p=document.getElementById('out')||document.body.appendChild(Object.assign(document.createElement('pre'),{id:'out'}));
+  p.textContent=L.join('\n');};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const spill=()=>{if(!document.getElementById('out'))
   document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
@@ -43,8 +45,33 @@ addEventListener('load',async()=>{
   const boardFs=[getComputedStyle(st.querySelector('.tx')).fontSize,
                  getComputedStyle(st.querySelector('h2')).fontSize];
 
+  // a link on a slide has to be clickable while presenting — that is where a
+  // reader follows one, not in the editor
+  const keepBody=w.S.slides[i].body;
+  w.S.slides[i].body='See [the demo](https://example.org/demo) and a bare one: https://example.org/raw';
+  w.paint();await wait(250);
+  const boardLink=d.querySelector('#sheet .tx a');
+  ok('a markdown link renders as a link',!!boardLink&&/example\.org\/demo/.test(boardLink.href),
+     boardLink&&boardLink.getAttribute('href'));
+  ok('and a bare url becomes one too',
+     [...d.querySelectorAll('#sheet .tx a')].some(a=>/example\.org\/raw/.test(a.href)),
+     [...d.querySelectorAll('#sheet .tx a')].map(a=>a.getAttribute('href')).join(' '));
+
   // now present the same slide
   await w.present(true);await wait(400);
+  const shown=[...d.querySelectorAll('#deck .tx a')];
+  ok('the links are there when projected',shown.length>=2,shown.length+' links');
+  if(shown.length){
+    const a=shown[0],r=a.getBoundingClientRect();
+    const hit=d.elementFromPoint(Math.round(r.left+r.width/2),Math.round(r.top+r.height/2));
+    ok('and nothing is lying on top of them',!!hit&&(hit===a||a.contains(hit)||hit.closest('a')===a),
+       hit?hit.tagName+'.'+(hit.className||''):'nothing there');
+    ok('they open in a new tab, so the talk is not navigated away',
+       a.target==='_blank'&&/noopener/.test(a.rel||''),a.target+' '+a.rel);
+  }
+  // back to the real body without leaving the presenter — toggling it twice is
+  // what hung this file, and the rest of the test needs to stay presented
+  w.S.slides[i].body=keepBody;w.paintDeck();await wait(300);
   const dk=d.getElementById('deck');
   ok('present renders the same stage class',dk.className===st.className,
      `board "${st.className}" vs deck "${dk.className}"`);

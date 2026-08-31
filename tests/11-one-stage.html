@@ -48,19 +48,23 @@ addEventListener('load',async()=>{
   // a link on a slide has to be clickable while presenting — that is where a
   // reader follows one, not in the editor
   const keepBody=w.S.slides[i].body;
-  w.S.slides[i].body='See [the demo](https://example.org/demo) and a bare one: https://example.org/raw';
+  w.S.slides[i].body='See [the demo](https://example.org/demo), a bare one: https://example.org/raw '+
+    'and one in brackets: <https://example.org/angle>';
   w.paint();await wait(250);
   const boardLink=d.querySelector('#sheet .tx a');
   ok('a markdown link renders as a link',!!boardLink&&/example\.org\/demo/.test(boardLink.href),
      boardLink&&boardLink.getAttribute('href'));
-  ok('and a bare url becomes one too',
-     [...d.querySelectorAll('#sheet .tx a')].some(a=>/example\.org\/raw/.test(a.href)),
-     [...d.querySelectorAll('#sheet .tx a')].map(a=>a.getAttribute('href')).join(' '));
+  const hrefs=()=>[...d.querySelectorAll('#sheet .tx a')].map(a=>a.getAttribute('href'));
+  ok('and a bare url becomes one too',hrefs().some(h=>/example\.org\/raw/.test(h)),hrefs().join(' '));
+  ok('and markdown\'s own <url> form, which is what a closing slide is written in',
+     hrefs().some(h=>/example\.org\/angle/.test(h)),hrefs().join(' '));
+  ok('the angle brackets do not survive as text',
+     !/&lt;https|<https/.test(d.querySelector('#sheet .tx').innerHTML));
 
   // now present the same slide
   await w.present(true);await wait(400);
   const shown=[...d.querySelectorAll('#deck .tx a')];
-  ok('the links are there when projected',shown.length>=2,shown.length+' links');
+  ok('the links are there when projected',shown.length>=3,shown.length+' links');
   if(shown.length){
     const a=shown[0],r=a.getBoundingClientRect();
     const hit=d.elementFromPoint(Math.round(r.left+r.width/2),Math.round(r.top+r.height/2));
@@ -68,6 +72,16 @@ addEventListener('load',async()=>{
        hit?hit.tagName+'.'+(hit.className||''):'nothing there');
     ok('they open in a new tab, so the talk is not navigated away',
        a.target==='_blank'&&/noopener/.test(a.rel||''),a.target+' '+a.rel);
+    // and a click while presenting is intercepted, so it does not open a tab
+    // behind a full-screen page where nobody can see it
+    let opened=null;
+    const realOpen=W.open; W.open=(u)=>{opened=u;return null;};
+    a.dispatchEvent(new W.MouseEvent('click',{bubbles:true,cancelable:true}));
+    await wait(300);
+    ok('clicking one while presenting actually opens it',opened===a.href,String(opened));
+    ok('and the deck is still presented',w.showing!==false&&
+       d.getElementById('show').classList.contains('on'),'F goes back to full screen');
+    W.open=realOpen;
   }
   // back to the real body without leaving the presenter — toggling it twice is
   // what hung this file, and the rest of the test needs to stay presented

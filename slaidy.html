@@ -1349,6 +1349,12 @@ function inl(s){
   const keep=[];
   s=s.replace(/<a\b[^>]*>[\s\S]*?<\/a>|<code>[\s\S]*?<\/code>/g,
     m=>{keep.push(m);return `\u0000A${keep.length-1}\u0000`;});
+  /* <https://…> is markdown's own way of writing a bare link, and by this point
+     esc() has turned the brackets into entities — so the general rule below,
+     which wants whitespace in front of a url, never saw one. */
+  s=s.replace(/&lt;((?:https?:\/\/|mailto:)[^\s&]+)&gt;/g,(m,url)=>
+    safeUrl(url)?`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`:m);
+  s=s.replace(/<a\b[^>]*>[\s\S]*?<\/a>/g,m=>{keep.push(m);return `\u0000A${keep.length-1}\u0000`;});
   s=s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<)\u0000]+)/g,(m,pre,url)=>{
     const tail=(url.match(/[.,;:!?]+$/)||[''])[0];
     const u=url.slice(0,url.length-tail.length);
@@ -2461,7 +2467,8 @@ async function drawFigure(id,s,brief){
     `SLIDE TITLE: ${s.title}\nSECTION: ${s.group||''}\n\nSLIDE BODY:\n${(s.body||'').slice(0,1400)}\n\n`+
     (brief?`WHAT THE AUTHOR ASKED FOR: ${brief}\n\n`:'')+
     `Show the mechanism — how it works, what flows where — rather than restating the words `+
-    `already on the slide. Give it a title line and a one-line takeaway.`,20000,'figure')).trim();
+    `already on the slide. The slide's title is above it and its key line below, so the figure `+
+    `needs neither; choose a canvas no taller than the drawing.`,20000,'figure')).trim();
   t=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
   const a=t.indexOf('<svg'),b=t.lastIndexOf('</svg>');
   if(a<0||b<0)throw new Error('the model did not return an svg');
@@ -3270,6 +3277,7 @@ function pickFigure(pick){
       out.innerHTML='<span class="spin"></span> drawing…';
       try{
         const t=await llm(figSys(),`Draw a new figure.\n\nWHAT IT MUST SHOW: ${what}\n\n`+
+          `Choose a canvas no taller than the drawing needs.\n`+
           `SLIDE: ${S.slides[cur]?S.slides[cur].title:''}`,20000,'figure');
         const c=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
         const a=c.indexOf('<svg'),b2=c.lastIndexOf('</svg>');
@@ -3658,7 +3666,10 @@ function feMount(){
     /* the panel steals focus the moment you touch a button, so listen here too */
     document.addEventListener('keydown',feKeyOutside);
     d.body.tabIndex=0;
-    fePanel();
+    /* mounting rebuilds the panel, and that used to throw away whichever tab you
+       were working in — accept an AI redraw and the instruction field vanished,
+       so there was no way to say "closer, but smaller" */
+    FE.tab==='design'?fePanel():feTab(FE.tab);
   };
 }
 
@@ -4483,16 +4494,28 @@ function wireSwatch(id,fn){
 }
 
 /* ---- AI, scoped to what is selected ---- */
-const FIG_SYS=`You revise explanatory SVG figures for a technical talk. Rules that must not change:
-viewBox exactly "0 0 800 450"; first child a background rect; title centred at x=400 y=34, 19px bold #1E1B4B;
-one takeaway line centred at x=400 y=428, 12.5px #6B7280.
+const FIG_SYS=`You draw explanatory SVG figures for a technical talk.
 
-RESTRAINT — this is the rule most often broken. A figure is a diagram, not a paragraph with boxes
-drawn round it. Measured across the 180 figures already in this deck: about ELEVEN text elements
-each, and the typical label is FOUR WORDS. Nearly half are one to three words.
-· at most 12 <text> elements in the whole figure, the title and the takeaway included
+THE CANVAS IS YOURS TO CHOOSE, and choosing it well is part of the job. Width 800 unless there is
+a reason. Height is whatever the drawing needs and no more: a timeline is about 800×220, a
+left-to-right flow 800×300, a matrix or a stack 800×450. The slide gives the figure exactly the
+shape its viewBox asks for, so empty margin inside the viewBox is empty margin on the slide.
+Set viewBox="0 0 <w> <h>" to what you actually drew, and make the first child a background rect
+of the same size.
+
+NO FURNITURE. A title across the top and a conclusion across the bottom are what most figures
+waste their room on, and the slide has already said both — it has a title, and usually a line of
+its own underneath.
+· No title inside the figure unless it names something the slide does not.
+· No takeaway line unless it says something the drawing genuinely cannot.
+· If you are unsure, leave both out. A figure that needs a caption to be understood needs
+  redrawing, not a caption.
+
+RESTRAINT — the rule most often broken. A figure is a diagram, not a paragraph with boxes drawn
+round it. Measured across 180 figures written for this house: about eleven text elements each,
+and the typical label is four words.
+· at most 12 <text> elements in the whole figure
 · a label is a noun or a short phrase, 1 to 4 words. Never a sentence, never a clause with a verb
-· the only line allowed to be a sentence is the takeaway at y=428, and it is one line
 · say it with position, size, arrows and grouping. If a relationship can be drawn, do not caption it
 · no legend unless the same encoding repeats and cannot be labelled in place
 · no explanatory paragraph anywhere, and no bullet list rendered as stacked <text>
@@ -4502,7 +4525,9 @@ Palette only: #1E1B4B #6B7280 #FFFFFF #FAFAF7 #E5E7EB #0EA5E9 #E0F2FE #075985 #7
 Animation: CSS @keyframes inside one <style>, 6s ease-in-out infinite, transform/opacity only, never SMIL,
 and the figure must read fully in its unanimated state. No gradients, filters, <image> or <foreignObject>.
 Text never below 11px and never within 14px of the canvas edge.
-Return ONLY the complete revised <svg> element. No fences, no commentary.`;
+A figure has to read with the animation off — a print takes one frame, so nothing may be
+invisible at rest.
+Return ONLY the complete <svg> element. No fences, no commentary.`;
 
 /* The house rules above, plus whatever this deck's author added. Kept on the
    deck rather than in the browser, so a deck's figures come out the same way
@@ -4550,7 +4575,13 @@ function feAccept(t,out){
     ${bad.length?`<p class="tip" style="color:var(--b)">Warnings: ${esc(bad.join('; '))}</p>`:''}
     <div class="rw" style="margin-top:6px"><button class="b p" id="feTake">Use it</button>
       <button class="b" id="feDrop">Discard</button></div>`;
-  document.getElementById('feTake').onclick=()=>{fePush();FE.src=svg;feMount();out.classList.add('hidden');toast('Applied');};
+  document.getElementById('feTake').onclick=()=>{
+    const asked=document.getElementById('feAiIn')?.value||'';
+    fePush();FE.src=svg;feMount();
+    /* put the instruction back so the next one can be a refinement of it */
+    setTimeout(()=>{const box=document.getElementById('feAiIn');
+      if(box){box.value=asked;box.focus();box.setSelectionRange(asked.length,asked.length);}},60);
+    toast('Applied — say what to change next, or switch to Design');};
   document.getElementById('feDrop').onclick=()=>out.classList.add('hidden');
 }
 
@@ -4675,9 +4706,9 @@ function feTab(t){
   p.innerHTML=`<div class="sec"><div class="sect">Redraw the whole figure</div>
     <textarea id="feAiIn" rows="4" placeholder="e.g. drop the third column and make the arrow labels bigger"></textarea>
     <button class="b p" id="feAiGo" style="width:100%;margin-top:6px">Generate</button>
-    <div class="tip">The locked design system travels with the request: 800×450, the palette, CSS
-      keyframes, legible at projection size, and at most twelve labels of one to four words.${
-      (S.style&&S.style.figBrief)?' Plus what you set under <b>⋯ → AI and figures</b>.':''}</div>
+    <div class="tip">The house rules travel with the request: the palette, CSS keyframes, legible at
+      projection size, at most twelve labels of one to four words, and a canvas no taller than the
+      drawing needs.${(S.style&&S.style.figBrief)?' Plus what you set under <b>⋯ → AI usage</b>.':''}</div>
     <div id="feAiOut" class="hidden" style="margin-top:8px"></div></div>`;
   document.getElementById('feAiGo').onclick=async()=>{
     const instr=document.getElementById('feAiIn').value.trim();
@@ -5367,6 +5398,22 @@ document.addEventListener('keydown',e=>{
 });
 window.addEventListener('resize',()=>{showing?fit():scaleStage();});
 /* leaving fullscreen by any route leaves the presentation too */
+/* Following a link while presenting looked like nothing happening: the page is
+   full screen, target=_blank puts the page in a tab behind it, and the room
+   still sees the slide. Leave full screen first, so the thing you asked for is
+   the thing you see. The deck stays presented — F puts it back. */
+document.getElementById('deck').addEventListener('click',async e=>{
+  const a=e.target.closest('a[href]');
+  if(!a||!showing)return;
+  e.preventDefault();
+  if(document.fullscreenElement){
+    fsGuard=true;
+    try{await document.exitFullscreen();}catch(x){}
+    fsGuard=false;
+  }
+  window.open(a.href,'_blank','noopener,noreferrer');
+  toast('Opened in a new tab — F goes back to full screen');
+});
 document.addEventListener('fullscreenchange',()=>{
   if(!document.fullscreenElement&&showing&&!fsGuard)present(false);
   else if(showing)setTimeout(fit,60);

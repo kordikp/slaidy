@@ -131,8 +131,9 @@ addEventListener('load',async()=>{
   ok('it forbids the paragraph-with-boxes figure',/no explanatory paragraph anywhere/.test(sys));
   ok('and says to draw the relationship rather than caption it',
      /If a relationship can be drawn, do not caption it/.test(sys));
-  ok('the numbers come from this deck, not from taste',
-     /180 figures already in this deck/.test(sys));
+  ok('the numbers come from measurement, not from taste',
+     /180 figures written for this house/.test(sys),
+     (sys.match(/Measured across[^.]*/)||[''])[0].slice(0,60));
 
   // the author can add to it, and it lives on the deck
   ok('with nothing set, the brief is just the house rules',w.figSys()===w.FIG_SYS);
@@ -158,6 +159,49 @@ addEventListener('load',async()=>{
   ok('so it survives an export',/Nothing but the mechanism/.test(JSON.stringify(w.S.style)));
   ok('and reaches the next figure drawn',/Nothing but the mechanism/.test(w.figSys()));
   w.S.style.figBrief='';
+
+  // ---------- the canvas is the model's to choose, and furniture is not free ----------
+  const fs=w.figSys();
+  ok('the prompt hands the canvas to the model',/THE CANVAS IS YOURS TO CHOOSE/.test(fs));
+  ok('with sizes for the shapes a figure actually takes',/800.220|800.300/.test(fs),
+     (fs.match(/a timeline is about [^,]+/)||[''])[0]);
+  ok('and says why an empty margin costs something',
+     /empty margin inside the viewBox is empty margin on the slide/.test(fs));
+  ok('a title inside the figure is discouraged',/No title inside the figure unless/.test(fs));
+  ok('so is a takeaway',/No takeaway line unless/.test(fs));
+  ok('and when unsure, neither',/leave both out/.test(fs));
+  ok('it no longer pins the viewBox to one size',!/viewBox exactly/.test(fs));
+  ok('the figure must read with the animation off',/read with the animation off/.test(fs),
+     'a print takes one frame');
+
+  // ---------- the AI tab keeps its field, so you can say "closer, but smaller" ----------
+  const svgOk='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">'+
+    '<rect width="800" height="220" fill="#FAFAF7"/><style>@keyframes k{to{opacity:1}}</style>'+
+    '<rect x="40" y="60" width="120" height="60" fill="#E0F2FE"/></svg>';
+  w.figEdit(w.S.slides[0],Object.keys(w.S.figs)[0]);await wait(600);
+  w.feTab('ai');await wait(250);
+  ok('the AI tab has somewhere to type',!!d.getElementById('feAiIn'));
+  const realFetch=W.fetch;
+  W.fetch=async(u,o)=>{
+    if(!o||o.method!=='POST')return realFetch(u,o);
+    return {status:200,text:async()=>JSON.stringify({text:svgOk})};
+  };
+  d.getElementById('feAiIn').value='make it a timeline';
+  d.getElementById('feAiGo').click();await wait(600);
+  ok('generating shows a preview rather than applying it',
+     !!d.querySelector('#feAiOut .fepv svg')&&!/220/.test(w.FE.svg.getAttribute('viewBox')||''),
+     w.FE.svg.getAttribute('viewBox'));
+  ok('and the field is still there while you look at it',!!d.getElementById('feAiIn'));
+  d.getElementById('feTake').click();await wait(700);
+  ok('taking it applies the drawing',/0 0 800 220/.test(w.FE.svg.getAttribute('viewBox')||''),
+     w.FE.svg.getAttribute('viewBox'));
+  ok('the AI tab is still the one you are on',!!d.getElementById('feAiIn'),
+     'it used to fall back to the design panel, so a follow-up was impossible');
+  ok('with what you asked still in it, to refine',
+     d.getElementById('feAiIn').value==='make it a timeline',
+     JSON.stringify(d.getElementById('feAiIn')?.value));
+  W.fetch=realFetch;
+  d.getElementById('feCancel').click();await wait(200);
 
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  clearTimeout(__watchdog);

@@ -385,6 +385,16 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Links
+
+`[text](url)`, a bare `https://…`, or markdown's `<https://…>` — all three become links, and all
+three work **while presenting**, which is where a reader follows one.
+
+A link clicked in full screen used to look like nothing happening: `target="_blank"` puts the page
+in a tab behind the one filling the screen, and the room still sees the slide. Clicking one now
+leaves full screen first, so what you asked for is what you see; the deck stays presented and `F`
+puts it back.
+
 ## Where the deck lives
 
 **The deck file is the document.** One `.json` holding the slides, the figures and the

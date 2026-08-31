@@ -242,7 +242,9 @@ addEventListener('load',async()=>{
   ok('the figure it asked for was actually drawn',!!w.S.figs['fig-walls'],
      Object.keys(w.S.figs).length+' figures now');
   ok('the model was asked twice — slide, then figure',calls.length===2,calls.length+' calls');
-  ok('the second call carried the design system',/viewBox exactly/.test(calls[1].system||''));
+  ok('the second call carried the design system',
+     /THE CANVAS IS YOURS TO CHOOSE/.test(calls[1].system||''),
+     'the viewBox is no longer pinned; the canvas is chosen to fit');
   ok('the figure was redrawn for the new slide',!!w.S.figs['fig-walls']);
   ok('nothing is left wanting',w.wantedFigures(w.S.slides[NEW]).length===0);
   unstub();

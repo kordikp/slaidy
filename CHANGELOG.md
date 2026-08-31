@@ -40,6 +40,10 @@ Dates are when the work landed, not when it was released; there are no releases 
   catchy quietly got you the house default back.
 
 ### Fixed
+- The editor now fits the device. The slide was capped at 940px however large the screen, and
+  below 1000px the three columns simply overflowed — on a phone the toolbar pushed **Present**
+  off the edge.
+
 - Centring a row collapsed its figure to nothing: the column stopped stretching, and the
   figure sizes itself from that column's height. Found by looking at the demo deck.
 

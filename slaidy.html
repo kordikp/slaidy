@@ -85,7 +85,12 @@ button{cursor:pointer;background:none;border:none}
    and differ only in how far it is scaled, so the preview cannot drift from
    what the room sees — which it did, for as long as they were three renderers.
 ------------------------------------------------------------------------- */
-#sheet{width:100%;max-width:940px}
+/* The slide takes the room it is given. It was capped at 940px, so a large
+   monitor showed a small slide with a wide margin round it — the one thing an
+   editor whose whole promise is "what you arrange is what the room sees" should
+   not do. Bounded by height as well, or a wide screen pushes the notes and the
+   insert bar out of sight. */
+#sheet{width:100%;max-width:min(100%,calc((100vh - 250px) * 16 / 9))}
 .stagewrap{width:100%;position:relative;overflow:hidden;border-radius:var(--r10);
  border:1px solid var(--line);background:var(--d-paper);
  box-shadow:0 1px 2px rgba(15,18,26,.04),0 6px 18px rgba(15,18,26,.05)}
@@ -575,6 +580,44 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 #measure.measure{position:fixed;left:-4000px;top:0;width:1280px;height:720px;transform:none;
  pointer-events:none;visibility:hidden}
 #printroot{display:none}
+/* ---------- narrow screens ---------------------------------------------
+   Three columns do not fit on a phone, and until now nothing said so: the
+   layout simply overflowed and the slide became unusable. The list and the
+   panel become drawers over the board, and the board keeps the whole width.
+------------------------------------------------------------------------- */
+.drawer{display:none}
+@media (max-width:1000px){
+  .drawer{display:grid}
+  #work{grid-template-columns:1fr}
+  #nav,#side{position:fixed;top:38px;bottom:0;z-index:45;width:min(84vw,300px);
+    box-shadow:0 8px 40px rgba(15,18,26,.22);transition:transform .18s ease}
+  #nav{left:0;transform:translateX(-102%)}
+  #side{right:0;transform:translateX(102%)}
+  body.shownav #nav,body.showside #side{transform:none}
+  body.shownav #scrim,body.showside #scrim{opacity:1;pointer-events:auto}
+  #scrim{position:fixed;inset:38px 0 0;background:rgba(15,18,26,.34);z-index:40;
+    opacity:0;pointer-events:none;transition:opacity .18s}
+  #board{padding:12px 12px 60px}
+  #sheet{max-width:min(100%,calc((100vh - 190px) * 16 / 9))}
+  #bar .meta2{display:none}
+  .mdwrap,.fewrap,.fewrap.src{grid-template-columns:1fr}
+  .dlg.md,.dlg.wide,.dlg.wide2{width:96vw;height:92vh}
+  .mdpv{max-height:38vh}
+}
+@media (max-width:620px){
+  #bar{gap:2px;padding:0 6px}
+  #bar .div,#bar #bDup,#bar #bDel{display:none}
+  /* the status pill was 174px of a 390px bar and pushed Present off the edge;
+     the filename it was spelling out is in its tooltip either way */
+  #status{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #board{padding:8px 8px 52px}
+  .stage .hdr{font-size:11px}
+  #notes{font-size:12px}
+}
+/* a stage that is taller than the window is a stage you cannot see */
+@media (max-height:620px){
+  #sheet{max-width:min(100%,calc((100vh - 150px) * 16 / 9))}
+}
 @media print{
   @page{size:297mm 167mm;margin:0}
   body{background:#fff;overflow:visible}
@@ -592,6 +635,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 </style></head><body>
 
 <div id="bar">
+  <button class="ic drawer" id="bNav" title="Slides" aria-label="Slides">☰</button>
   <a class="logo" href="https://github.com/kordikp/slaidy" target="_blank" rel="noopener noreferrer"
      title="SlAIdy on GitHub — MIT, one file, no dependencies">SlAIdy</a>
   <span class="meta2" id="deckInfo">no deck</span>
@@ -623,6 +667,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
     aria-hidden="true"><path d="M2.6 2.4h6.2l2.6 2.6v6.6a1 1 0 0 1-1 1H2.6a1 1 0 0 1-1-1V3.4a1 1 0 0 1 1-1z"/><path
     d="M4.4 2.4v3.2h4.2V2.4M4.4 12.6V8.8h5.2v3.8"/></svg></button>
   <button class="ic" id="bHelp" title="Shortcuts (?)">?</button>
+  <button class="ic drawer" id="bSide" title="The panel" aria-label="The panel">▤</button>
   <button class="b p" id="bShow">Present</button>
 </div>
 
@@ -636,6 +681,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 <div id="prog"><i></i></div><div id="count"></div>
 <div id="notes"></div><div id="grid"></div>
 <div id="veil"><div class="dlg" id="dlg"></div></div>
+<div id="scrim"></div>
 <div id="drop">Drop markdown, SVG figures, or a deck bundle</div>
 <div id="welcome"><div class="card2">
   <h1>SlAIdy</h1>
@@ -5234,6 +5280,8 @@ document.addEventListener('keydown',e=>{
   if(document.getElementById('fefr')&&!typing&&
      !(e.key==='Escape'&&(!FE||!FE.sels.length)))return;
   if(e.key==='Escape'){
+    if(document.body.classList.contains('shownav')||document.body.classList.contains('showside')){
+      document.body.classList.remove('shownav','showside');return;}
     if(document.getElementById('veil').classList.contains('on'))return closeDialog();
     if(gridOn){gridOn=false;document.getElementById('grid').classList.remove('on');return;}
     if(showing)return present(false);
@@ -5361,6 +5409,20 @@ document.getElementById('bTidyAll').onclick=tidyAllDialog;
 document.getElementById('bDeck').onclick=deckSettings;
 document.getElementById('bCfg2').onclick=configure;
 document.getElementById('bHelp').onclick=shortcuts;
+/* the drawers: one open at a time, and anything that dismisses one dismisses both */
+const drawer=(which)=>{
+  const b=document.body, on=b.classList.contains(which);
+  b.classList.remove('shownav','showside');
+  if(!on)b.classList.add(which);
+};
+document.getElementById('bNav').onclick=e=>{e.stopPropagation();drawer('shownav');};
+document.getElementById('bSide').onclick=e=>{e.stopPropagation();drawer('showside');};
+document.getElementById('scrim').onclick=()=>document.body.classList.remove('shownav','showside');
+/* choosing a slide on a phone means you want to look at it, not at the list */
+document.getElementById('nav').addEventListener('click',e=>{
+  if(e.target.closest('.item')&&matchMedia('(max-width:1000px)').matches)
+    setTimeout(()=>document.body.classList.remove('shownav'),120);
+});
 document.getElementById('bUndo').onclick=undo;
 document.getElementById('bSaveNow').onclick=()=>{
   const b=document.getElementById('bSaveNow');b.disabled=true;

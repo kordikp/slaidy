@@ -48,6 +48,13 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,useLoad,useNote,useReset,usageHtml,
   KIND_LABEL,nfmt,safeUrl,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY};"""
 ready = """
+/* Transitions never settle under Chrome's virtual time, so getComputedStyle
+   reads the value a property is animating *from* — an assertion about a drawer
+   that has slid open then measures it closed. The app keeps its transitions;
+   the suite measures without them. */
+(function(){const s=document.createElement('style');
+  s.textContent='*{transition:none !important}';
+  (document.head||document.documentElement).appendChild(s);})();
 window.__ready=new Promise(r=>{const t=setInterval(()=>{
   try{ if(S&&S.slides&&S.slides.length){clearInterval(t);r();} }catch(e){}
 },40);setTimeout(()=>{clearInterval(t);r();},9000);});"""

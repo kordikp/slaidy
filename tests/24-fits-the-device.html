@@ -1,0 +1,95 @@
+<!doctype html><meta charset=utf-8><body style="margin:0">
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
+
+async function open_(w,h){
+  const f=document.createElement('iframe');
+  f.style.cssText=`width:${w}px;height:${h}px;border:0;position:absolute;left:-9999px;top:0`;
+  f.src='/index.html?'+w+'x'+h;
+  document.body.appendChild(f);
+  await new Promise(r=>{f.onload=r;setTimeout(r,9000);});
+  const d=f.contentDocument;
+  for(let i=0;i<70;i++){await wait(120);if(d.querySelectorAll('#nav .item').length)break;}
+  await wait(500);
+  return f;
+}
+addEventListener('load',async()=>{
+ try{
+  const R=e=>e?e.getBoundingClientRect():{width:0,height:0,right:0};
+
+  // ---------- a big screen gets a big slide ----------
+  let f=await open_(2560,1440);
+  let d=f.contentDocument, sh=d.getElementById('sheet');
+  const big=Math.round(R(sh).width);
+  ok('a 27-inch monitor gets a slide wider than the old 940px cap',big>1500,big+'px');
+  ok('and it keeps its shape',
+     Math.abs(R(d.getElementById('stage')).width/R(d.getElementById('stage')).height-16/9)<0.02);
+  ok('the slide still fits above the fold',R(sh).width*9/16<1440-100,
+     Math.round(R(sh).width*9/16)+'px tall in 1440');
+  ok('with no drawers, because there is room for the columns',
+     f.contentWindow.getComputedStyle(d.getElementById('bNav')).display==='none');
+  f.remove();
+
+  // ---------- a short wide window is bounded by height, not width ----------
+  f=await open_(1920,620); d=f.contentDocument;
+  const short=Math.round(R(d.getElementById('sheet')).width);
+  ok('a short window gets a slide that fits its height',short*9/16<620-80,
+     `${short}×${Math.round(short*9/16)} in 620`);
+  f.remove();
+
+  // ---------- a phone ----------
+  f=await open_(390,844); d=f.contentDocument;
+  const W=f.contentWindow;
+  sh=d.getElementById('sheet');
+  ok('a phone gets a slide nearly the full width',R(sh).width>340,Math.round(R(sh).width)+' of 390');
+  ok('and it fits, rather than overflowing sideways',
+     d.documentElement.scrollWidth<=390,d.documentElement.scrollWidth+'px of content');
+  const bar=d.getElementById('bar');
+  ok('the toolbar fits too',bar.scrollWidth<=Math.ceil(R(bar).width)+1,
+     bar.scrollWidth+' of '+Math.round(R(bar).width)+' — Present used to be cut off');
+  ok('Present is reachable',R(d.getElementById('bShow')).right<=391,
+     Math.round(R(d.getElementById('bShow')).right));
+
+  // the list and the panel become drawers
+  ok('the list is off to the side until asked for',
+     W.getComputedStyle(d.getElementById('nav')).transform!=='none');
+  ok('and there is a control to ask',
+     W.getComputedStyle(d.getElementById('bNav')).display!=='none');
+  d.getElementById('bNav').click();await wait(300);
+  ok('opening it brings the list over the slide',
+     W.getComputedStyle(d.getElementById('nav')).transform==='none'||
+     d.body.classList.contains('shownav'),d.body.className);
+  ok('with something to dismiss it',
+     +W.getComputedStyle(d.getElementById('scrim')).opacity>0.5);
+  d.querySelectorAll('#nav .item')[2].click();await wait(400);
+  ok('choosing a slide closes the list, because you want to see the slide',
+     !d.body.classList.contains('shownav'),d.body.className||'(nothing)');
+  d.getElementById('bSide').click();await wait(300);
+  ok('the panel is a drawer too',d.body.classList.contains('showside'));
+  d.getElementById('bNav').click();await wait(300);
+  ok('and only one is open at a time',
+     d.body.classList.contains('shownav')&&!d.body.classList.contains('showside'),d.body.className);
+  d.getElementById('scrim').click();await wait(300);
+  ok('tapping away closes it',!d.body.classList.contains('shownav'));
+  f.remove();
+
+  // ---------- a tablet in portrait ----------
+  f=await open_(820,1180); d=f.contentDocument;
+  ok('a tablet gets the drawers as well',
+     f.contentWindow.getComputedStyle(d.getElementById('bNav')).display!=='none');
+  ok('and a slide across most of the width',R(d.getElementById('sheet')).width>740,
+     Math.round(R(d.getElementById('sheet')).width)+' of 820');
+  ok('with nothing hanging off the side',d.documentElement.scrollWidth<=820,
+     d.documentElement.scrollWidth+'px');
+  f.remove();
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

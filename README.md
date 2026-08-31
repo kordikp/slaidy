@@ -275,6 +275,17 @@ The canvas is an `<iframe>`. A figure carries its own `<style>`, and inlined, th
 rules are global — which is how a figure once animated the application's toolbar off
 the screen. Inside a frame they cannot reach the page at all.
 
+**It takes the room it is given.** The slide is as large as the window allows, bounded by height
+so the notes and the insert bar stay in view — it used to stop at 940px, so a large monitor showed
+a small slide with a wide margin round it, which is an odd thing for an editor whose promise is
+that what you arrange is what the room sees.
+
+Under 1000px the three columns become one: the slide list and the panel are drawers over the
+board, opened from the toolbar and dismissed by tapping away, by `Esc`, or — for the list — by
+choosing a slide, because at that point you want to look at the slide. On a phone the slide takes
+the full width and the toolbar fits, which it did not before: the status pill was 174px of a 390px
+bar and pushed **Present** off the edge.
+
 **Presenting.** `P` goes full screen. `N` shows notes, `O` an overview grid, `B`
 switches between the whole deck and the short run.
 

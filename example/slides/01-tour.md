@@ -29,7 +29,7 @@ git clone https://github.com/kordikp/slaidy && ./studio.sh
 
 > Everything on this slide is text. The animation is 6 kB of SVG.
 
-*Delivery note:* The figure is a twelve-second loop in four beats — the words are written, the slide takes them, a figure draws itself, the model offers a change and you keep what is worth keeping. All CSS keyframes, and it reads with the animation off, which is the rule every figure in the deck follows.
+*Delivery note:* The figure is a twelve-second loop in four beats — you ask, it works, you correct it, it is pleased with you. All CSS keyframes, and it reads with the animation off, which is the rule every figure in this deck follows; a print takes one frame, so a loop that hides something would lose it.
 
 ### 2. `[S]` One material, two readers
 

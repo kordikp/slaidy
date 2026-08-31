@@ -153,8 +153,13 @@ def main():
     # markdown really is the newer thing or --force says otherwise.
     if os.path.exists(a.out) and not a.force:
         deck_at = os.path.getmtime(a.out)
-        src_at = max([os.path.getmtime(os.path.join(a.src, f))
-                      for f in os.listdir(a.src) if f.endswith((".md", ".json"))] or [0])
+        # the figures are source too: editing an SVG and rebuilding used to look
+        # like "the deck is newer than the markdown", because only .md was counted
+        srcs = [os.path.join(a.src, f) for f in os.listdir(a.src) if f.endswith((".md", ".json"))]
+        for d in (a.figs or [os.path.join(ROOT, "images"), os.path.join(a.src, "..", "images")]):
+            if os.path.isdir(d):
+                srcs += [os.path.join(d, f) for f in os.listdir(d) if f.endswith(".svg")]
+        src_at = max([os.path.getmtime(f) for f in srcs] or [0])
         if deck_at > src_at:
             import datetime
             fmt = lambda t: datetime.datetime.fromtimestamp(t).strftime("%d %b %H:%M")

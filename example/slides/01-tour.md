@@ -27,9 +27,9 @@ git clone https://github.com/kordikp/slaidy && ./studio.sh
 
 ***
 
-> No bitmaps, no build step, no dependencies — and no video, deliberately.
+> Everything on this slide is text. The animation is 6 kB of SVG.
 
-*Delivery note:* Everything above is in the deck as text. There is no video and there will not be: a video is more opaque than the bitmaps this project already refuses — it cannot be diffed, edited or asked to change. When a talk needs one, it goes in as a link, and links are clickable while presenting.
+*Delivery note:* The figure is a twelve-second loop in four beats — the words are written, the slide takes them, a figure draws itself, the model offers a change and you keep what is worth keeping. All CSS keyframes, and it reads with the animation off, which is the rule every figure in the deck follows.
 
 ### 2. `[S]` One material, two readers
 

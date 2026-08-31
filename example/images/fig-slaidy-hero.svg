@@ -1,50 +1,104 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,sans-serif">
   <style>
-    @keyframes orbit  { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-    @keyframes breathe{ 0%,100%{transform:scale(1);opacity:.9} 50%{transform:scale(1.06);opacity:1} }
-    @keyframes dash   { 0%{stroke-dashoffset:220} 100%{stroke-dashoffset:0} }
-    @keyframes lift   { 0%,100%{transform:translateY(2px);opacity:.55} 50%{transform:translateY(-2px);opacity:1} }
-    @keyframes wipe   { 0%,100%{opacity:.18} 45%,55%{opacity:.85} }
-    .ring  { transform-origin:400px 232px; animation: orbit 18s linear infinite; }
-    .core  { transform-origin:400px 232px; animation: breathe 6s ease-in-out infinite; }
-    .wire  { stroke-dasharray:12 10; animation: dash 6s linear infinite; }
-    .wire2 { stroke-dasharray:12 10; animation: dash 6s linear infinite; animation-direction:reverse; }
-    .chip1 { transform-origin:center; animation: lift 6s ease-in-out infinite; }
-    .chip2 { transform-origin:center; animation: lift 6s ease-in-out infinite; animation-delay:-1.2s; }
-    .chip3 { transform-origin:center; animation: lift 6s ease-in-out infinite; animation-delay:-2.4s; }
-    .chip4 { transform-origin:center; animation: lift 6s ease-in-out infinite; animation-delay:-3.6s; }
-    .glow  { animation: wipe 6s ease-in-out infinite; }
+    /* One twelve-second loop, told in four beats: the words are written, the
+       slide takes them, a figure draws itself, the model offers a change and
+       the author keeps what is worth keeping. Every element is visible at rest,
+       so the figure reads with the animation off. */
+    .beat  { animation: 12s linear infinite; }
+    @keyframes typeIn  { 0%{opacity:0;transform:translateX(-8px)} 6%,88%{opacity:1;transform:none} 96%,100%{opacity:.25;transform:translateX(-8px)} }
+    @keyframes caret   { 0%,42%{opacity:1} 44%,100%{opacity:0} }
+    @keyframes travel  { 0%,14%{opacity:0;transform:translateX(0) scale(.9)} 22%{opacity:1}
+                         34%{opacity:1;transform:translateX(196px) scale(1)} 40%,100%{opacity:0;transform:translateX(196px) scale(.9)} }
+    @keyframes frameIn { 0%,16%{opacity:.15;transform:scale(.97)} 26%,100%{opacity:1;transform:scale(1)} }
+    @keyframes drawIt  { 0%,34%{stroke-dashoffset:340} 52%,100%{stroke-dashoffset:0} }
+    @keyframes popIn   { 0%,44%{opacity:0;transform:scale(.6)} 54%,100%{opacity:1;transform:scale(1)} }
+    @keyframes sweep   { 0%,58%{opacity:0;transform:translateY(0)} 64%{opacity:.9}
+                         76%{opacity:.9;transform:translateY(96px)} 82%,100%{opacity:0;transform:translateY(96px)} }
+    @keyframes suggest { 0%,66%{opacity:0;transform:translateY(6px)} 74%,86%{opacity:1;transform:none}
+                         94%,100%{opacity:0;transform:translateY(6px)} }
+    @keyframes accept  { 0%,86%{opacity:0;transform:scale(.5)} 92%,100%{opacity:1;transform:scale(1)} }
+    @keyframes orbit   { to{transform:rotate(360deg)} }
+    @keyframes flow    { to{stroke-dashoffset:-96} }
+
+    .l1{animation:typeIn 12s linear infinite}
+    .l2{animation:typeIn 12s linear infinite;animation-delay:-11.4s}
+    .l3{animation:typeIn 12s linear infinite;animation-delay:-10.8s}
+    .cur{animation:caret 1s step-end infinite}
+    .tok1{animation:travel 12s ease-in-out infinite}
+    .tok2{animation:travel 12s ease-in-out infinite;animation-delay:-.5s}
+    .tok3{animation:travel 12s ease-in-out infinite;animation-delay:-1s}
+    .frame{transform-origin:466px 232px;animation:frameIn 12s ease-out infinite}
+    .draw{stroke-dasharray:340;animation:drawIt 12s ease-in-out infinite}
+    .pop{transform-origin:center;animation:popIn 12s cubic-bezier(.2,1.4,.4,1) infinite}
+    .pop2{transform-origin:center;animation:popIn 12s cubic-bezier(.2,1.4,.4,1) infinite;animation-delay:-.4s}
+    .scan{animation:sweep 12s ease-in-out infinite}
+    .sug{animation:suggest 12s ease-out infinite}
+    .yes{transform-origin:center;animation:accept 12s cubic-bezier(.2,1.5,.4,1) infinite}
+    .ring{transform-origin:700px 232px;animation:orbit 22s linear infinite}
+    .wire{stroke-dasharray:5 7;animation:flow 3s linear infinite}
+    /* Printing takes one frame, and a loop that hides a thing for part of its
+       cycle would drop it from the PDF. With the animation off, every element
+       is in its finished state — which is also what a reader who asked for less
+       motion should get. */
+    @media print, (prefers-reduced-motion: reduce) {
+      .l1,.l2,.l3,.cur,.tok1,.tok2,.tok3,.frame,.draw,.pop,.pop2,.scan,.sug,.yes,.ring,.wire
+        { animation: none !important; }
+      .tok1,.tok2,.tok3 { opacity: 0 }
+      .scan { opacity: .16 }
+    }
   </style>
   <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
+  <text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">Written, drawn, argued with</text>
 
-  <circle class="glow" cx="400" cy="232" r="150" fill="#EDE9FE"/>
-  <g class="ring" fill="none" stroke="#7C3AED" stroke-width="1.2" opacity=".45">
-    <circle cx="400" cy="232" r="132" stroke-dasharray="3 9"/>
-    <circle cx="532" cy="232" r="4.5" fill="#7C3AED" stroke="none"/>
-    <circle cx="268" cy="232" r="3" fill="#0EA5E9" stroke="none"/>
+  <!-- 1 · the words -->
+  <rect x="42" y="96" width="188" height="118" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.6"/>
+  <text x="136" y="86" text-anchor="middle" font-size="11.5" font-weight="600" fill="#065F46">you write</text>
+  <g font-family="ui-monospace,monospace" font-size="10" fill="#3A404C">
+    <text class="l1" x="58" y="124">### The one question</text>
+    <text class="l2" x="58" y="150">&gt; one index, one model</text>
+    <text class="l3" x="58" y="176">![[fig-merge]]<tspan class="cur">▏</tspan></text>
+  </g>
+  <path class="wire" d="M230 155 H286" stroke="#10B981" stroke-width="2" fill="none"/>
+  <g fill="#10B981">
+    <circle class="tok1" cx="248" cy="124" r="3.4"/>
+    <circle class="tok2" cx="248" cy="150" r="3.4"/>
+    <circle class="tok3" cx="248" cy="176" r="3.4"/>
   </g>
 
-  <g class="core">
-    <rect x="322" y="188" width="156" height="88" rx="12" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2.5"/>
-    <text x="400" y="228" text-anchor="middle" font-size="27" font-weight="800" fill="#1E1B4B"
-          letter-spacing="-.5">Sl<tspan fill="#7C3AED">AI</tspan>dy</text>
-    <text x="400" y="252" text-anchor="middle" font-size="11" fill="#6B7280">markdown · svg · one file</text>
+  <!-- 2 · the slide, assembling -->
+  <g class="frame">
+    <rect x="300" y="88" width="332" height="196" rx="10" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2.2"/>
+    <rect x="318" y="104" width="150" height="9" rx="4.5" fill="#1E1B4B" opacity=".85"/>
+    <rect x="318" y="122" width="104" height="6" rx="3" fill="#C9C3F6"/>
+    <!-- 3 · a figure drawing itself -->
+    <g fill="none" stroke="#0EA5E9" stroke-width="2.4" stroke-linecap="round">
+      <path class="draw" d="M330 200 h58 v40 h-58 z M414 200 h58 v40 h-58 z M498 200 h58 v40 h-58 z
+                            M388 220 h26 M472 220 h26"/>
+    </g>
+    <circle class="pop"  cx="590" cy="220" r="15" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2"/>
+    <circle class="pop2" cx="590" cy="220" r="5" fill="#7C3AED"/>
+    <rect class="scan" x="308" y="140" width="316" height="26" rx="6" fill="#0EA5E9" opacity=".16"/>
+    <text x="466" y="272" text-anchor="middle" font-size="10.5" fill="#6B7280">one stage · editor, projector, print</text>
   </g>
 
-  <path class="wire"  d="M196 150 H322" stroke="#10B981" stroke-width="2" fill="none"/>
-  <path class="wire2" d="M478 150 H604" stroke="#0EA5E9" stroke-width="2" fill="none"/>
-  <path class="wire"  d="M196 316 H322" stroke="#D97706" stroke-width="2" fill="none"/>
-  <path class="wire2" d="M478 316 H604" stroke="#4C1D95" stroke-width="2" fill="none"/>
+  <!-- 4 · the model, offering -->
+  <g class="ring" fill="none" stroke="#0EA5E9" stroke-width="1.1" opacity=".5">
+    <circle cx="700" cy="232" r="58" stroke-dasharray="3 8"/>
+    <circle cx="758" cy="232" r="3.6" fill="#0EA5E9" stroke="none"/>
+  </g>
+  <circle cx="700" cy="232" r="40" fill="#E0F2FE" stroke="#0EA5E9" stroke-width="1.8"/>
+  <text x="700" y="229" text-anchor="middle" font-size="11.5" font-weight="700" fill="#075985">the model</text>
+  <text x="700" y="245" text-anchor="middle" font-size="10" fill="#075985">proposes</text>
 
-  <g class="chip1"><rect x="64" y="128" width="132" height="44" rx="10" fill="#D1FAE5" stroke="#10B981" stroke-width="1.5"/>
-    <text x="130" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#065F46">you write</text></g>
-  <g class="chip2"><rect x="604" y="128" width="132" height="44" rx="10" fill="#E0F2FE" stroke="#0EA5E9" stroke-width="1.5"/>
-    <text x="670" y="156" text-anchor="middle" font-size="13" font-weight="600" fill="#075985">it drafts</text></g>
-  <g class="chip3"><rect x="64" y="294" width="132" height="44" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
-    <text x="130" y="322" text-anchor="middle" font-size="13" font-weight="600" fill="#92400E">you cut</text></g>
-  <g class="chip4"><rect x="604" y="294" width="132" height="44" rx="10" fill="#EDE9FE" stroke="#7C3AED" stroke-width="1.5"/>
-    <text x="670" y="322" text-anchor="middle" font-size="13" font-weight="600" fill="#4C1D95">it draws</text></g>
+  <g class="sug">
+    <rect x="556" y="306" width="212" height="52" rx="9" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.4"/>
+    <text x="570" y="326" font-size="10.5" fill="#075985">cut line 3 — the figure says it</text>
+    <text x="570" y="344" font-size="10.5" fill="#6B7280">give the 40% a source</text>
+  </g>
+  <g class="yes">
+    <circle cx="546" cy="332" r="13" fill="#D1FAE5" stroke="#10B981" stroke-width="1.8"/>
+    <path d="M540 332 l4.5 4.5 L553 327" fill="none" stroke="#065F46" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
 
-  <text x="400" y="34" text-anchor="middle" font-size="19" font-weight="700" fill="#1E1B4B">Slides, with the AI in the middle of the word</text>
-  <text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">Everything on this slide is markdown and SVG — nothing else.</text>
+  <text x="400" y="428" text-anchor="middle" font-size="12.5" fill="#6B7280">It drafts and it draws. You keep what is worth keeping.</text>
 </svg>

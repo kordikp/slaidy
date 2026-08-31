@@ -54,6 +54,13 @@ Not to be difficult, but because these three are what it is:
 
 Everything else is open, including the parts you think are wrong.
 
+## Before you change anything
+
+[**docs/DESIGN.md**](docs/DESIGN.md) is the long version: the file format, what the editor
+does, where a deck lives and how it is kept from being lost. Most of it was written after
+a bug, so where a paragraph explains why something is the way it is, it is usually because
+it was once the other way.
+
 ## The shape of the file
 
 Roughly in order, so you can find things:

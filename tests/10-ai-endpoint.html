@@ -15,7 +15,9 @@ addEventListener('load',async()=>{
   try{ await w.llm('s','u',10); }catch(e){ msg=e.message; }
   ok('a missing key is not reported as a JSON bug',
      !/Unexpected token|not valid JSON/.test(msg),msg.slice(0,58)+'…');
-  ok('and it says what to do instead',/studio\.sh/.test(msg)&&/AI endpoint/.test(msg));
+  ok('and it says what to do instead',/studio\.sh/.test(msg)&&/\.env/.test(msg));
+  ok('including that a model on this machine needs no key',
+     /Ollama|local/i.test(msg),msg.slice(0,90));
 
   // the panel shows that message, not a stack trace
   w.cur=11;w.paint();await wait(150);

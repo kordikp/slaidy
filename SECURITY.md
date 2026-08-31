@@ -9,13 +9,9 @@ Two places are worth knowing about.
 `⋯ → AI usage`, the key is stored in that browser's `localStorage` and sent only to
 the endpoint you named. Run it with `./studio.sh` instead and the key stays in the
 shell environment: the page never sees it, and it never appears on a command line
-where `ps` would show it.
-
-**The demo's key.** There is none in the page, and there cannot be: a static page keeps no
-secrets. The demo's AI goes through a small function ([`demo/vercel`](demo/vercel)) that
-holds the key in its own environment, accepts only the two fields the app sends, and caps
-tokens per call and calls per day. There is an assertion in the suite that no key-shaped
-string appears in the file at all.
+where `ps` would show it. A model running on this machine needs no key at all, and
+then nothing — deck, figures, prompts — leaves the machine. There is an assertion in
+the suite that no key-shaped string appears in the shipped file.
 
 **The local server.** `scripts/serve.py` binds to `127.0.0.1` only, because it writes
 the deck file on request. Do not put it on a public interface.

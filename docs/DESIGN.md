@@ -364,20 +364,30 @@ something spills past the frame the warning offers to fix it — fit the slide, 
 picture, or move what is over the edge into the speaker notes — and the frame scrolls in
 the editor so the thing you need to reach is reachable.
 
-**AI.** Optional, and off unless you give it an endpoint. `studio.sh` runs a small
-proxy that forwards to OpenAI using `OPENAI_KEY`, so the key stays on your machine and
-never reaches the page:
+**AI.** Optional, and off unless there is a model to reach. `studio.sh` runs a small
+proxy at `/api/generate` that forwards to an OpenAI-compatible `/chat/completions`, so
+whatever credential is involved stays on the machine and never reaches the page.
 
-```bash
-export OPENAI_KEY=sk-...   # or put it in .env beside studio.sh
-./studio.sh                # prints "AI: on, <model> via <endpoint>"
-```
+It looks in three places, in this order:
 
-A `.env` in the same directory is read if the variable is not already set —
-`OPENAI_KEY`, `OPENAI_API_KEY` and `STUDIO_MODEL`, and nothing else.
+1. **What is already exported** — `OPENAI_KEY` / `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
+   `STUDIO_MODEL`.
+2. **`.env` beside `studio.sh`** — the same four names, plus `CESNET_API_KEY` and its
+   pair, since that gateway hands out names of its own. Nothing else is read, and no
+   value ever reaches a command line where `ps` would show it. See `.env.example`.
+3. **A model already running here** — `localhost:11434` (Ollama), `:1234` (LM Studio),
+   `:8000` (vLLM, llama.cpp). The first that answers `/v1/models` is used, and the model
+   name comes from that answer, so `./studio.sh` with Ollama running needs no
+   configuration at all.
 
-Or point `⋯ → AI endpoint` at any OpenAI-compatible `/chat/completions` yourself, in
-which case the key is held by the browser. Without either, the panels say so plainly.
+A local endpoint is treated as keyless on purpose: `serve.py` sends no `Authorization`
+header when the base URL is on this machine, because there is nobody to authenticate
+to and Ollama and llama.cpp reject nothing. It is the case worth optimising for — the
+deck, the figures and every prompt stay on the machine, which for an unpublished talk
+is the difference between using the AI panels and not.
+
+Or point `⋯ → AI usage` at an endpoint yourself, in which case the key is held by the
+browser. Without any of these, the panels say so plainly.
 
 `scripts/generate_figures.py` generates figures from a contract file against a locked
 design system — a fixed canvas, a fixed palette, CSS keyframes, and a validator that

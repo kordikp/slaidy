@@ -3377,16 +3377,21 @@ function usageHtml(){
 function configure(){
   const c=cfg();
   dialog(`<h3>AI usage</h3>
-  <p class="tip">Leave the URL empty to call <code>/api/generate</code> when this file is served next to a
-   p-book backend. Otherwise point it at any OpenAI-compatible <code>/chat/completions</code>. The key stays
-   in this browser.</p>
+  <p class="tip">Any OpenAI-compatible <code>/chat/completions</code>. A model on your own machine needs
+   no key and sends nothing anywhere — but the easier way to use one is <code>./studio.sh</code>, which finds
+   it for you and keeps the endpoint out of the browser entirely. Leave the URL empty to use the server that
+   serves this page. A key typed here stays in this browser.</p>
   <div class="fld"><label>Endpoint</label><input id="cU" value="${esc(c.url||'')}" placeholder="https://api.openai.com/v1/chat/completions"></div>
   <div class="fld"><label>Key</label><input id="cK" type="password" value="${esc(c.key||'')}"></div>
   <div class="chips" id="cPre" style="margin:2px 0 8px">
+    <button data-u="" data-m="" title="The page's own /api/generate, when it is served by studio.sh">This server</button>
+    <button data-u="http://localhost:11434/v1/chat/completions" data-m="qwen3:14b" data-local="1"
+      title="Ollama on this machine. No key. Needs OLLAMA_ORIGINS to allow this page.">Ollama</button>
+    <button data-u="http://localhost:1234/v1/chat/completions" data-m="" data-local="1"
+      title="LM Studio's local server. No key. Turn CORS on in its Developer tab.">LM Studio</button>
+    <button data-u="https://api.openai.com/v1/chat/completions" data-m="gpt-5.6-sol">OpenAI</button>
     <button data-u="https://llm.ai.e-infra.cz/v1/chat/completions" data-m="qwen3.5"
       title="Free if you are affiliated at a Czech academic institution — bring your own key from e-infra.cz">CESNET e-INFRA</button>
-    <button data-u="https://api.openai.com/v1/chat/completions" data-m="gpt-5.6-sol">OpenAI</button>
-    <button data-u="" data-m="" title="The page's own /api/generate, when it is served by studio.sh">This server</button>
   </div>
   <div class="fld"><label>Model</label><input id="cM" value="${esc(c.model||'gpt-5.6-sol')}"></div>
   <div class="fld" style="margin-top:14px"><label>What every figure in this deck should obey</label>
@@ -3412,7 +3417,9 @@ function configure(){
     document.getElementById('cU').value=b.dataset.u;
     if(b.dataset.m)document.getElementById('cM').value=b.dataset.m;
     document.getElementById('cK').focus();
-    toast(b.dataset.u?'Endpoint set — paste your key':'Using the server that serves this page');});
+    toast(!b.dataset.u?'Using the server that serves this page'
+          :b.dataset.local?'Endpoint set — a model on this machine needs no key'
+          :'Endpoint set — paste your key');});
   document.getElementById('cC').onclick=closeDialog;
   document.getElementById('cZero').onclick=()=>{
     useReset();

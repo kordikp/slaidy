@@ -13,3 +13,8 @@ __pycache__/
 
 # the Vercel link, which is per-machine
 demo/vercel/.vercel/
+
+# Keys. .env.example is the template and is committed; .env never is.
+.env
+.env.*
+!.env.example

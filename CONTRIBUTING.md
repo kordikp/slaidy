@@ -8,6 +8,7 @@ Python and a Chrome.
 
 ```bash
 ./studio.sh                  # the example deck, served with an AI proxy
+                             # (finds Ollama/LM Studio if one is running; see .env.example)
 ./studio.sh decks/mine.json  # any other bundle
 ```
 

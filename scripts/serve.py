@@ -8,6 +8,13 @@ from the environment, so the key stays on this machine and never reaches the pag
 
     OPENAI_KEY=sk-... .venv/bin/python scripts/serve.py <dir> <port>
 
+A local model is a first-class case: point OPENAI_BASE_URL at Ollama, LM Studio,
+llama.cpp or vLLM and no key is needed, because there is nobody to authenticate to.
+Then nothing leaves the machine — the deck, the figures and the prompts all stay here.
+
+    OPENAI_BASE_URL=http://localhost:11434/v1 STUDIO_MODEL=qwen3:14b \
+        .venv/bin/python scripts/serve.py <dir> <port>
+
 Env: OPENAI_KEY (or OPENAI_API_KEY), OPENAI_BASE_URL, STUDIO_MODEL (default gpt-5.6-sol)
 """
 import json, os, random, shutil, sys, tempfile, time, urllib.error, urllib.request
@@ -16,6 +23,11 @@ from functools import partial
 
 BASE = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 KEY = os.environ.get("OPENAI_KEY") or os.environ.get("OPENAI_API_KEY")
+# A model on this machine has nobody to authenticate to, so a missing key is
+# the normal state rather than a misconfiguration. Ollama and llama.cpp ignore
+# the header entirely; LM Studio and vLLM accept anything.
+LOCAL = any(h in BASE for h in ("://localhost", "://127.0.0.1", "://[::1]", "://0.0.0.0",
+                                "://host.docker.internal"))
 MODEL = os.environ.get("STUDIO_MODEL") or os.environ.get("FIGURE_MODEL") or "gpt-5.6-sol"
 # e-INFRA caps concurrent calls; going past it earns a 429 rather than a queue
 MAXPAR = int(os.environ.get("STUDIO_MAX_CONCURRENCY") or ("4" if "e-infra" in BASE else "0") or 0)
@@ -147,10 +159,11 @@ class Handler(SimpleHTTPRequestHandler):
                 "http://localhost:%d" % self.server.server_address[1],
                 "http://127.0.0.1:%d" % self.server.server_address[1]):
             return self._json(403, {"error": "this endpoint only answers the page it serves"})
-        if not KEY:
+        if not KEY and not LOCAL:
             return self._json(503, {"error":
-                "No OPENAI_KEY on the machine running studio.sh. Either export it and restart, "
-                "or set an endpoint yourself under ⋯ → AI endpoint."})
+                "No OPENAI_KEY on the machine running studio.sh. Put one in .env, or point "
+                "OPENAI_BASE_URL at a model running on this machine — Ollama, LM Studio, "
+                "llama.cpp and vLLM all need no key. See .env.example."})
         try:
             n = int(self.headers.get("Content-Length") or 0)
             req = json.loads(self.rfile.read(n) or b"{}")
@@ -167,7 +180,9 @@ class Handler(SimpleHTTPRequestHandler):
                          {"role": "user", "content": req.get("user", "")}],
             cap: budget(model, req.get("maxTok")),
         }).encode()
-        headers = {"Authorization": "Bearer " + KEY, "Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json"}
+        if KEY:
+            headers["Authorization"] = "Bearer " + KEY
 
         # e-INFRA is shared and not always there, and its failures are mostly the
         # passing kind: a 429 from the cap, a 5xx, or a body with choices: null.
@@ -230,8 +245,9 @@ def main():
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
     if len(sys.argv) > 3 and sys.argv[3]:
         DECK = os.path.abspath(sys.argv[3])
-    print("  AI: " + (f"on, {MODEL} via {BASE}" + (f", {MAXPAR} at a time" if MAXPAR else "") if KEY
-                      else "off — no OPENAI_KEY, so the AI panels will say so plainly"),
+    print("  AI: " + (f"on, {MODEL} via {BASE}" + (f", {MAXPAR} at a time" if MAXPAR else "")
+                      + (" — nothing leaves this machine" if LOCAL else "") if (KEY or LOCAL)
+                      else "off — no key and no local model, so the AI panels will say so plainly"),
           flush=True)   # stdout is a pipe when started detached; without this it is never seen
     if DECK:
         print("  deck: %s  (the app saves straight to it)" % os.path.relpath(DECK, os.getcwd()),

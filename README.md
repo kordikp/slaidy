@@ -15,9 +15,10 @@ application, and if the application disappears you still have a deck.
 
 ### [Try it in your browser →](https://kordikp.github.io/slaidy/)
 
-Nothing to sign up for and nothing uploaded — the same single file, an example deck, and
-enough AI to see what it does, on capacity from CESNET e-INFRA. For more than a taste,
-put your own key in under `⋯ → AI usage`.
+Nothing to sign up for and nothing uploaded — the same single file and an example deck,
+with a small daily allowance of AI so you can see what it does.
+
+Then run it properly, which takes one command:
 
 ```bash
 git clone https://github.com/kordikp/slaidy
@@ -27,6 +28,29 @@ cd slaidy
 
 That serves the example deck at `http://localhost:8080` and opens it. Press `?` for
 the shortcuts, `P` to present.
+
+### Its own model, or yours
+
+The AI is where you point it, and it never reaches the browser: the page talks to
+`studio.sh`, and `studio.sh` talks to the model.
+
+**A model on this machine** is the case the project is built around. Start Ollama, LM
+Studio, llama.cpp or vLLM and run `./studio.sh` — it finds the server, asks it which
+model to use, and says so in the banner. No key: there is nobody to authenticate to,
+and nothing you write leaves the machine.
+
+```
+SlAIdy  ·  example.json  ·  AI via qwen3:14b on this machine
+  AI: on, qwen3:14b via http://localhost:11434/v1 — nothing leaves this machine
+```
+
+**A hosted model** takes a key in `.env`, which stays in the shell environment and never
+appears on a command line. Copy [`.env.example`](.env.example) and uncomment a block —
+OpenAI, an institutional gateway, or anything else that speaks
+`/chat/completions`.
+
+Either way the editor is the same. Everything except the AI panels works with no model
+at all.
 
 ### What it is for
 
@@ -98,9 +122,7 @@ The parts worth knowing before you change anything:
   deck lives and how it is kept, and the reasoning behind the odd-looking parts.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — running it, the test suite, what the project
   says no to and why, and a map of the one file it is all in.
-- **[SECURITY.md](SECURITY.md)** — what a deck is allowed to do, and where an AI key lives.
-- **[demo/vercel](demo/vercel)** — the little function that holds the demo's AI key, since a
-  static page cannot.
+- **[.env.example](.env.example)** — every way of pointing it at a model, local or hosted.
 
 ## Thanks
 

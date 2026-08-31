@@ -93,8 +93,16 @@ addEventListener('load',async()=>{
 
   w.configure();await wait(200);
   const pres=[...d.querySelectorAll('#cPre button')].map(b=>b.textContent);
-  ok('the endpoint has presets rather than a URL to remember',pres.length===3,pres.join(' · '));
+  ok('the endpoint has presets rather than a URL to remember',pres.length>=4,pres.join(' · '));
   ok('CESNET e-INFRA among them',pres.some(x=>/CESNET/.test(x)));
+  // a model on your own machine is the case the project is built around, so it
+  // is one click here and needs no key
+  ok('and a model on this machine',pres.some(x=>/Ollama/.test(x))&&pres.some(x=>/LM Studio/.test(x)),
+     pres.join(' · '));
+  const loc=d.querySelector('#cPre button[data-local]');
+  loc.click();await wait(120);
+  ok('picking one fills in localhost',/localhost:\d+/.test(d.getElementById('cU').value),
+     d.getElementById('cU').value);
   d.querySelector('#cPre button[data-m="qwen3.5"]').click();await wait(120);
   ok('picking it fills the endpoint',
      /llm\.ai\.e-infra\.cz/.test(d.getElementById('cU').value),d.getElementById('cU').value);

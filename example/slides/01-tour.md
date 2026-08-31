@@ -6,16 +6,22 @@
 
 **Figure:** `fig-slaidy-hero` · split-l · 88%
 
+*Text:* 92%
+
 *Flags:* center
 
-Slides where the deck stays **markdown and SVG** — legible to you, to `git`,
-and to the model you edit it with.
+Present what you know so **both audiences follow it** — the room, and the AI
+agents that read and rewrite the deck afterwards.
+
+A deck is markdown and SVG: ask for a change, get the change back in the text
+you started with.
 
 #### What this one slide is made of
 
 | | |
 |---|---|
-| an animated figure | SVG, `@keyframes`, 12 kB |
+| an animated figure | SVG, `@keyframes`, 14 kB |
+| a chart inside it | bars, a trend, a legend |
 | a formula | $r_{ui} = \mathbf{p}_u^\top \mathbf{q}_i$ |
 | a table | this one |
 | code | below |
@@ -27,9 +33,9 @@ git clone https://github.com/kordikp/slaidy && ./studio.sh
 
 ***
 
-> Everything on this slide is text. The animation is 12 kB of SVG.
+> Every element here is text — the animation included.
 
-*Delivery note:* The figure is a twelve-second loop in four beats — you ask for the intro, it writes six paragraphs too many, you wipe the lot, and it comes back with one line and a chart. All CSS keyframes, and it reads with the animation off, which is the rule every figure in this deck follows; a print takes one frame, so a loop that hides its point would lose it.
+*Delivery note:* Twelve seconds, five beats — you ask for detail, it writes six paragraphs too many, you wipe the lot, it takes that badly, and comes back with two lines and a chart that reads. All CSS keyframes, and the finished state is what the markup draws: with the animation off, a print or a reader who asked for less motion still sees the result, not the wall of text that got deleted.
 
 ### 2. `[S]` One material, two readers
 

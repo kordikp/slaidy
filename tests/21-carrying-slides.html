@@ -61,7 +61,7 @@ addEventListener('load',async()=>{
   // ---------- pasting into "another deck" ----------
   const other={id:'other',title:'Another deck',meta:{},style:{},figs:{},
     slides:[{tag:'S',group:'Elsewhere',sub:null,title:'The only slide there',
-             body:'Nothing much.',notes:'',fig:null,layout:'text',figScale:100,textScale:100,
+             body:'Nothing much.',notes:'',layout:'text',textScale:100,
              skip:false,flags:[]}]};
   w.S=other;w.normalise();w.cur=0;w.paint();await wait(250);
   ok('we are in a different deck now',w.S.slides.length===1&&!Object.keys(w.S.figs).length);
@@ -93,7 +93,7 @@ addEventListener('load',async()=>{
   const alt=Object.keys(w.S.figs).find(k=>k!==id&&k.startsWith(id));
   ok('the incoming one comes in beside it',!!alt,alt||'(none)');
   ok('and the pasted slide points at the new name',
-     w.S.slides.some(x=>(x.body||'').includes('![['+alt+']]')||x.fig===alt),
+     w.S.slides.some(x=>(x.body||'').includes('![['+alt+']]')),
      alt);
   ok('still nothing dangling',w.S.slides.every(x=>w.wantedFigures(x).length===0));
   w.undo();await wait(250);

@@ -80,9 +80,12 @@ addEventListener('load',async()=>{
   // them being a special case in the renderer.
   const li=w.S.slides.length-1, sl=w.S.slides[li];
   w.cur=li;
-  ok('the nine built in are all offered',Object.keys(w.LAY).length===9,Object.keys(w.LAY).join(' '));
-  ok('and the five that always existed are still among them',
-     ['figure','split-l','split-r','background','text'].every(k=>w.LAY[k]));
+  ok('six built in',Object.keys(w.LAY).length===6,Object.keys(w.LAY).join(' '));
+  ok('and they are about shape, not about where one picture goes',
+     ['text','two','three','background','cover','closing'].every(k=>w.LAY[k]),
+     Object.keys(w.LAY).join(' '));
+  ok('the layouts that were about a hero figure are gone',
+     !w.LAY.figure&&!w.LAY['split-l']&&!w.LAY['split-r']);
 
   // areas: how many, and what a separator does
   ok('one area by default',w.LAY.text.areas.length===1);
@@ -100,7 +103,7 @@ addEventListener('load',async()=>{
      w.areaGroups(w.blocks('only this'),3).length===3);
 
   // rendered
-  sl.layout='two'; sl.fig=null;
+  sl.layout='two';
   sl.body='Left side.\n\n<!-- col -->\n\nRight side.';
   w.paint(); await wait(300);
   const areas=d.querySelectorAll('#sheet .stage .area');
@@ -198,7 +201,7 @@ addEventListener('load',async()=>{
 
   // a deck can add its own
   w.S.meta.layouts={'wide-left':{label:'Wide left',areas:[{w:62},{w:38}]}};
-  ok('a deck layout joins the built-in ones',!!w.LAYS()['wide-left']&&Object.keys(w.LAYS()).length===10);
+  ok('a deck layout joins the built-in ones',!!w.LAYS()['wide-left']&&Object.keys(w.LAYS()).length===7);
   sl.layout='wide-left'; w.paint(); await wait(250);
   const wa=d.querySelectorAll('#sheet .stage .area');
   ok('and it is drawn in the proportion it asked for',

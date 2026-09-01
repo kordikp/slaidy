@@ -106,33 +106,13 @@ button{cursor:pointer;background:none;border:none}
  text-wrap:balance;font-weight:660;color:var(--d-ink);outline:none;border-radius:5px;padding:2px 6px;
  margin-left:-6px}
 .stage h2.hd:focus{background:var(--accbg);box-shadow:0 0 0 3px #C9C3F6}
-.stage .stack{flex:1;min-height:0;display:flex;gap:30px}
-.stage .stack.col{flex-direction:column}
-.stage .stack.rev{flex-direction:row-reverse}
-.stage .fg{flex:1;display:flex;align-items:safe center;justify-content:center;min-height:0;overflow:hidden;
- --fs:100%;--fsn:1;container-type:size}
-/* side by side, both columns start at the top: whatever the two heights are, they
-   never look adrift from each other. Slack under a short text is a job for Tidy. */
-.stage .stack:not(.col)>.fg,.stage .stack:not(.col)>.fg .hero{align-items:flex-start}
-.stage .stack:not(.col)>.tx{justify-content:flex-start}
+.stage .stack{flex:1;min-height:0;display:flex;flex-direction:column}
 /* Tidy may decide a short slide sits better in the middle of the frame */
-/* Centring the row stops the figure column stretching, and the figure sizes
-   itself from that column's height (100cqh) — so it collapsed to nothing and
-   the picture simply was not there. The text centres; the column still gets
-   the full height to measure against, and the drawing centres inside it. */
-.stage .stack.mid:not(.col){align-items:safe center}
-.stage .stack.mid:not(.col)>.fg{align-self:stretch}
-.stage .stack.mid:not(.col)>.fg,.stage .stack.mid:not(.col)>.fg .hero{align-items:safe center}
-.stage .stack.mid:not(.col)>.tx{justify-content:safe center}
-.stage .stack.mid.col>.tx{justify-content:safe center}
-.stage .stack.mid.col{justify-content:safe center}
+.stage .stack.mid>.tx{justify-content:safe center}
+.stage .stack.mid{justify-content:safe center}
 /* height:auto lets the viewBox set the box, so the element is the drawing rather
    than a column the drawing floats in the middle of */
 /* fit inside the column on both axes, at the size asked for */
-.stage .fg .figbox{width:calc(100%*var(--fsn,1));   /* before container queries */
- width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
- aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
-.stage .fg svg{width:100%;height:100%;display:block}
 /* safe center: centred when it fits, top-aligned when it would otherwise be cut */
 .stage .tx{align-self:stretch;flex:1;min-height:0;overflow:hidden;font-size:var(--d-body);line-height:1.5;color:#3A404C;
  display:flex;flex-direction:column}
@@ -145,7 +125,7 @@ button{cursor:pointer;background:none;border:none}
 /* Areas. The layout says how many and in what proportion; this only lays them
    out. A hairline between them so the boundary is visible while editing —
    projected there is nothing to see, which is the point. */
-.stage .txin.cols,.stage #bd.cols{display:flex;flex-direction:row;gap:0;align-items:stretch;min-height:0;flex:1}
+.stage .txin.cols,.stage .bdy.cols{display:flex;flex-direction:row;gap:0;align-items:stretch;min-height:0;flex:1}
 .stage .area{flex:1 1 0;min-width:0;display:flex;flex-direction:column;padding:0 22px}
 .stage .area:first-child{padding-left:0}
 .stage .area:last-child{padding-right:0}
@@ -170,7 +150,6 @@ button{cursor:pointer;background:none;border:none}
 /* A slide that opens or closes a talk: no header, and the title carries it */
 .stage.titled{justify-content:center}
 .stage h2.big{font-size:calc(var(--d-title)*1.7);margin-bottom:26px}
-.stage .tx.under{flex:none;max-height:46%;margin-top:20px}
 /* The backdrop honours the figure size like every other layout. It did not: the
    width was written into the stylesheet, so the slider moved and nothing
    happened. 118% is what "100%" means here — a backdrop is meant to bleed a
@@ -179,13 +158,11 @@ button{cursor:pointer;background:none;border:none}
 .stage.bgfig .bgl{position:absolute;inset:0;opacity:.12;overflow:hidden;
  display:flex;align-items:center;justify-content:center}
 .stage.bgfig .bgl svg{width:calc(118%*var(--fsn,1));height:auto;flex:none}
-/* In the editor a figure is wrapped in .hero > .figbox, which sizes itself from
-   a container query — so the backdrop came out a different size in the editor
-   than on the projector, which is the one thing this stage is not allowed to
-   do. Behind the text, the box constrains nothing; the rule above is the size. */
-.stage.bgfig .bgl .hero,.stage.bgfig .bgl .figbox{
+/* The backdrop is sized by the rule above and by nothing else, so that it is
+   the same size in the editor as on the projector — the one thing this stage is
+   not allowed to get wrong. */
+.stage.bgfig .bgl .figbox{
  width:auto;height:auto;max-width:none;aspect-ratio:auto;display:contents}
-.stage.bgfig .hero{width:100%;height:100%}
 
 /* body typography, at stage scale — shared by every surface */
 .stage .tx p{margin:0 0 .55em}
@@ -223,20 +200,32 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx code.tex{background:#FEF3C7;color:#92400E;border:1px solid #F3DFA6}
 .stage .tx .gap{height:34px}
 .stage .tx .rule{border:0;border-top:1px solid var(--line);margin:20px 0}
-.stage .tx .inlinefig{margin:12px 0;--fs:100%;--fsn:1;display:flex;justify-content:center}
-/* Contained on BOTH axes, like the hero figure. It used to be width only, and
-   that is why a figure among text ate the slide: asked for at 85% of a
-   1168-wide column it took 993 × 558, in a column 540 tall — the figure alone
-   was taller than the space, and the table and the key line under it were
-   pushed off the bottom.
-   The cap is in stage pixels because the stage is always 1280 × 720 in its own
-   coordinates, whichever surface is drawing it. 340 was measured, not guessed:
-   across the deck's 238 slides it is the value at which nothing overflows at
-   all. A percentage now means "of the largest that fits", which is what it
-   already meant for the hero figure. A figure that wants more room than this
-   wants the figure layout, where the frame contains it. */
+/* A figure is a block in a column, and the column contains it — on both axes,
+   which is what the privileged "hero" figure used to get and an inline one did
+   not. Before, a figure among text was capped at a measured 340px because
+   nothing bounded its height, and asked for at 85% of a 1168-wide column it
+   took 993 × 558 in a column 540 tall, pushing the table under it off the
+   bottom. Now it takes the height the column has left, so a percentage means
+   what it always should have: of the largest that fits here. */
+/* The body is a flex column wherever it is drawn — projector, editor, print —
+   and every block keeps its own height except a figure, which takes what is
+   left. In the editor there is one more box in the chain — .bdy — and it is
+   the same kind of column. It is addressed by class and not by its id, because
+   an id in the selector outweighs everything below and the figure rule lost. */
+.stage .txin,.stage .area,.stage .bdy{display:flex;flex-direction:column;min-height:0}
+.stage .txin>*,.stage .area>*,.stage .bdy>*{flex:0 0 auto}
+/* after the rule above, not before it: .bdy is a child of .txin, so >* was
+   setting it back to flex:0 and the column stopped stretching — which left the
+   figure inside it holding a thumbnail with the slack sitting underneath */
+.stage .txin,.stage .bdy{flex:1 1 auto}
+.stage .inlinefig,.stage .bk.isfig{flex:1 1 auto;min-height:64px}
+.stage .bk.isfig{display:flex;flex-direction:column}
+.stage .bk.isfig>.inlinefig{min-height:0;margin:0}
+.stage .tx .inlinefig{margin:12px 0;--fs:100%;--fsn:1;display:flex;justify-content:center;
+ container-type:size}
 .stage .tx .inlinefig .figbox{
- width:calc(min(100%,var(--inlmax,340px)*var(--arw)/var(--arh))*var(--fsn));
+ width:calc(min(100%,100cqh*var(--arw)/var(--arh))*var(--fsn));   /* before container queries */
+ width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
  aspect-ratio:var(--arw)/var(--arh);position:relative}
 .stage .tx .inlinefig svg{width:100%;height:100%;display:block}
 .stage .tx .undrawn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:26px 20px;
@@ -249,15 +238,6 @@ button{cursor:pointer;background:none;border:none}
 .stage .tx .undrawn button[disabled]{opacity:.55;cursor:default}
 
 /* editing affordances live on the same stage, so nothing shifts when you present */
-.stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;
- justify-content:center;container-type:size}
-.stage .hero .figbox{width:calc(100%*var(--fsn,1));
- width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
- aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
-.stage .hero:hover{outline:1px dashed #CFD3DA;border-radius:6px}
-.stage .hero svg{width:100%;height:100%;display:block}
-.stage .hero .empty{color:var(--faint);font-size:16px;padding:28px;border:1px dashed var(--line);
- border-radius:10px;text-align:center}
 .stage .fx{position:relative}
 .stage .fx>svg{display:block}
 .stage .fx:hover{outline:1px dashed #CFD3DA;outline-offset:2px;border-radius:4px}
@@ -291,7 +271,7 @@ button{cursor:pointer;background:none;border:none}
 .bk.dropbefore:before{top:-5px}
 .bk.dropafter:before{bottom:-5px}
 /* and the column you are aiming at lights up, so an empty one is a target */
-#sheet .stage .area.dropin,#sheet .stage #bd.dropin{background:var(--accbg);border-radius:6px}
+#sheet .stage .area.dropin,#sheet .stage .bdy.dropin{background:var(--accbg);border-radius:6px}
 /* right:9 not 3 — the block hangs 6px past the column on each side (margin:0 -6px),
    and the column is what clips */
 .bkt{position:absolute;right:9px;top:3px;display:none;flex-direction:row;gap:1px;z-index:3;
@@ -837,7 +817,7 @@ const KINDS={
 };
 function slideKind(s){
   const body=(s.body||'').trim();
-  const hasFig=!!(s.fig&&S.figs[s.fig])||/^!\[\[/m.test(body);
+  const hasFig=/^!\[\[/m.test(body);
   const words=body.replace(/!\[\[[^\]]*\]\]/g,'').replace(/[#*`>|_-]/g,'').trim();
   if(/^\s*\|/m.test(body))return 'table';
   if(hasFig&&words)return 'both';
@@ -860,21 +840,23 @@ function slideKind(s){
    one. That is where a cover and a closing slide come from without either being
    a special case in the code. */
 const LAY={
-  figure:    {label:'Figure',        hero:'above',  areas:[{}],
-              hint:'Only the figure is projected — the body moves below, as speaker material.'},
-  'split-l': {label:'Fig ◧',         hero:'left',   areas:[{}], hint:'Figure on the left, text on the right.'},
-  'split-r': {label:'Fig ◨',         hero:'right',  areas:[{}], hint:'Text on the left, figure on the right.'},
-  background:{label:'Behind',        hero:'behind', areas:[{}], hint:'Figure faint behind the text.'},
-  text:      {label:'Text',                         areas:[{}], hint:'Text only.'},
-  two:       {label:'Two columns',                  areas:[{},{}],
-              hint:'Two columns. <!-- col --> in the body says where the second starts.'},
-  three:     {label:'Three columns',                areas:[{},{},{}],
-              hint:'Three columns, split by two <!-- col --> lines.'},
+  text:      {label:'One column',  areas:[{}],
+              hint:'Everything in one column, in the order you wrote it.'},
+  two:       {label:'Two columns', areas:[{},{}],
+              hint:'Two columns. Switching to this cuts the body where they come out even.'},
+  three:     {label:'Three columns', areas:[{},{},{}],
+              hint:'Three columns, cut in the same way.'},
+  background:{label:'Behind',      areas:[{}], behind:true,
+              hint:'The first figure in the body goes faint behind everything else.'},
   cover:     {label:'Cover',   header:false, title:'big', areas:[{}],
               hint:'No header, a large title — for the slide that opens the talk.'},
   closing:   {label:'Closing', header:false, title:'big', areas:[{}],
               hint:'No header, a large title — for the one that ends it.'},
 };
+/* Layouts that decks in the wild still name. They are answered, once, by the
+   migration in normalise(): the figure moves into the body where the layout put
+   it, and the layout becomes one of the six above. */
+const LAY_WAS={figure:'text','split-l':'two','split-r':'two',background:'background'};
 const LAYS=()=>Object.assign({},LAY,(S.meta&&S.meta.layouts)||{});
 const layOf=s=>LAYS()[s&&s.layout]||LAY.text;
 const layName=k=>(LAYS()[k]||{}).label||k;
@@ -1488,6 +1470,39 @@ const figRef=src=>{
   return m?{id:m[1],size:m[2]?+m[2]:100}:{id:String(src).replace(/^!\[\[|\]\]$/g,''),size:100};
 };
 const figMark=(id,size)=>`![[${id}${size&&size!==100?'|'+size+'%':''}]]`;
+/* A figure is content now, so a rewrite can drop one the way it can drop a
+   paragraph — except that a drawing is not retyped in ten seconds. Any figure
+   the slide had and the new text does not gets put back at the end. Removing
+   one is a click on the picture; losing one to a model that ignored the
+   instruction is not a thing that should be possible. */
+function keepFigures(oldBody,newBody){
+  const had=[...new Set([...String(oldBody||'').matchAll(FIGREF)].map(m=>m[0]))];
+  const kept=had.filter(mark=>{
+    const id=figRef(mark).id;
+    return !new RegExp(`!\\[\\[${id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(\\||\\])`).test(newBody);
+  });
+  return kept.length?{body:String(newBody||'').trim()+'\n\n'+kept.join('\n\n'),back:kept.length}
+                    :{body:newBody,back:0};
+}
+/* A figure is a block in the body, like a table or a paragraph — there is no
+   longer one privileged picture per slide with fields of its own. These answer
+   the questions s.fig used to: which figures are on this slide, and which is
+   the one to put behind everything when the layout says to. */
+function figBlocks(s){
+  const out=[],list=blocks(s&&s.body);
+  list.forEach((b,i)=>{ if(b.kind==='fig')out.push({i,...figRef(b.src)}); });
+  return out;
+}
+const firstFig=s=>{const f=figBlocks(s)[0];return f?f.id:null;};
+const figIds=s=>figBlocks(s).map(f=>f.id);
+/* Replace the size of the nth figure on a slide, in place. */
+function setFigSize(s,n,size){
+  const list=blocks(s.body),f=figBlocks(s)[n||0];
+  if(!f)return false;
+  list[f.i]={kind:'fig',src:figMark(f.id,size)};
+  s.body=list.map(b=>b.src).join('\n\n');
+  return true;
+}
 function blocks(md){
   const out=[];let buf=[],kind=null,fence=null;
   const flush=()=>{if(buf.length){out.push({kind,src:buf.join('\n')});buf=[];kind=null;}};
@@ -1610,11 +1625,25 @@ function splitBody(s,n){
   s.body=out.map(b=>b.src).join('\n\n');
   return true;
 }
-function areasHtml(s,L){
-  if(L.areas.length<2)return body2html(s.body);
-  return areaGroups(blocks(s.body),L.areas.length).map((g,i)=>
-    `<div class="area" style="flex:${(L.areas[i]||{}).w||1} 1 0">${g.map(b=>block(b)).join('')}</div>`
+/* ix maps a block back to its place in the body, so the markdown editor can
+   point at the source of whatever you clicked. Columns and a backdrop both
+   move blocks around; the index has to survive that. */
+function areasHtml(list,L,ix){
+  const at=b=>ix?ix.get(b):null;
+  if(L.areas.length<2)return list.map(b=>block(b,at(b))).join('');
+  return areaGroups(list,L.areas.length).map((g,i)=>
+    `<div class="area" style="flex:${(L.areas[i]||{}).w||1} 1 0">${g.map(b=>block(b,at(b))).join('')}</div>`
   ).join('');
+}
+/* "Behind" takes the first figure out of the flow and paints it under
+   everything. It is the one layout that is not a column, so it is the one place
+   left that treats a figure differently from any other block. */
+function bodyParts(s,L){
+  const all=blocks(s.body), ix=new Map(all.map((b,i)=>[b,i]));
+  if(!L.behind)return{list:all,ix,behind:null};
+  const i=all.findIndex(b=>b.kind==='fig');
+  return i<0?{list:all,ix,behind:null}
+            :{list:all.filter((_,k)=>k!==i),ix,behind:figRef(all[i].src)};
 }
 
 /* ---------- importers ---------- */
@@ -1692,9 +1721,28 @@ function importMarkdown(name,text){
   });
   return slides;
 }
+/* Decks written before figures were blocks carry s.fig and s.figScale, and a
+   layout that says where that one picture went. Both become a figure in the
+   body, at the place the layout put it — after which nothing in the app has to
+   know that a slide ever had a privileged picture. Done on the way in, so old
+   decks, old markdown and old bundles all arrive in the new shape. */
+function hoistLegacyFig(s){
+  if(!s.fig)return;
+  const mark=figMark(s.fig,s.figScale||100), body=String(s.body||'').trim();
+  const was=s.layout;
+  if(was==='split-r')      s.body=(body?body+'\n\n':'')+'<!-- col -->\n\n'+mark;
+  else if(was==='split-l') s.body=mark+'\n\n<!-- col -->'+(body?'\n\n'+body:'');
+  else                     s.body=mark+(body?'\n\n'+body:'');
+  s.layout=LAY_WAS[was]||(was&&LAY[was]?was:'text');
+  delete s.fig; delete s.figScale;
+}
 function normalise(){ S.slides.forEach((s,i)=>{
   if(s.style&&!Object.keys(s.style).length)delete s.style;   /* sparse, or absent */
-  s.n=i+1;s.layout=s.layout||(s.fig?'figure':'text');s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];s.figScale=s.figScale||100;s.textScale=s.textScale||100;}); }
+  hoistLegacyFig(s);
+  delete s.fig; delete s.figScale;      /* including the ones that were only ever null */
+  s.n=i+1;s.layout=LAY[s.layout]||(S.meta&&S.meta.layouts&&S.meta.layouts[s.layout])?s.layout:'text';
+  s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];
+  s.textScale=s.textScale||100;}); }
 
 /* ---------- bringing markdown in -------------------------------------------
    A folder of .md files is not obviously a deck: how many slides is it, what
@@ -1725,7 +1773,7 @@ function previewImport({mds,svgs}){
   }
   const figsWanted=new Set();
   slides.forEach(s=>{
-    if(s.fig)figsWanted.add(s.fig);
+    if(s.fig)figsWanted.add(s.fig);            /* a deck being imported may still be the old shape */
     [...(s.body||'').matchAll(/!\[\[([a-zA-Z0-9._-]+)/g)].forEach(m=>figsWanted.add(m[1]));
   });
   const have=new Set([...svgs.map(([id])=>id),...Object.keys(S.figs||{})]);
@@ -1820,9 +1868,7 @@ function picked(){
 function figsOf(list){
   const out={};
   list.forEach(s=>{
-    const ids=[...new Set([...((s.body||'').matchAll(FIGREF))].map(m=>m[1]))];
-    if(s.fig)ids.push(s.fig);
-    [...new Set(ids)].forEach(id=>{if(S.figs[id])out[id]=S.figs[id];});
+    figIds(s).forEach(id=>{if(S.figs[id])out[id]=S.figs[id];});
   });
   return out;
 }
@@ -2124,35 +2170,23 @@ function moveSlide(d){
    so what you arrange is what the room sees. */
 function stageHtml(s,edit){
   const L=layOf(s);
-  const has=s.fig&&S.figs[s.fig];
-  const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig):'');
-  const fsz=s.figScale&&s.figScale!==100?` style="--fsn:${s.figScale/100}"`:'';
+  const {list,ix,behind}=bodyParts(s,L);
   const tsz=s.textScale&&s.textScale!==100
     ? ` style="font-size:calc(var(--d-body)*${s.textScale/100})"` : '';
   const cols=L.areas.length>1;
   const bodyHtml=`<div class="txin${cols?' cols':''}">`+
-    (edit?'<div id="bd"'+(cols?' class="cols"':'')+'></div>':areasHtml(s,L))+'</div>';
-  const hasBody=edit||(s.body||'').trim();
+    (edit?`<div id="bd" class="bdy${cols?' cols':''}"></div>`:areasHtml(list,L,ix))+'</div>';
   const mid=(s.flags||[]).includes('center')?' mid':'';
-  let stack;
-  if(L.hero==='behind'&&has)
-    stack=`<div class="bgl"${fsz}>${figHtml}</div><div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
-  else if((L.hero==='left'||L.hero==='right')&&has)
-    stack=`<div class="stack${L.hero==='right'?' rev':''}${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
-          `<div class="tx"${tsz}>${bodyHtml}</div></div>`;
-  else if(L.hero==='above'&&has)
-    stack=`<div class="stack col${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
-          (hasBody?`<div class="tx under"${tsz}>${bodyHtml}</div>`:'')+`</div>`;
-  else
-    stack=`<div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
+  const back=behind&&S.figs[behind.id]
+    ? `<div class="bgl" id="bgl" style="--fsn:${behind.size/100}">${edit?'':fig(behind.id)}</div>` : '';
   return (L.header===false?'':`<div class="hdr">${hdrHtml(s)}</div>`)+
     (edit?`<h2 class="hd${L.title==='big'?' big':''}" contenteditable spellcheck="false"></h2>`
          :`<h2${L.title==='big'?' class="big"':''}>${inl(s.title)}</h2>`)+
-    stack;
+    back+`<div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
 }
 function stageClass(s){
-  const L=layOf(s),has=s.fig&&S.figs[s.fig];
-  return 'stage'+(L.hero==='behind'&&has?' bgfig':'')+(L.title==='big'?' titled':'');
+  const L=layOf(s),{behind}=bodyParts(s,L);
+  return 'stage'+(behind&&S.figs[behind.id]?' bgfig':'')+(L.title==='big'?' titled':'');
 }
 /* the overrides ride on the stage element itself, so every surface that draws a
    stage — editor, projector, print — gets them without knowing about them */
@@ -2180,7 +2214,7 @@ function paintBoard(){
   h.onblur=()=>{const v=h.textContent.trim();
     if(v&&v!==s.title){snap('title');s.title=v;touch();paintNav();}};
   h.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();h.blur();}};
-  if(s.fig&&S.figs[s.fig]&&layOf(s).hero)paintHero(s);
+  paintBackdrop(s);
   paintBody(s);
   scaleStage();
   setTimeout(checkFit,0);
@@ -2205,7 +2239,7 @@ function paintBoard(){
         const still=document.getElementById('overflag')?.classList.contains('on');
         toast(still
           ? 'Rearranged, but there is still too much for one slide — move some to the notes'
-          : `Fitted — ${layName(S.slides[cur].layout)}, figure ${S.slides[cur].figScale} %`);
+          : `Fitted — ${layName(S.slides[cur].layout)}`);
       },40);
       return;}
     if(f==='small'){snap('figure size');
@@ -2213,7 +2247,6 @@ function paintBoard(){
       if(last){const{id,size}=figRef(last.src);
         bs[bs.indexOf(last)]={kind:'fig',src:figMark(id,Math.max(30,size-15))};
         s.body=bs.map(x=>x.src).join('\n\n');}
-      else s.figScale=Math.max(30,(s.figScale||100)-15);
       touch();paint();return;}
     if(f==='notes'){                       /* the blocks that do not fit become spoken */
       snap('move to notes');
@@ -2297,22 +2330,25 @@ function figChrome(box,api){
   };
 }
 
-function paintHero(s){
-  const el=document.getElementById('hero');if(!el)return;
-  const on=s.fig&&S.figs[s.fig];
-  el.innerHTML=on?fig(s.fig):'<div class="empty">no figure yet — click to add one</div>';
-  el.onclick=e=>{
-    if(e.target.closest('.figbar,.figgrip'))return;
-    if(!on)return pickFigure(id=>{snap('figure');s.fig=id;
-      if(s.layout==='text')s.layout='figure';touch();paint();});
-    figEdit(s);                       /* a click on the picture means edit it */
-  };
-  if(on)figChrome(el.querySelector('.figbox')||el,{
-    size:()=>s.figScale||100,
-    setSize:n=>{s.figScale=n;},
-    edit:()=>figEdit(s),
-    swap:()=>pickFigure(id=>{snap('figure');s.fig=id;touch();paint();}),
-    remove:()=>{snap('remove figure');s.fig=null;s.layout='text';touch();paint();}
+/* "Behind" is the one layout where a figure is not drawn where it is written,
+   so it is the one place the editor has to put it back under your hand. */
+function paintBackdrop(s){
+  const el=document.getElementById('bgl');if(!el)return;
+  const {behind}=bodyParts(s,layOf(s));
+  if(!behind||!S.figs[behind.id])return;
+  el.innerHTML=fig(behind.id);
+  const at=()=>figBlocks(s).findIndex(f=>f.id===behind.id);
+  const put=(nid,nsz)=>{const list=blocks(s.body),f=figBlocks(s)[0];
+    if(!f)return;
+    list[f.i]={kind:'fig',src:figMark(nid==null?f.id:nid,nsz==null?f.size:nsz)};
+    s.body=list.map(b=>b.src).join('\n\n');touch();paint();};
+  figChrome(el,{
+    size:()=>behind.size,
+    setSize:n=>put(null,n),
+    edit:()=>figEdit(s,behind.id,nid=>{snap('figure');put(nid,null);}),
+    swap:()=>pickFigure(nid=>{snap('figure');put(nid,null);}),
+    remove:()=>{snap('remove figure');const list=blocks(s.body),f=figBlocks(s)[0];
+      if(!f)return;list.splice(f.i,1);s.body=list.map(b=>b.src).join('\n\n');touch();paint();}
   });
 }
 const ICO={
@@ -2437,7 +2473,8 @@ function paintBody(s){
     });
   };
   blocks(s.body).forEach((b,bi)=>{
-    const d=document.createElement('div');d.className='bk'+(b.kind==='col'?' iscol':'');
+    const d=document.createElement('div');
+    d.className='bk'+(b.kind==='col'?' iscol':'')+(b.kind==='fig'?' isfig':'');
     const isFig=b.kind==='fig';
     d.innerHTML=block(b)+`<div class="bkt">
       <button class="grip" data-m="grip" title="Drag to reorder">⠿</button>
@@ -2572,7 +2609,7 @@ function measureStage(s){
   const stack=m.querySelector('.stack');
   if(!stack)return null;
   const box=stack.getBoundingClientRect();
-  const tx=m.querySelector('.tx'),fg=m.querySelector('.fg svg')||m.querySelector('.bgl svg');
+  const tx=m.querySelector('.tx'),fg=m.querySelector('.bgl svg')||m.querySelector('.inlinefig svg');
   let bottom=box.top, over=false, figH=0;
   if(tx){
     /* the column is stretched, so its own box says nothing about how much is in
@@ -2598,46 +2635,39 @@ function tidyScore(m,s,words){
   const wide=(words>28&&m.txW>900)?0.14:0;
   return emptiness*100+small*90+wide*100;
 }
-const TIDY_KEYS=['layout','figScale','textScale','flags'];
+const TIDY_KEYS=['textScale','flags'];
+/* Tidy makes a slide fit. It never changes a word, and it no longer changes the
+   shape either: how many columns a slide has is a decision you made, the same
+   as a cover or a backdrop. What is left is what can be measured — how big the
+   first picture is, how big the type is, and whether a short slide sits better
+   in the middle of the frame. */
 function tidySlide(i){
   const s=S.slides[i];
-  const before=JSON.stringify(TIDY_KEYS.map(k=>s[k]));
-  const has=s.fig&&S.figs[s.fig];
-  const body=(s.body||'').trim();
+  const sizeNow=()=>{const f=figBlocks(s)[0];return f?f.size:null;};
+  const stamp=()=>JSON.stringify(TIDY_KEYS.map(k=>s[k]))+'|'+sizeNow();
+  const before=stamp();
+  const has=figBlocks(s).some(f=>S.figs[f.id]);
   const others=(s.flags||[]).filter(f=>f!=='center');
-
-  /* Tidy rearranges the five layouts that are about where a figure sits. A
-     layout the deck named — two columns, a cover — is a decision, and Tidy
-     measures type and figures, not decisions. */
-  const HEROIC=['figure','split-l','split-r','background','text'];
-  const layouts = !HEROIC.includes(s.layout) ? [s.layout]
-    : !has ? ['text']
-    : !body ? ['figure']
-    : s.layout==='background' ? ['background']     // a deliberate choice, left alone
-    : ['figure','split-r','split-l'];
-  const figs = has?TIDY_FIG:[100];
+  const figs=has?TIDY_FIG:[100];
 
   const words=stats(s).words;
-  const was={L:s.layout,F:s.figScale||100,tx:s.textScale||100,mid:(s.flags||[]).includes('center')};
+  const was={F:sizeNow()||100,tx:s.textScale||100,mid:(s.flags||[]).includes('center')};
   let best=null;
   for(const tx of TIDY_TXT){
-    for(const L of layouts) for(const F of figs) for(const mid of [false,true]){
-      s.layout=L;s.figScale=F;s.textScale=tx;s.flags=mid?[...others,'center']:others;
+    for(const F of figs) for(const mid of [false,true]){
+      if(has)setFigSize(s,0,F);
+      s.textScale=tx;s.flags=mid?[...others,'center']:others;
       let sc=tidyScore(measureStage(s),s,words);
       /* a nudge towards what the author already chose, so a tie does not churn the deck */
-      if(sc<1e9&&L===was.L&&F===was.F&&tx===was.tx&&mid===was.mid)sc-=2.5;
-      if(!best||sc<best.sc)best={sc,L,F,tx,mid};
+      if(sc<1e9&&F===was.F&&tx===was.tx&&mid===was.mid)sc-=2.5;
+      if(!best||sc<best.sc)best={sc,F,tx,mid};
     }
     if(best&&best.sc<1e9)break;                    // only shrink the type to rescue an overflow
   }
-  if(!best||best.sc>=1e9){                          // nothing fit: keep the roomiest we saw
-    s.layout=layouts[0];s.figScale=has?60:100;s.textScale=82;
-    s.flags=others;
-  }else{
-    s.layout=best.L;s.figScale=best.F;s.textScale=best.tx;
-    s.flags=best.mid?[...others,'center']:others;
-  }
-  return JSON.stringify(TIDY_KEYS.map(k=>s[k]))!==before;
+  const pick=(best&&best.sc<1e9)?best:{F:has?60:100,tx:82,mid:false};
+  if(has)setFigSize(s,0,pick.F);
+  s.textScale=pick.tx;s.flags=pick.mid?[...others,'center']:others;
+  return stamp()!==before;
 }
 function tidyDeck(only){
   const idx=only??S.slides.map((_,i)=>i);
@@ -2702,7 +2732,7 @@ const STUB=new Set(['say something true.','write here. click any block to edit i
                     'write here.','tbd','todo']);
 function blankSlide(s){
   if(!s)return true;
-  if(s.fig&&S.figs[s.fig])return false;
+  if(figIds(s).some(id=>S.figs[id]))return false;
   if(/!\[\[/.test(s.body||''))return false;
   if((s.notes||'').trim())return false;
   const b=(s.body||'').trim();
@@ -2710,19 +2740,6 @@ function blankSlide(s){
 }
 
 const FIGREF=/!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]/g;
-/* Move the first figure in the body up to be the slide's own, size and all.
-   Returns its id, or '' when the body has none. */
-function hoistFig(s){
-  const first=[...String(s.body||'').matchAll(FIGREF)][0];
-  if(!first)return '';
-  const id=first[1], q=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const line=new RegExp(`^[ \t]*!\\[\\[${q}(?:\\|(\\d{2,3})%)?\\]\\][ \t]*$\n?`,'m');
-  const m=String(s.body).match(line);
-  s.fig=id;
-  if(m&&m[1])s.figScale=+m[1];
-  s.body=String(s.body).replace(line,'').replace(/\n{3,}/g,'\n\n').trim();
-  return id;
-}
 
 async function drawFigure(id,s,brief){
   let t=(await llm(figSys(),
@@ -2743,9 +2760,7 @@ async function drawFigure(id,s,brief){
 
 /* Every ![[id]] the slide names but the deck does not have. */
 function wantedFigures(s){
-  const ids=[...new Set([...(s.body||'').matchAll(FIGREF)].map(m=>m[1]))];
-  if(s.fig)ids.push(s.fig);
-  return [...new Set(ids)].filter(id=>!S.figs[id]);
+  return figIds(s).filter(id=>!S.figs[id]);
 }
 async function fulfilFigures(s,brief){
   const want=wantedFigures(s);
@@ -2917,9 +2932,7 @@ async function designSlide(brief,btn,fixedTitle){
         `TITLE: ${s.title}\n\n${(s.body||'').slice(0,1800)}\n\n`+
         (s.notes?`NOTES: ${(s.notes||'').slice(0,600)}\n\n`:''))+
       /* a figure the slide already has is not yours to drop */
-      ((()=>{const keep=[...new Set([...((s.body||'').matchAll(FIGREF))].map(m=>m[1]))];
-        if(s.fig)keep.push(s.fig);
-        const k=[...new Set(keep)].filter(id=>S.figs[id]);
+      ((()=>{const k=figIds(s).filter(id=>S.figs[id]);
         return k.length?`FIGURES THIS SLIDE ALREADY HAS — keep every one of them exactly as it is, `+
           `unless the instruction asks you to remove it: ${k.map(x=>'![['+x+']]').join(' ')}\n\n`:'';})())+
       `WHAT THE AUTHOR ASKS FOR: ${brief}`,2600,'slide')).trim();
@@ -2962,13 +2975,16 @@ async function designSlide(brief,btn,fixedTitle){
         const fresh=blankSlide(s);
         snap('design slide');
         if(title)s.title=title;
-        s.body=body;
+        const kf=keepFigures(s.body,body);
+        s.body=kf.body;
         if(notes)s.notes=notes;
         touch();paint();
         await fulfilFigures(S.slides[cur],brief);
         if(fresh)tidyDeck([cur]);
         touch();paint();
-        toast(fresh?'Slide designed':'Slide rewritten — the layout is as you left it');
+        toast(fresh?'Slide designed'
+          :kf.back?`Slide rewritten — the ${kf.back===1?'figure it had is':'figures it had are'} still there`
+                  :'Slide rewritten — the layout is as you left it');
       },'Use this');
   }catch(e){prog.fail('Failed: '+e.message);}
   finally{if(btn){btn.disabled=false;btn.textContent=label||'Design this slide';}}
@@ -2977,7 +2993,8 @@ async function designSlide(brief,btn,fixedTitle){
 function paintSide(){
   const s=S.slides[cur],el=document.getElementById('side');
   if(!s){el.innerHTML='';return;}
-  const has=s.fig&&S.figs[s.fig];
+  const figs=figBlocks(s).filter(f=>S.figs[f.id]);
+  const has=figs.length>0;
   const empty=blankSlide(s);
   /* A slide seeded from a brief is empty but not blank: it already knows what
      it is for, so it is one press from being written and must not be offered
@@ -3011,10 +3028,11 @@ function paintSide(){
         title="${esc(L.hint||L.label||l)}"
         style="${s.layout===l?'background:var(--ink)':''}">${esc(L.label||l)}</button>`).join('')}
     </div>
-    ${has?`<div class="fld" style="margin-top:10px"><label>Figure size
-        <span class="pos" id="fsLab">${s.figScale||100} %</span></label>
-      <input id="fSize" type="range" min="40" max="200" step="5" value="${s.figScale||100}"
-        title="100% is as large as fits. Past that it is deliberately bigger than the frame — a backdrop bleeds, a figure crops."></div>`:''}
+    ${has?`<div class="fld" style="margin-top:10px"><label>${
+        figs.length>1?'First figure':'Figure'} size
+        <span class="pos" id="fsLab">${figs[0].size} %</span></label>
+      <input id="fSize" type="range" min="40" max="200" step="5" value="${figs[0].size}"
+        title="100% is as large as fits in its column. Past that it is deliberately bigger — a backdrop bleeds, a figure crops. Every figure also has a grip on its own corner."></div>`:''}
     <div class="fld" style="margin-top:10px"><label>Text size
         <span class="pos" id="tsLab">${s.textScale||100} %</span></label>
       <input id="tSize" type="range" min="60" max="130" step="2" value="${s.textScale||100}"
@@ -3074,26 +3092,18 @@ function paintSide(){
   const fz=el.querySelector('#fSize');
   if(fz){
     fz.oninput=()=>{document.getElementById('fsLab').textContent=fz.value+' %';
-      s.figScale=+fz.value;
-      /* --fsn is the one the stylesheet reads; this used to set --fs, which
-         nothing does, so the preview while dragging never moved — on any
-         layout. And it only looked at .fg, so the backdrop was never touched. */
-      document.querySelectorAll('#sheet .fg,#sheet .bgl').forEach(x=>
-        x.style.setProperty('--fsn',+fz.value/100));};
-    fz.onchange=()=>{snap('figure size');touch();paint();};
+      /* --fsn is the one the stylesheet reads. The preview moves the drawing
+         itself, wherever it is — first block in a column, or the backdrop. */
+      const live=document.querySelector('#sheet .bgl')||
+                 document.querySelector('#sheet .inlinefig');
+      live&&live.style.setProperty('--fsn',+fz.value/100);};
+    fz.onchange=()=>{snap('figure size');setFigSize(s,0,+fz.value);touch();paint();};
   }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
     const n=layOf(s).areas.length;
     if(n>1&&splitBody(s,n))toast(`Split across ${n} columns — drag the break to move it`);
-    if(!layOf(s).hero||s.fig){touch();paint();return;}
-    /* A figure already drawn into the body is the answer to "which figure" —
-       asking anyway, with every figure in the deck to choose from, was the
-       worst possible moment to open that dialog. Promote it, carrying its size,
-       and take the marker out, or the same drawing appears twice. */
-    const id=hoistFig(s);
-    if(id){touch();paint();toast(`Using ${id}, which was in the body`);return;}
-    pickFigure(i=>{s.fig=i;touch();paint();});});
+    touch();paint();});
   el.querySelector('#bSugg')?.addEventListener('click',e=>suggestSlides(e.target));
   const de=el.querySelector('#deIn');
   el.querySelectorAll('#seeds button').forEach(b=>b.onclick=()=>{
@@ -3113,7 +3123,7 @@ function paintSide(){
     snap('tidy');
     const changed=tidyDeck([cur]);
     touch();paint();
-    toast(changed?`Tidied — ${layName(S.slides[cur].layout)}, figure ${S.slides[cur].figScale} %`
+    toast(changed?`Tidied — text ${S.slides[cur].textScale} %`
                  :'Already as good as it gets');};
 
   el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
@@ -3144,7 +3154,7 @@ Judge it against: does every claim carry a number, a named system or a citation;
 repeat what the figure already shows; is there one line that lands; is anything on it doing no
 work; does it overlap the slides either side.`,
       `DECK: ${S.title}\nSECTION: ${s.group||''}\nNEIGHBOURS:\n${near||'(none)'}\n\n`+
-      `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\n`+
+      `TITLE: ${s.title}\n\nBODY:\n${s.body}\n\n`+
       `NOTES:\n${s.notes||'(none)'}`,900,'analyse'))
       .replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
     prog.done();
@@ -3165,7 +3175,7 @@ async function askSummary(){
     const t=(await llm(
       'You write one sentence saying what a conference slide is for: the point it makes, in plain words. '+
       'No preamble, no quotes, no more than 25 words. Return the sentence only.',
-      `TITLE: ${s.title}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nNOTES:\n${s.notes||''}`,400,'summary'))
+      `TITLE: ${s.title}\n\nBODY:\n${s.body}\n\nNOTES:\n${s.notes||''}`,400,'summary'))
       .replace(/^["']|["']$/g,'').trim();
     prog.done();
     snap('summary');s.summary=t;touch();paintSide();
@@ -3391,7 +3401,7 @@ async function newDeck(){
       'Download a copy',()=>downloadDeck());}
   S={id:'untitled',title:'Untitled deck',meta:{},style:{},figs:{},
      slides:[{tag:'S',group:'',sub:null,title:'Untitled',body:'',notes:'',fig:null,
-              layout:'text',figScale:100,textScale:100,summary:'',skip:false,flags:[]}]};
+              layout:'text',textScale:100,summary:'',skip:false,flags:[]}]};
   normalise();cur=0;PICKED.clear();fileHandle=null;
   /* a new deck is not the file the server is serving */
   srvLinked=false;fileName=null;
@@ -3528,7 +3538,7 @@ every claim carrying a number, a named system or a citation.`,
        title:b.title||'Untitled',
        meta:{},style:{},figs:{},
        slides:rows.map(r=>({tag:'S',group:r.group||'',sub:null,title:r.title||'Untitled',
-         fig:null,layout:'text',figScale:100,textScale:100,
+         layout:'text',textScale:100,
          body:'',notes:'',summary:r.purpose||'',skip:false,flags:[]}))};
     normalise();cur=0;fileHandle=null;srvLinked=false;fileName=null;
     document.getElementById('welcome').classList.add('hidden');
@@ -3859,7 +3869,7 @@ async function ask(instr,host,btn){
 Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.
 If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.
 If a change needs a different title, make the FIRST line exactly "TITLE: <the new title>" and put the body after it. Otherwise do not mention the title.`;
-  const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\nFIGURE: ${s.fig||'none'}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
+  const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
   try{
     let t=(await llm(sys,usr,null,'edit')).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
     prog.done();
@@ -3869,15 +3879,21 @@ If a change needs a different title, make the FIRST line exactly "TITLE: <the ne
         snap('AI edit');
         const tm=/^TITLE:[ \t]*(.+)\n?/.exec(t);
         if(tm){s.title=tm[1].trim();t=t.slice(tm[0].length).trim();}
+        let back=0;
         if(/^\s*notes?\b/i.test(instr)||instr.startsWith('Write speaker notes')){s.notes=t;}
         else if(t.includes('\n---\n')){
-          const[a,b]=t.split(/\n---\n/);s.body=a.trim();
-          const c=clone(s);c.body=b.trim();c.title=s.title+' (cont.)';c.fig=null;c.layout='text';
+          /* split in two: the figures go with whichever half kept them, and
+             any that neither did land back on the first */
+          const[a,b]=t.split(/\n---\n/);
+          const c=clone(s);c.body=b.trim();c.title=s.title+' (cont.)';c.layout='text';
+          const kf=keepFigures(s.body,a.trim()+'\n\n'+c.body);
+          back=kf.back;
+          s.body=kf.back?a.trim()+'\n\n'+kf.body.slice(kf.body.lastIndexOf('\n\n')+2):a.trim();
           S.slides.splice(cur+1,0,c);normalise();
-        } else s.body=t;
+        } else { const kf=keepFigures(s.body,t); s.body=kf.body; back=kf.back; }
         touch();paint();
         await fulfilFigures(S.slides[cur],instr);
-        toast('Applied');});
+        toast(back?`Applied — the ${back===1?'figure is':'figures are'} still there`:'Applied');});
   }catch(e){prog.fail('Failed: '+e.message);}
   finally{if(btn){btn.disabled=false;btn.textContent=label;}}
 }
@@ -3900,9 +3916,12 @@ const PAL=[['#1E1B4B','ink'],['#6B7280','gray'],['#FFFFFF','white'],['#FAFAF7','
 let FE=null;
 
 function figEdit(s,figId,onRename){
-  const id=figId||s.fig;
+  const id=figId||firstFig(s);
   if(!id||!S.figs[id]){
-    pickFigure(x=>{s.fig=x;if(s.layout==='text')s.layout='figure';touch();paint();figEdit(s);});return;}
+    /* nothing to edit yet — put one in the body, then open it */
+    pickFigure(x=>{snap('figure');
+      s.body=figMark(x,100)+((s.body||'').trim()?'\n\n'+s.body.trim():'');
+      touch();paint();figEdit(s,x);});return;}
   FE={slide:s,id,src:S.figs[id],onRename:onRename||null,sel:null,sels:[],hist:[],tab:'design'};
   dialog(`<div class="fehead">
       <h3>${esc(id)}</h3>
@@ -5038,7 +5057,7 @@ function feCommit(asCopy){
     const base=FE.id.replace(/-v\d+$/,'');
     const id=base+'-v'+(Object.keys(S.figs).filter(k=>k.startsWith(base+'-v')).length+2);
     S.figs[id]=svg;
-    if(FE.onRename)FE.onRename(id);else FE.slide.fig=id;   /* inline figures live in the body, not in s.fig */
+    if(FE.onRename)FE.onRename(id);        /* every figure lives in the body */
     toast('Saved as '+id);
   }else{S.figs[FE.id]=svg;toast('Figure saved');}
   touch();closeDialog();paint();
@@ -5295,7 +5314,6 @@ function articleHtml(){
     if((s.sub||null)!==sub){sub=s.sub||null;if(sub)out+=`<h3>${esc(sub)}</h3>\n`;}
     const{quote,rest,notes}=articleParts(s);
     out+=`<h4>${inl(s.title)}</h4>\n`;
-    if(s.fig&&S.figs[s.fig])out+=`<figure>${fig(s.fig)}</figure>\n`;
     if(notes)out+=`<p>${inl(notes)}</p>\n`;
     quote.forEach(b=>{out+=`<blockquote>${inl(b.src.split('\n').map(l=>l.replace(/^>\s?/,'')).join(' '))}</blockquote>\n`;});
     rest.forEach(b=>{out+=block(b)+'\n';});
@@ -5319,7 +5337,6 @@ function articleMd(){
     if((s.sub||null)!==sub){sub=s.sub||null;if(sub)out+=`### ${sub}\n\n`;}
     const{quote,rest,notes}=articleParts(s);
     out+=`#### ${s.title}\n\n`;
-    if(s.fig&&S.figs[s.fig])out+=`![${s.title.replace(/[\[\]]/g,'')}](images/${s.fig}.svg)\n\n`;
     if(notes)out+=notes+'\n\n';
     quote.forEach(b=>{out+=b.src+'\n\n';});
     rest.forEach(b=>{
@@ -5380,7 +5397,6 @@ function svgToPng(svg,w){
 async function rasterAll(onStep){
   const need=new Set();
   articleSlides().forEach(s=>{
-    if(s.fig&&S.figs[s.fig])need.add(s.fig);
     blocks(s.body).forEach(b=>{if(b.kind==='fig'){const{id}=figRef(b.src);if(S.figs[id])need.add(id);}});
   });
   const out={};let i=0;
@@ -5404,7 +5420,6 @@ async function articleHtmlPng(pics){
     if((s.sub||null)!==sub){sub=s.sub||null;if(sub)out+=`<h3>${esc(sub)}</h3>\n`;}
     const{quote,rest,notes}=articleParts(s);
     out+=`<h4>${inl(s.title)}</h4>\n`;
-    if(s.fig&&pics[s.fig])out+=pic(s.fig)+'\n';
     if(notes)out+=`<p>${inl(notes)}</p>\n`;
     quote.forEach(b=>{out+=`<blockquote>${inl(b.src.split('\n').map(l=>l.replace(/^>\s?/,'')).join(' '))}</blockquote>\n`;});
     rest.forEach(b=>{
@@ -5472,7 +5487,6 @@ function docxDoc(pics){
     if((s.sub||null)!==sub){sub=s.sub||null;if(sub)body+=para(run(sub,{b:true,sz:26,col:'555555'}),{before:200,after:60});}
     const{quote,rest,notes}=articleParts(s);
     body+=para(run(s.title,{b:true,sz:28}),{before:220,after:60});
-    if(s.fig&&pics[s.fig])body+=image(s.fig);
     if(notes)body+=para(rich(notes));
     quote.forEach(b=>body+=para(rich(b.src.split('\n').map(l=>l.replace(/^>\s?/,'')).join(' '),{i:true,sz:24}),
       {ind:360,bar:true,before:140,after:140}));
@@ -5522,12 +5536,11 @@ function downloadText(name,text,type){
 
 function slideMd(s){
   let m=`### ${s.n}. \`[${s.tag}]\` ${s.title}\n\n`;
-  if(s.fig)m+=`**Figure:** \`${s.fig}\`${s.layout&&s.layout!=='figure'?' · '+s.layout:''}${
-    s.figScale&&s.figScale!==100?' · '+s.figScale+'%':''}\n\n`;
+
   /* The figure line carries the layout when there is a figure. Without one —
      two columns, a cover — it needs saying outright, or the shape of the slide
      would not survive a round trip through markdown. */
-  if(!s.fig&&s.layout&&s.layout!=='text')m+=`*Layout:* ${s.layout}\n\n`;
+  if(s.layout&&s.layout!=='text')m+=`*Layout:* ${s.layout}\n\n`;
   if(s.textScale&&s.textScale!==100)m+=`*Text:* ${s.textScale}%\n\n`;
   /* only what this slide disagrees with; the rest is the deck's */
   const ov=STYLE_KEYS.filter(k=>s.style&&s.style[k]!=null)
@@ -5654,7 +5667,7 @@ function paintDeck(){
   document.querySelector('#prog i').style.width=(((at<0?0:at)+1)/R.length*100)+'%';
   document.getElementById('count').textContent=
     `${(at<0?cur:at)+1} / ${R.length}${s.skip?' · hidden':''}`;
-  const has=s.fig&&S.figs[s.fig];
+  const has=figBlocks(s).some(f=>S.figs[f.id]);
   const n=(s.notes||'').trim()||(has?String(s.body||'').replace(/[#*`>|]/g,'').slice(0,900):'—');
   document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${notesHtml(n)}`;
   fit();

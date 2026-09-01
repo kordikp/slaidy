@@ -62,36 +62,29 @@ addEventListener('load',async()=>{
   ok('popup pairs icon with text',!!pop&&
      pop.querySelectorAll('button svg').length===Object.keys(w.SNIP).length&&
      /Divider/.test(pop.textContent)&&/Formula/.test(pop.textContent));
-  // --- switching to a figure layout when the figure is already in the body ---
-  // The real report: a figure drawn into a slide, then Fig ◧ pressed, and the
-  // picker opened with every figure in the deck to choose from — at the one
-  // moment there was nothing to choose.
+  // --- a figure is a block, and s.fig is gone ---
+  // It used to be that one figure per slide had fields of its own and four
+  // layouts to say where it went. Switching layout then had to ask which
+  // figure it meant, and the answer was always the one already in the body.
   const hi=w.S.slides.length-1;
-  w.S.slides[hi].fig=null; w.S.slides[hi].layout='text'; w.S.slides[hi].figScale=100;
+  w.S.slides[hi].layout='text';
   w.S.slides[hi].body='A line of text.\n\n![[fig-marks|50%]]\n\n> And a quote.';
-  w.cur=hi; w.paint(); await wait(200);
-  d.querySelector('#side #segLay button[data-v="split-l"]').click(); await wait(300);
-  ok('it takes the figure that was in the body',w.S.slides[hi].fig==='fig-marks',
-     String(w.S.slides[hi].fig));
-  ok('with the size it was drawn at',w.S.slides[hi].figScale===50,String(w.S.slides[hi].figScale));
-  ok('and the marker is gone, so it is not on the slide twice',
-     !/!\[\[fig-marks/.test(w.S.slides[hi].body),w.S.slides[hi].body.slice(0,60));
-  ok('the rest of the body is untouched',
-     /A line of text\./.test(w.S.slides[hi].body)&&/And a quote\./.test(w.S.slides[hi].body));
-  ok('no dialog was opened',!d.getElementById('veil').classList.contains('on'));
-  ok('the slide draws one figure, not two',
-     d.querySelectorAll('#sheet .stage svg').length>=1&&
-     !d.querySelector('#sheet .stage .inlinefig'),
-     String(d.querySelectorAll('#sheet .stage svg').length));
-  w.undo(); await wait(200);
-  ok('undo puts it back in the body',/!\[\[fig-marks/.test(w.S.slides[hi].body)&&
-     !w.S.slides[hi].fig,String(w.S.slides[hi].fig));
-  // and with nothing to promote it still asks
-  w.S.slides[hi].body='Only words here.'; w.S.slides[hi].fig=null; w.paint(); await wait(150);
-  d.querySelector('#side #segLay button[data-v="split-r"]').click(); await wait(300);
-  ok('an empty body still gets the picker',d.getElementById('veil').classList.contains('on'),
-     (d.getElementById('dlg').textContent||'').slice(0,40));
-  d.getElementById('veil').classList.remove('on');
+  w.cur=hi; w.paint(); await wait(250);
+  ok('no slide carries a figure field any more',
+     w.S.slides.every(x=>x.fig===undefined&&x.figScale===undefined),
+     JSON.stringify(Object.keys(w.S.slides[hi])));
+  ok('the figure is found by reading the body',w.firstFig(w.S.slides[hi])==='fig-marks',
+     String(w.firstFig(w.S.slides[hi])));
+  ok('with the size it was written at',w.figBlocks(w.S.slides[hi])[0].size===50,
+     String(w.figBlocks(w.S.slides[hi])[0].size));
+  d.querySelector('#side #segLay button[data-v="two"]').click(); await wait(400);
+  ok('choosing a layout asks nothing — there is nothing to ask',
+     !d.getElementById('veil').classList.contains('on'));
+  ok('and the figure is still exactly where it was written',
+     /!\[\[fig-marks\|50%\]\]/.test(w.S.slides[hi].body),w.S.slides[hi].body.slice(0,60));
+  ok('drawn in one of the columns',
+     !!d.querySelector('#sheet .stage .area .inlinefig svg'));
+  w.S.slides[hi].layout='text';
 
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);

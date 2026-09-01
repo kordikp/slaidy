@@ -111,8 +111,8 @@ addEventListener('load',async()=>{
      w.wantedFigures({body:'a\n\n![[fig-nope]]\n\nb'}).join()==='fig-nope');
   const have=Object.keys(w.S.figs)[0];
   ok('one it already has is not',w.wantedFigures({body:'![['+have+']]'}).length===0,have);
-  ok('a missing hero figure counts too',
-     w.wantedFigures({body:'',fig:'fig-hero-nope'}).join()==='fig-hero-nope');
+  ok('two references, both missing, both wanted',
+     w.wantedFigures({body:'![[fig-a-nope]]\n\n![[fig-b-nope]]'}).join()==='fig-a-nope,fig-b-nope');
 
   // ---------- only the deck's own links are offered, and only those survive ----------
   const withLink=w.S.slides.find(x=>/\]\(https?:/.test(x.body||''))||w.S.slides[0];
@@ -302,24 +302,31 @@ addEventListener('load',async()=>{
 
 
   // ---------- a rewrite changes the words, not the arrangement ----------
-  const li=w.S.slides.findIndex(x=>x.fig&&w.S.figs[x.fig]&&(x.body||'').trim());
-  w.cur=li;w.S.slides[li].layout='split-r';w.paint();await wait(300);
+  const li=w.S.slides.findIndex(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]&&(x.body||'').trim());
+  w.cur=li;w.S.slides[li].layout='two';w.paint();await wait(300);
   const st2=()=>d.getElementById('stage');
   ok('the slide is arranged with its figure beside the text',
-     !!st2().querySelector('.stack.rev .fg svg'),'split-r');
+     !!st2().querySelector('.area .inlinefig svg'),'two');
   calls=[];replies=[JSON.stringify({title:'Rewritten',body:'Different words entirely.',notes:''})];
   stub();
   d.getElementById('deIn').value='say it differently';
   d.getElementById('bDesign').click();await wait(500);
   ok('the model is told which figures the slide already has',
      /FIGURES THIS SLIDE ALREADY HAS/.test(calls[0].user||'')
-     &&(calls[0].user||'').includes(w.S.slides[li].fig),
+     &&(calls[0].user||'').includes(w.firstFig(w.S.slides[li])),
      'so a rewrite cannot drop one');
   [...d.getElementById('dsOut').querySelectorAll('button')][0].click();await wait(900);
   ok('the words change',/Different words entirely/.test(w.S.slides[li].body));
-  ok('but the arrangement is left alone',w.S.slides[li].layout==='split-r',
-     w.S.slides[li].layout+' — it used to come back as "figure", which does not project the body');
-  ok('so the figure is still beside the text',!!st2().querySelector('.stack.rev .fg svg'));
+  ok('but the arrangement is left alone',w.S.slides[li].layout==='two',
+     w.S.slides[li].layout+' — a layout is a decision, not something a rewrite gets to change');
+  // the stub returned a body with no figure in it at all — a drawing is not
+  // retyped in ten seconds, so one the slide had comes back
+  ok('and the figure it had is still on the slide',
+     !!st2().querySelector('.inlinefig svg')&&!!w.firstFig(w.S.slides[li]),
+     String(w.firstFig(w.S.slides[li])));
+  ok('put back at the end of the body it returned',
+     /Different words entirely[\s\S]*!\[\[/.test(w.S.slides[li].body),
+     w.S.slides[li].body.slice(0,70));
   unstub();
   w.undo();await wait(250);
 

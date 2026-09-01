@@ -10,7 +10,7 @@ const __watchdog=setTimeout(spill,55000);
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
-  w.cur=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');w.paint();await wait(200);
+  w.cur=w.S.slides.findIndex(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]);w.paint();await wait(200);
   w.figEdit(w.S.slides[w.cur]);await wait(1300);
   const idoc=d.getElementById('fefr').contentDocument, svg=idoc.querySelector('svg');
   ok('editor open',!!svg);

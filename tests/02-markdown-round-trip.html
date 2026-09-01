@@ -16,7 +16,7 @@ addEventListener('load',async()=>{
   ok('no paragraphs were eaten by a metadata line',words>500,words+' words on slides and in notes');
 
   // a metadata line must never swallow the paragraph after it
-  const withFig=w.S.slides.find(x=>x.fig&&x.body.trim());
+  const withFig=w.S.slides.find(x=>w.firstFig(x)&&x.body.replace(/!\[\[[^\]]*\]\]/g,'').trim());
   ok('the text after a Figure line survives',withFig.body.trim().length>20,
      withFig.body.slice(0,44).replace(/\n/g,' '));
   ok('and no metadata leaked into the body',
@@ -32,9 +32,9 @@ addEventListener('load',async()=>{
   ok('the nested figure is bundled',!!w.S.figs['fig-marks']);
   ok('it is real vector, not a raster',/#0065BD/.test(w.S.figs['fig-marks']||'')&&
      !/<image/.test(w.S.figs['fig-marks']||''));
-  const marky=w.S.slides.findIndex(x=>x.fig==='fig-marks');
+  const marky=w.S.slides.findIndex(x=>w.firstFig(x)==='fig-marks');
   w.cur=marky;w.paint();await wait(250);
-  const hero=d.querySelector('#sheet .stage .hero svg');
+  const hero=d.querySelector('#sheet .stage .inlinefig svg');
   ok('it renders on the slide',!!hero);
   ok('both of its groups came through',hero.querySelectorAll(':scope > g').length===2,
      hero.querySelectorAll(':scope > g').length+' groups');

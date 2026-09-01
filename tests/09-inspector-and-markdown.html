@@ -10,7 +10,7 @@ const __watchdog=setTimeout(spill,55000);
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
-  w.cur=w.S.slides.findIndex(x=>x.fig&&x.body.trim());w.paint();await wait(200);
+  w.cur=w.S.slides.findIndex(x=>w.firstFig(x)&&x.body.trim());w.paint();await wait(200);
 
   // ---------- the panel is what was asked for ----------
   ok('the one box is at the top',!!d.getElementById('deIn')

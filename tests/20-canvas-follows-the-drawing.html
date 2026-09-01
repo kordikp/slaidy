@@ -19,7 +19,7 @@ addEventListener('load',async()=>{
  try{
   // ---------- a figure takes exactly the room its canvas asks for ----------
   w.S.figs['fig-canvas']=FIG;
-  w.S.slides[0].fig='fig-canvas';w.S.slides[0].layout='figure';w.cur=0;w.paint();await wait(250);
+  w.S.slides[0].body='![[fig-canvas]]';w.S.slides[0].layout='text';w.cur=0;w.paint();await wait(250);
   const box=d.querySelector('#sheet .figbox');
   const ar=b=>b.getBoundingClientRect().width/b.getBoundingClientRect().height;
   ok('the slide gives the figure its canvas shape',Math.abs(ar(box)-800/450)<0.03,ar(box).toFixed(2));

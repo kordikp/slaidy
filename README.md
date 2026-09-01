@@ -78,9 +78,9 @@ take away the editing. This does both.
 | | |
 |---|---|
 | **Write** | click the title on the slide, drag a paragraph by its grip, insert a heading, table, formula, code block or figure below it |
-| **Draw** | figures are SVG and editable in place — select a shape, move it, join two boxes with an arrow that re-routes itself |
+| **Draw** | figures are SVG, written into the body like any other block, and editable in place — select a shape, move it, join two boxes with an arrow that re-routes itself |
 | **Ask** | say what a slide is for and it writes the slide; ask what it would change and it answers with a list you can strike lines out of |
-| **Arrange** | pick a layout for the slide — one column, two, three, a cover; the deck holds the shapes and can carry your own |
+| **Arrange** | pick a shape for the slide — one column, two, three, a cover; the deck holds the shapes and can carry your own |
 | **Present** | `P` for full screen, `N` for notes, `O` for the grid, tap or swipe on a phone |
 | **Export** | PDF, markdown, one `.json` bundle, or the whole deck as an article with the figures rasterised |
 | **Keep** | every save writes the file on disk; twelve version snapshots; one `Ctrl-Z` per gesture |

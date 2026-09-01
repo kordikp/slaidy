@@ -33,7 +33,7 @@ addEventListener('load',async()=>{
   ok('overflow flag exists',!!d.getElementById('overflag'));
 
   // --- figure editor ---
-  const s=w.S.slides.find(x=>x.fig&&w.S.figs[x.fig]);
+  const s=w.S.slides.find(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]);
   w.cur=w.S.slides.indexOf(s); w.paint(); await wait(150);
   w.figEdit(s); await wait(1200);
   const fr=d.getElementById('fefr');
@@ -75,7 +75,7 @@ addEventListener('load',async()=>{
   w.fePush(); ok('history records',w.FE.hist.length>0,w.FE.hist.length+' steps');
   w.feCommit(true); await wait(120);
   ok('save as copy adds a figure',Object.keys(w.S.figs).length===nfig+1);
-  const saved=w.S.figs[w.S.slides[w.cur].fig];
+  const saved=w.S.figs[w.firstFig(w.S.slides[w.cur])];
   ok('copy has no editor artefacts',!/fe-hot/.test(saved)&&!/fe-marker/.test(saved));
   ok('undo history is clean too',!w.FE.hist.some(h=>/fe-marker|fe-hot/.test(h)));
 
@@ -98,19 +98,19 @@ addEventListener('load',async()=>{
   const n0=w.S.slides.length;
   w.snap('test2');w.S.slides.splice(3,1);
   w.undo(); ok('undo restores a deleted slide',w.S.slides.length===n0,w.S.slides.length+' vs '+n0);
-  const fid=w.S.slides.find(x=>x.fig&&w.S.figs[x.fig]).fig, f0=w.S.figs[fid];
+  const fid=w.firstFig(w.S.slides.find(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)])), f0=w.S.figs[fid];
   w.snap('test3',{[fid]:f0}); w.S.figs[fid]='<svg viewBox="0 0 800 450"/>';
   w.undo(); ok('undo restores a figure',w.S.figs[fid]===f0);
   while(w.UNDO.length)w.undo();
   ok('undo stops cleanly when empty',(w.undo(),true));
 
   // --- editor mirrors what is projected ---
-  const fs=w.S.slides.findIndex(x=>x.layout==='figure'&&x.fig&&w.S.figs[x.fig]);
+  const fs=w.S.slides.findIndex(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]);
   w.cur=fs;w.paint();await wait(120);
-  ok('figure slide keeps its body on the slide',!!d.querySelector('#sheet .stage .tx.under')&&
-     !d.querySelector('.offstage:not(.notes)'));
-  const fsvg=d.querySelector('#sheet .stage .hero svg'),fr2=d.querySelector('#sheet .stage').getBoundingClientRect();
-  ok('figure scaled inside the frame',fsvg.getBoundingClientRect().bottom<=fr2.bottom+1,
+  ok('a slide with a figure keeps its body on the slide',
+     !!d.querySelector('#sheet .stage .tx')&&!d.querySelector('.offstage:not(.notes)'));
+  const fsvg=d.querySelector('#sheet .stage .inlinefig svg'),fr2=d.querySelector('#sheet .stage').getBoundingClientRect();
+  ok('the figure is scaled inside the frame',fsvg.getBoundingClientRect().bottom<=fr2.bottom+1,
      Math.round(fsvg.getBoundingClientRect().bottom)+' vs frame '+Math.round(fr2.bottom));
   const ts=w.S.slides.findIndex(x=>x.layout==='text');
   w.cur=ts;w.paint();await wait(120);

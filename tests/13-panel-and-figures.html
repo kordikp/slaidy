@@ -11,7 +11,7 @@ addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{
   // ---------- the staged AI panel ----------
-  const ei=w.S.slides.findIndex(x=>!x.fig&&!(x.body||'').trim()&&!(x.notes||'').trim());
+  const ei=w.S.slides.findIndex(x=>!(x.body||'').trim()&&!(x.notes||'').trim());
   ok('fixture has an empty slide',ei>=0,'slide '+(ei+1));
   w.cur=ei;w.paint();await wait(150);
   ok('empty slide offers no Summarise',!d.getElementById('bSum'));
@@ -61,16 +61,16 @@ addEventListener('load',async()=>{
   ok('and its own toolbar',boxes.every(b=>b.querySelector('.figbar')));
 
   // ---------- clicking a figure edits it ----------
-  const hi=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');
+  const hi=w.S.slides.findIndex(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]);
   w.cur=hi;w.paint();await wait(250);
-  const svg=d.querySelector('#sheet .hero .figbox svg');
+  const svg=d.querySelector('#sheet .inlinefig .figbox svg');
   ok('the slide shows its figure',!!svg);
   svg.dispatchEvent(new W.MouseEvent('click',{bubbles:true}));await wait(900);
   ok('clicking it opens the editor, not a picker',!!d.getElementById('fefr')&&
      !d.querySelector('.dlg.wide2'),d.getElementById('fefr')?'editor':'something else');
   d.getElementById('feCancel').click();await wait(150);
   // and the swap button does open the picker
-  d.querySelector('.hero .figbox .figbar [data-x="sw"]').click();await wait(250);
+  d.querySelector('.inlinefig .figbox .figbar [data-x="sw"]').click();await wait(250);
   ok('the swap button opens the picker',!!d.querySelector('.dlg.wide2'));
   ok('the picker offers to draw a new one',/Draw a new one/.test(d.querySelector('.dlg').textContent));
   d.getElementById('pfNo').click();await wait(120);

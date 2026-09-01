@@ -395,6 +395,40 @@ rejects anything unreadable at projection size.
 
 ---
 
+### A figure is a block
+
+There is no such thing as *the* figure on a slide. A drawing is `![[fig-id|60%]]` on a line
+of its own, in the body, in the column you put it in — a block like a table or a paragraph,
+which is what "the deck is markdown" has to mean if it means anything.
+
+It was not always so. A slide used to carry one privileged picture in `s.fig` with a size of
+its own in `s.figScale`, and four of the nine layouts existed to say where that one picture
+went: above the text, left of it, right of it, faint behind it. Everything downstream had to
+know: exports emitted it separately, Tidy chose between those four layouts, switching layout
+had to ask *which* figure it meant, and a slide moved to two columns lost its picture
+entirely, because the new layout had no place to put a thing that lived outside the body.
+
+Now: six layouts, all about shape — one column, two, three, a backdrop, a cover, a closing
+slide. `figBlocks(s)` and `firstFig(s)` answer what `s.fig` answered. Old decks are
+translated on the way in by `hoistLegacyFig`, once, so nothing downstream ever sees the old
+shape: `figure` puts the drawing above the body and becomes one column, `split-l` puts it
+before a column break, `split-r` after one, and both become two columns. Measured on the
+238-slide keynote: every figure still drawn, and seven slides past the frame where there had
+been nine.
+
+The sizing changed with it. An inline figure used to be capped at a measured 340 stage
+pixels, because nothing bounded its height and a figure asked for at 85% of a wide column
+would push the table under it off the slide. Now the column bounds it on both axes — the
+body is a flex column, every block keeps its own height, and a figure takes what is left —
+so 100% means what it should: as large as fits here. A figure alone on a slide fills it,
+which is what the `figure` layout used to be for.
+
+Two things follow from figures being content. `Tidy` no longer chooses layouts: how many
+columns a slide has is a decision, like a cover is, and Tidy measures — it sets the picture
+size, the type size, and whether a short slide sits in the middle. And a rewrite can now
+drop a figure the way it can drop a paragraph, so `keepFigures` puts back any the new text
+lost: a drawing is not retyped in ten seconds, and removing one is a click on the picture.
+
 ### Layouts are data
 
 A layout is not a branch in the renderer. It is a record — a label, whether the header and

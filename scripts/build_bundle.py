@@ -17,8 +17,11 @@ SLIDE_RE = re.compile(r"^### (\d+)\.\s*`\[([SDEB])\]`\s*(.+?)\s*$", re.M)
 SUB_RE = re.compile(r"^##\s+(?!#)(.+?)\s*$", re.M)          # subsection inside an act
 FIG_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*"
                     r"(?:·[ \t]*([a-z-]+))?[ \t]*(?:·[ \t]*(\d{2,3})%)?[^\n]*$", re.M)
-LAYOUTS = {"figure", "split-l", "split-r", "background", "text",
-           "two", "three", "cover", "closing"}
+LAYOUTS = {"text", "two", "three", "background", "cover", "closing"}
+# What the older markdown says, and what it means now that a figure is a block
+# in the body like any other. Same mapping the app does when it reads a deck.
+LAY_WAS = {"figure": "text", "split-l": "two", "split-r": "two",
+           "background": "background", "text": "text"}
 # A layout the figure line cannot carry — two columns, a cover — says so outright
 LAY_RE = re.compile(r"^\*Layout:\*\s*([A-Za-z0-9_-]+)", re.M)
 FIG_NONE_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:none|žádná).*$", re.M | re.I)
@@ -98,12 +101,25 @@ def parse_slides(text, group):
         body = NOTE_RE.sub("", body)
         body = re.sub(r"^---\s*$", "", body, flags=re.M)
         body = re.sub(r"\n{3,}", "\n\n", body).strip()
+        # A figure used to be a field on the slide with a layout to say where it
+        # went. It is a block in the body now, so the old form is translated
+        # here rather than carried: the drawing goes where the layout put it,
+        # and the layout becomes one about columns.
+        layout = (ly.group(1) if ly and ly.group(1) in LAYOUTS else "text")
+        if f:
+            was = f.group(2) if f.group(2) else "figure"
+            scale = int(f.group(3)) if f.group(3) else 100
+            mark = "![[%s%s]]" % (f.group(1), "" if scale == 100 else "|%d%%" % scale)
+            layout = LAY_WAS.get(was, "text")
+            if was == "split-r":
+                body = (body + "\n\n" if body else "") + "<!-- col -->\n\n" + mark
+            elif was == "split-l":
+                body = mark + "\n\n<!-- col -->" + ("\n\n" + body if body else "")
+            else:
+                body = mark + ("\n\n" + body if body else "")
         slides.append({"tag": payload.group(2), "group": group, "sub": sub,
                        "title": payload.group(3).strip(),
-                       "fig": f.group(1) if f else None,
-                       "layout": (f.group(2) if f and f.group(2) in LAYOUTS else "figure") if f
-                                 else (ly.group(1) if ly and ly.group(1) in LAYOUTS else "text"),
-                       "figScale": int(f.group(3)) if f and f.group(3) else 100,
+                       "layout": layout,
                        "textScale": int(ts.group(1)) if ts else 100,
                        "body": body, "notes": notes, "summary": sm.group(1).strip() if sm else "",
                        "skip": bool(sk) and sk.group(1).lower() in ("yes", "true", "1", "ano"),
@@ -133,11 +149,8 @@ def from_generic(text, fallback_title, group):
         figs = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", body)
         body = re.sub(r"!\[[^\]]*\]\(([^)]+)\)",
                       lambda mm: "![[%s]]" % os.path.basename(mm.group(1)).rsplit(".", 1)[0], body)
-        first = os.path.basename(figs[0]).rsplit(".", 1)[0] if figs else None
-        if first:
-            body = body.replace("![[%s]]" % first, "", 1).strip()
         slides.append({"tag": "S", "group": group, "title": title[:120],
-                       "fig": first, "layout": "figure" if first else "text",
+                       "layout": "text",
                        "body": body, "notes": fm.get("teaser", "")})
     return slides
 
@@ -193,8 +206,6 @@ def main():
     # only the figures actually referenced, hero or inline
     used = set()
     for s in slides:
-        if s["fig"]:
-            used.add(s["fig"])
         used |= set(re.findall(r"!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]", s["body"] or ""))
 
     figs, seen = {}, set()

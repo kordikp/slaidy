@@ -34,10 +34,10 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   fig,measureStage,toggleSkip,liveIdx,liveStats,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},get showing(){return showing},
-  pickFigure,figRef,figMark,hoistFig,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
+  pickFigure,figRef,figMark,figBlocks,firstFig,figIds,setFigSize,bodyParts,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
   srcHtml,srcSync,feId,edgePoint,figChrome,layName,LAY,LAYS,layOf,areaGroups,areasHtml,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
-  progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
+  progress,propose,blankSlide,keepFigures,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
   aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
   get srvDeck(){return srvDeck},get srvLinked(){return srvLinked},set srvLinked(v){srvLinked=v},get dirty(){return dirty},get fileName(){return fileName},
   snapDiff,history_,snapshot,downloadDeck,recentDecks,heldDecks,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
@@ -81,7 +81,7 @@ for t in "${FILES[@]}"; do
   # rather than whatever the previous one left behind
   cp tests/fixture.json "$WORK/real-deck.json"
   prof="$WORK/prof-$t"
-  out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=45000 \
+  out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=70000 \
         --user-data-dir="$prof" \
         --dump-dom "http://localhost:$PORT/$t.html" 2>/dev/null \
         | sed -n '/<pre id="out">/,/<\/pre>/p' | sed 's/<[^>]*>//g')

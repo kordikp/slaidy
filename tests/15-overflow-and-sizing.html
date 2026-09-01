@@ -63,14 +63,14 @@ addEventListener('load',async()=>{
   const fixed=!d.getElementById('overflag').classList.contains('on');
   ok('fit it either fits it or shrinks the type trying',
      fixed||w.S.slides[i].textScale<100,
-     `${w.S.slides[i].layout} · figure ${w.S.slides[i].figScale} % · type ${w.S.slides[i].textScale} % · ${fixed?'fits':'still over'}`);
+     `${w.S.slides[i].layout} · type ${w.S.slides[i].textScale} % · ${fixed?'fits':'still over'}`);
   w.undo();await wait(200);
   w.S.slides[i].body=before;w.paint();await wait(200);
 
   // ---------- controls sit on the picture ----------
-  const fi=w.S.slides.findIndex(x=>x.fig&&x.layout!=='text');
+  const fi=w.S.slides.findIndex(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]);
   w.cur=fi;w.paint();await wait(250);
-  const hero=d.querySelector('#sheet .hero .figbox');
+  const hero=d.querySelector('#sheet .inlinefig .figbox');
   ok('the figure carries its own controls',hero.classList.contains('fx')&&
      !!hero.querySelector('.figbar')&&!!hero.querySelector('.figgrip'));
   const btns=[...hero.querySelectorAll('.figbar button')].map(b=>b.dataset.x);
@@ -89,10 +89,12 @@ addEventListener('load',async()=>{
      hero.querySelector('.figpct').textContent);
   d.dispatchEvent(new W.MouseEvent('mouseup',{bubbles:true}));
   await wait(250);
-  ok('and it sticks',w.S.slides[fi].figScale<100,w.S.slides[fi].figScale+' %');
-  const w1=d.querySelector('#sheet .hero .figbox svg').getBoundingClientRect().width;
+  ok('and it sticks',w.figBlocks(w.S.slides[fi])[0].size<100,w.figBlocks(w.S.slides[fi])[0].size+' %');
+  const w1=d.querySelector('#sheet .inlinefig .figbox svg').getBoundingClientRect().width;
   ok('the picture really is smaller',w1<w0*0.9,Math.round(w0)+' → '+Math.round(w1));
-  ok('and it survives markdown',new RegExp('· '+w.S.slides[fi].figScale+'%').test(w.slideMd(w.S.slides[fi])));
+  ok('and it survives markdown',
+     new RegExp('\\|'+w.figBlocks(w.S.slides[fi])[0].size+'%').test(w.slideMd(w.S.slides[fi])),
+     (w.slideMd(w.S.slides[fi]).match(/!\[\[[^\]]*\]\]/)||[''])[0]);
   w.undo();await wait(200);
 
   // ---------- an inline picture has the same controls ----------
@@ -109,9 +111,11 @@ addEventListener('load',async()=>{
   w.undo();await wait(200);
   ok('and undo puts it back',w.blocks(w.S.slides[ii].body).length===bs);
 
-  // ---------- an inline figure is contained on both axes ----------
-  // it used to be width only, so a figure among text could be taller than the
-  // slide and push everything under it off the bottom
+  // ---------- a figure is contained by its column, on both axes ----------
+  // It used to be width only, so a figure among text could be taller than the
+  // slide and push everything under it off the bottom — and the fix for that
+  // was a measured 340px cap, which meant a figure alone on a slide could never
+  // use the room it had. The column bounds it now, so 100% means what it says.
   const j=w.S.slides.findIndex(x=>x.layout==='text');
   w.cur=j;w.S.slides[j].body='![[fig-panel-1|100%]]';w.paint();await wait(300);
   const st=d.getElementById('stage'),col=st.querySelector('.tx');
@@ -119,8 +123,9 @@ addEventListener('load',async()=>{
   const fb=st.querySelector('.inlinefig .figbox');
   const fh=fb.getBoundingClientRect().height/k2, fw=fb.getBoundingClientRect().width/k2;
   const ch=col.getBoundingClientRect().height/k2, cw=col.getBoundingClientRect().width/k2;
-  ok('an inline figure at 100% is not taller than the cap',fh<=345,Math.round(fh)+'px tall');
-  ok('and fits the column it is in',fh<=ch+1&&fw<=cw+1,
+  ok('a figure alone at 100% takes the column it is in',fh>ch*0.9,
+     Math.round(fh)+' of '+Math.round(ch)+'px');
+  ok('and never more than that',fh<=ch+1&&fw<=cw+1,
      Math.round(fw)+'×'+Math.round(fh)+' in '+Math.round(cw)+'×'+Math.round(ch));
   ok('it keeps the drawing\'s shape',
      Math.abs(fw/fh-800/450)<0.05,(fw/fh).toFixed(2));
@@ -132,8 +137,8 @@ addEventListener('load',async()=>{
 
 
   // ---------- the backdrop resizes, and to more than 100% ----------
-  const bi2=w.S.slides.findIndex(x=>x.fig&&w.S.figs[x.fig]);
-  w.cur=bi2;w.S.slides[bi2].layout='background';w.S.slides[bi2].figScale=100;
+  const bi2=w.S.slides.findIndex(x=>w.firstFig(x)&&w.S.figs[w.firstFig(x)]);
+  w.cur=bi2;w.S.slides[bi2].layout='background';w.setFigSize(w.S.slides[bi2],0,100);
   w.paint();await wait(400);
   const stg=()=>d.getElementById('stage');
   const kk=()=>stg().getBoundingClientRect().width/1280;
@@ -150,8 +155,8 @@ addEventListener('load',async()=>{
      bw()+' want '+(base*2)+' — it used to set a variable nothing reads');
   sl.dispatchEvent(new W.Event('change'));await wait(400);
   ok('and letting go keeps it',Math.abs(bw()-base*2)<8,bw()+'px');
-  ok('which is on the slide, not just on screen',w.S.slides[bi2].figScale===200,
-     String(w.S.slides[bi2].figScale));
+  ok('which is on the slide, not just on screen',w.figBlocks(w.S.slides[bi2])[0].size===200,
+     String(w.figBlocks(w.S.slides[bi2])[0].size));
   ok('an enlarged backdrop crops at the slide edge',
      W.getComputedStyle(stg().querySelector('.bgl')).overflow==='hidden');
 
@@ -161,7 +166,7 @@ addEventListener('load',async()=>{
   sl2.dispatchEvent(new W.Event('change'));await wait(300);
 
   // the editor and the projector have to agree about it
-  w.S.slides[bi2].figScale=100;w.paint();await wait(400);
+  w.setFigSize(w.S.slides[bi2],0,100);w.paint();await wait(400);
   const inEditor=bw();
   const html=w.stageHtml(w.S.slides[bi2],false);
   const probe=d.createElement('div');
@@ -174,7 +179,7 @@ addEventListener('load',async()=>{
   probe.remove();
   ok('the backdrop is the same size in the editor and on the projector',
      Math.abs(asShown-inEditor)<8,inEditor+' vs '+asShown);
-  w.S.slides[bi2].layout='figure';w.S.slides[bi2].figScale=100;w.paint();await wait(200);
+  w.S.slides[bi2].layout='text';w.setFigSize(w.S.slides[bi2],0,100);w.paint();await wait(200);
 
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);

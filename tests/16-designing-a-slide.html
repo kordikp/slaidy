@@ -369,6 +369,33 @@ addEventListener('load',async()=>{
   d.querySelector('#dsOut [data-job="drop"]').click(); await wait(200);
   ok('discarding the other one leaves the slide alone',!w.jobOf(b)&&w.S.slides[1].title!=='Second',
      w.S.slides[1].title);
+  // ---------- and it can be stopped ----------
+  // Waiting twenty seconds for something you already know is wrong is the worst
+  // part of asking, so everything that calls the model shows a Stop while it is
+  // calling. The request is really cancelled, not just ignored.
+  let held=null;
+  const slowStub=()=>{ w.__realFetch=W.fetch;
+    W.fetch=(u,o2)=>new Promise((res,rej)=>{
+      held={res,rej};
+      if(o2&&o2.signal)o2.signal.addEventListener('abort',()=>{
+        const e=new Error('aborted');e.name='AbortError';rej(e);});
+    }); };
+  slowStub();
+  const c=w.S.slides[2];
+  w.queueDesign(c,'take your time');
+  for(let i=0;i<30&&(w.jobOf(c)||{}).state!=='running';i++)await wait(80);
+  ok('it is running',(w.jobOf(c)||{}).state==='running',(w.jobOf(c)||{}).state);
+  w.cur=2;w.paint();await wait(120);
+  const stopBtn=d.querySelector('#dsOut [data-job="stop"]');
+  ok('the progress bar offers a stop',!!stopBtn,
+     (d.getElementById('dsOut').textContent||'').slice(0,40));
+  ok('and the request really was made',!!held);
+  stopBtn.click(); await wait(400);
+  ok('stopping clears the job',!w.jobOf(c));
+  ok('and the slide is untouched',!/take your time/.test(w.S.slides[2].body||''));
+  ok('the queue is free again',!w.jobOf(w.S.slides[0])&&!w.jobOf(w.S.slides[1]));
+  W.fetch=w.__realFetch;
+
   unstub(); w.undo(); await wait(250);
 
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}

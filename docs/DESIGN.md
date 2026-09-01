@@ -395,6 +395,24 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Stopping
+
+Everything that calls the model can be stopped while it is calling, and the stop is real: an
+`AbortController` per call, the signal threaded through `llm` to the `fetch`, and a rejection
+carrying `stopped: true` that the retry logic knows is not transient and the usage counter
+knows is not a failure. Waiting twenty seconds for something you already know is wrong is the
+worst part of asking.
+
+- **A slide being written** — the progress bar carries *Stop it*. The queue moves on to the
+  next slide, and nothing is said about the one you stopped, because you already know.
+- **A slide waiting its turn** — *Take it out of the queue*.
+- **A figure being drawn** from the body — *Draw it* becomes *drawing… — stop*.
+- **A figure being redrawn** in the editor, whole or one selected element — the spinner
+  carries a Stop beside it (`withStop`).
+
+A stop is not a failure anywhere: `designSlide` rethrows it rather than turning the job red,
+and `transient()` refuses to retry it.
+
 ### Which section a drop means
 
 Just below a heading and just above it are the **same index**: the end of one section and the

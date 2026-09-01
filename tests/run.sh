@@ -37,7 +37,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   pickFigure,figRef,figMark,figBlocks,firstFig,figIds,setFigSize,bodyParts,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
   srcHtml,srcSync,feId,stampApp,edgePoint,figChrome,layName,LAY,LAYS,layOf,areaGroups,areasHtml,soloFig,figAR,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
-  progress,propose,blankSlide,keepFigures,queueDesign,jobOf,jobBox,jobsPrune,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
+  progress,propose,blankSlide,keepFigures,queueDesign,withStop,jobOf,jobBox,jobsPrune,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
   aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
   get srvDeck(){return srvDeck},get srvLinked(){return srvLinked},set srvLinked(v){srvLinked=v},get dirty(){return dirty},get fileName(){return fileName},
   snapDiff,history_,snapshot,downloadDeck,recentDecks,heldDecks,banner,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
@@ -46,7 +46,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   splitBody,trimSvg,feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
   copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,renameDeck,unbanner,hush,hushed,checkFit,useLoad,useNote,useReset,usageHtml,
-  KIND_LABEL,nfmt,safeUrl,askReplace,writeServer,writeServerAs,aiSays,nativeFile,canFile,saveDeckAs,openDeckFile,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY,swipes,step};"""
+  KIND_LABEL,nfmt,safeUrl,askReplace,writeServer,writeServerAs,aiSays,nativeFile,canFile,saveDeckAs,openDeckFile,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,llm2,transient,RETRY,swipes,step};"""
 ready = """
 /* Transitions never settle under Chrome's virtual time, so getComputedStyle
    reads the value a property is animating *from* — an assertion about a drawer

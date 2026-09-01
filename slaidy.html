@@ -2927,12 +2927,15 @@ function paintBody(s){
         const a=btn.dataset.a,{id}=figRef(blocks(s.body)[bi].src);
         if(a==='pick')return pickFigure(nid=>{snap('figure');put(nid,null);});
         if(a==='drop')return drop();
-        d.querySelectorAll('.undrawn button').forEach(x=>x.disabled=true);
-        btn.textContent='drawing…';
-        try{const svg=await drawFigure(id,s);
+        const stop=new AbortController();
+        d.querySelectorAll('.undrawn button').forEach(x=>{x.disabled=true;});
+        btn.disabled=false;btn.textContent='drawing… — stop';
+        btn.onclick=ev=>{ev.stopPropagation();try{stop.abort();}catch(e){}};
+        try{const svg=await drawFigure(id,s,null,stop.signal);
           snap('draw figure',{[id]:null});S.figs[id]=svg;touch();paint();toast('Drew '+id);}
-        catch(err){d.querySelectorAll('.undrawn button').forEach(x=>x.disabled=false);
-          btn.textContent='Draw it';toast('Could not draw it — '+err.message);}
+        catch(err){
+          paintBody(s);
+          if(!(err&&(err.stopped||stop.signal.aborted)))toast('Could not draw it — '+err.message);}
       });
       if(box&&box.querySelector('svg')){
         figChrome(box,{
@@ -3116,7 +3119,8 @@ function jobBox(s){
   }
   if(j.state==='running')
     return `<div class="wlab"><b>${esc(j.label||'working')}</b><i>${esc(j.note||'')}</i></div>
-      <div class="prog"><i style="width:55%"></i></div>`;
+      <div class="prog"><i style="width:55%"></i></div>
+      <div class="rw" style="margin-top:7px"><button class="b" data-job="stop">Stop it</button></div>`;
   if(j.state==='failed')
     return `<div class="bad">${esc(j.err||'it did not work')}</div>
       <div class="rw" style="margin-top:7px"><button class="b" data-job="retry">Try again</button>
@@ -3196,8 +3200,8 @@ function trimSvg(svg,pad){
   host.innerHTML='';
   return out;
 }
-async function drawFigure(id,s,brief){
-  let t=(await llm(figSys(),
+async function drawFigure(id,s,brief,signal){
+  let t=(await llm2(signal,figSys(),
     `Draw a NEW figure from scratch. It is referenced from the slide as ![[${id}]].\n\n`+
     `SLIDE TITLE: ${s.title}\nSECTION: ${s.group||''}\n\nSLIDE BODY:\n${(s.body||'').slice(0,1400)}\n\n`+
     (brief?`WHAT THE AUTHOR ASKED FOR: ${brief}\n\n`:'')+
@@ -3395,8 +3399,13 @@ async function jobPump(){
   if(!s)return;
   if(S.slides.indexOf(s)<0)return jobPump();       /* the slide went away */
   JOBRUN=true;
-  try{ await designSlide(s,JOBS.get(s).brief,JOBS.get(s).fixedTitle); }
-  catch(e){ jobSet(s,{state:'failed',err:e.message||String(e)}); }
+  const stop=new AbortController();
+  jobSet(s,{state:'running',stop});
+  try{ await designSlide(s,JOBS.get(s).brief,JOBS.get(s).fixedTitle,stop.signal); }
+  catch(e){
+    if(e&&(e.stopped||stop.signal.aborted))jobDrop(s);   /* you asked; nothing to report */
+    else jobSet(s,{state:'failed',err:e.message||String(e),stop:null});
+  }
   JOBRUN=false;
   jobPump();
 }
@@ -3409,7 +3418,7 @@ function jobProgress(s){
     fail(msg){jobSet(s,{state:'failed',err:msg});}
   };
 }
-async function designSlide(s,brief,fixedTitle){
+async function designSlide(s,brief,fixedTitle,signal){
   const host=null;
   const prog=jobProgress(s);
   prog.step(blankSlide(s)?'writing the slide':'rewriting the slide');
@@ -3419,7 +3428,7 @@ async function designSlide(s,brief,fixedTitle){
     .map(([i,x])=>`${i<at?'before':'after'}: ${x.title}`).join('\n');
   const links=deckLinks(s);
   try{
-    const raw=(await llm(
+    const raw=(await llm2(signal,
       DESIGN_SYS+(fixedTitle?`\nThe title is already decided: use exactly "${fixedTitle}".`:''),
       `DECK: ${S.title}\nSECTION: ${s.group||''}${s.sub?' · '+s.sub:''}\n`+
       `NEIGHBOURING SLIDES:\n${near||'(none)'}\n\n`+
@@ -3485,7 +3494,12 @@ async function designSlide(s,brief,fixedTitle){
           :kf.back?`Slide rewritten — the ${kf.back===1?'figure it had is':'figures it had are'} still there`
                   :'Slide rewritten — the layout is as you left it');
       }});
-  }catch(e){prog.fail('Failed: '+e.message);}
+  }catch(e){
+    /* asked to stop is not a failure to report — the queue handles it, and the
+       job goes away rather than turning red about something you did */
+    if(e&&e.stopped)throw e;
+    prog.fail('Failed: '+e.message);
+  }
 }
 
 function paintSide(){
@@ -3616,6 +3630,12 @@ function paintSide(){
     const j=jobOf(s);if(!j)return;
     if(a==='apply'){const f=j.apply;jobDrop(s);f&&f();return;}
     if(a==='retry'){const b=j.brief;jobDrop(s);queueDesign(s,b);return;}
+    if(a==='stop'){
+      /* the fetch is cancelled, the queue moves on, and nothing is left behind */
+      try{j.stop&&j.stop.abort();}catch(e){}
+      QUEUE=QUEUE.filter(x=>x!==s);jobDrop(s);toast('Stopped');
+      return;
+    }
     if(a==='drop'){QUEUE=QUEUE.filter(x=>x!==s);jobDrop(s);}
   });
   if(de)de.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))
@@ -4308,23 +4328,29 @@ function cfgUrl(c){
    "you have had your figures for today" is not a failure to work around. */
 const RETRY=3;
 function transient(e){
-  if(!e||e.limited)return false;                    /* the demo's allowance is not a fault */
+  if(!e||e.limited||e.stopped)return false;                    /* the demo's allowance is not a fault */
   /* the status, where there is one — deciding this by reading the message is
      how a 503 dressed in the gateway's own words gets treated as final */
   if(e.status)return e.status>=500||e.status===429;
   return /could not reach|no choices|timed out|network|failed to fetch/i.test(String(e.message||''));
 }
-async function llm(system,user,maxTok,kind){
+/* the same call with the stop in front, so the one place that can be
+   interrupted says so at the call site */
+const llm2=(signal,system,user,maxTok,kind)=>llm(system,user,maxTok,kind,signal);
+async function llm(system,user,maxTok,kind,signal){
   let last;
   for(let a=0;a<RETRY;a++){
+    if(signal&&signal.aborted)throw Object.assign(new Error('stopped'),{stopped:true});
     if(a){
       const wait=700*Math.pow(2,a-1)+Math.random()*400;
       llm.onretry&&llm.onretry(a+1,RETRY);
       await new Promise(r=>setTimeout(r,wait));
     }
-    try{ return await llmOnce(system,user,maxTok,kind); }
+    try{ return await llmOnce(system,user,maxTok,kind,signal); }
     catch(e){
       last=e;
+      /* asked to stop is not a failure to retry, and not one to count */
+      if(e&&e.stopped)throw e;
       /* one press, one failure. The retries are the app's business, not
          something the person waiting should see three of in the usage panel. */
       if(!transient(e)){useFail();throw e;}
@@ -4334,7 +4360,7 @@ async function llm(system,user,maxTok,kind){
   last.message=`${last.message} — tried ${RETRY} times over a few seconds.`;
   throw last;
 }
-async function llmOnce(system,user,maxTok,kind){
+async function llmOnce(system,user,maxTok,kind,signal){
   const c=cfg();
   const url=cfgUrl(c);
   /* the proxy and the local server take the same small shape; only a bare
@@ -4346,10 +4372,13 @@ async function llmOnce(system,user,maxTok,kind){
   const t0=Date.now();
   let r;
   try{
-    r=await fetch(url,{method:'POST',
+    r=await fetch(url,{method:'POST',signal,
       headers:{'Content-Type':'application/json',...(c.key?{Authorization:'Bearer '+c.key}:{})},
       body:JSON.stringify(body)});
-  }catch(e){ throw new Error(`could not reach ${url} — ${e.message}`); }
+  }catch(e){
+    if(e&&e.name==='AbortError')throw Object.assign(new Error('stopped'),{stopped:true});
+    throw new Error(`could not reach ${url} — ${e.message}`);
+  }
 
   /* A plain file server answers a POST with the page itself. Say that, rather
      than letting JSON.parse complain about a "<". */
@@ -5429,20 +5458,36 @@ function feHtml(){
   return c.outerHTML;
 }
 
+/* Anything that draws shows a Stop while it draws. A figure takes twenty
+   seconds or more, and waiting for something you already know is wrong is the
+   worst part of asking. The abort is real — the request is cancelled, not
+   ignored — and a stop is not a failure: nothing is said about it afterwards
+   because you already know. */
+async function withStop(out,label,run){
+  const stop=new AbortController();
+  out.classList.remove('hidden');
+  out.innerHTML=`<span class="spin"></span> ${esc(label)}
+    <button class="b" id="feStop" style="margin-left:8px">Stop</button>`;
+  const b=out.querySelector('#feStop');
+  if(b)b.onclick=()=>{try{stop.abort();}catch(e){} out.classList.add('hidden');};
+  try{ return await run(stop.signal); }
+  catch(e){
+    if(e&&(e.stopped||stop.signal.aborted)){out.classList.add('hidden');return null;}
+    out.textContent='Failed: '+e.message;
+    return null;
+  }
+}
 async function feAskSelection(){
   const instr=document.getElementById('feSelAi').value.trim();
   if(!instr){toast('Say what should change');return;}
-  const out=document.getElementById('feSelOut');out.classList.remove('hidden');
-  out.innerHTML='<span class="spin"></span> redrawing…';
+  const out=document.getElementById('feSelOut');
   const sel=feClean(FE.sel.outerHTML).slice(0,1500);
-  try{
-    const t=await llm(figSys(),
-      `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\n`+
-      `THE USER HAS SELECTED THIS ELEMENT:\n${sel}\n\n`+
-      `CHANGE REQUESTED, about that element specifically: ${instr}\n`+
-      `Leave the rest of the figure as it is.`,20000,'figure');
-    feAccept(t,out);
-  }catch(e){out.textContent='Failed: '+e.message;}
+  const t=await withStop(out,'redrawing…',sig=>llm2(sig,figSys(),
+    `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\n`+
+    `THE USER HAS SELECTED THIS ELEMENT:\n${sel}\n\n`+
+    `CHANGE REQUESTED, about that element specifically: ${instr}\n`+
+    `Leave the rest of the figure as it is.`,20000,'figure'));
+  if(t!=null)feAccept(t,out);
 }
 
 function feAccept(t,out){
@@ -5592,12 +5637,11 @@ function feTab(t){
   document.getElementById('feAiGo').onclick=async()=>{
     const instr=document.getElementById('feAiIn').value.trim();
     if(!instr){toast('Say what to change');return;}
-    const out=document.getElementById('feAiOut');out.classList.remove('hidden');
-    out.innerHTML='<span class="spin"></span> redrawing…';
-    try{feAccept(await llm(figSys(),
+    const out=document.getElementById('feAiOut');
+    const t=await withStop(out,'redrawing…',sig=>llm2(sig,figSys(),
       `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\nCHANGE REQUESTED: ${instr}`,
-      20000,'figure'),out);}
-    catch(e){out.textContent='Failed: '+e.message;}
+      20000,'figure'));
+    if(t!=null)feAccept(t,out);
   };
 }
 

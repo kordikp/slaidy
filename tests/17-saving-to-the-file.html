@@ -106,6 +106,35 @@ addEventListener('load',async()=>{
   w.srvDeck.mtime=(await (await fetch('/api/deck')).json()).mtime;
   w.S.slides[0].title=served.slides[0].title;await w.persist();await wait(250);
   ok('restored',(await disk()).slides[0].title===served.slides[0].title);
+  // ---------- the deck's name is where its name is ----------
+  // It was in Deck settings, three clicks away, and the thing in the bar that
+  // looks like the name is the link to the project — so the obvious click went
+  // to GitHub.
+  const was=w.S.title;
+  const nameBtn=d.getElementById('deckInfo');
+  ok('the name in the bar is something you can press',nameBtn&&nameBtn.tagName==='BUTTON',
+     nameBtn&&nameBtn.tagName);
+  nameBtn.click(); await wait(150);
+  const inp=d.getElementById('deckInfo');
+  ok('pressing it turns it into a field',inp&&inp.tagName==='INPUT',inp&&inp.tagName);
+  ok('holding the name it already had',inp.value===was,inp.value);
+  inp.value='A Better Name';
+  inp.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+  await wait(250);
+  ok('typing a new one renames the deck',w.S.title==='A Better Name',w.S.title);
+  ok('and the bar says so',/A Better Name/.test(d.getElementById('deckInfo').textContent),
+     d.getElementById('deckInfo').textContent);
+  ok('the tab says so too',d.title.indexOf('A Better Name')===0,d.title);
+  w.undo(); await wait(200);
+  ok('one undo puts the old name back',w.S.title===was,w.S.title);
+
+  // a banner that has been answered comes down
+  w.banner('Editing a copy in this browser.','Choose the file',()=>{});
+  await wait(120);
+  ok('the nudge is up',d.getElementById('nudge').classList.contains('on'));
+  w.unbanner();
+  ok('and answering it takes it down',!d.getElementById('nudge').classList.contains('on'));
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

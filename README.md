@@ -34,7 +34,9 @@ the shortcuts, `P` to present.
 Two ways to use it, and they are not the same thing.
 
 **On your machine** — the editor you work in. `./install.sh` puts it in the launcher with an
-icon and opens in a window of its own; `./studio.sh` does the same from a terminal. The deck
+icon, and it opens in a window of its own: GTK and WebKit, no address bar, no tabs, filed in
+the dock under its own name. `./studio.sh` does the same from a terminal, and both fall back
+to a browser window where those are not available. The deck
 is a file on your disk, saving writes that file, and the AI is whatever you point it at
 (below). This is where a talk gets made.
 

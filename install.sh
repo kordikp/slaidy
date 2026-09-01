@@ -12,7 +12,12 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BIN="$HOME/.local/bin/slaidy"
-APP="$HOME/.local/share/applications/slaidy.desktop"
+# The entry is named after the application id the window sets, because that is
+# how a Wayland desktop matches a window to its icon. slaidy.desktop was the old
+# name and is removed if it is still lying about.
+APPID="io.github.kordikp.slaidy"
+APP="$HOME/.local/share/applications/$APPID.desktop"
+OLDAPP="$HOME/.local/share/applications/slaidy.desktop"
 ICONS="$HOME/.local/share/icons/hicolor"
 ICON="$ICONS/scalable/apps/slaidy.svg"
 
@@ -23,20 +28,21 @@ pin() {                              # pin add|remove
   now=${now#@as }
   case "$now" in \[*\]) ;; *) return 0;; esac
   if [ "$1" = add ]; then
-    case "$now" in *"'slaidy.desktop'"*) return 0;; esac
-    if [ "$now" = "[]" ]; then now="['slaidy.desktop']"
-    else now=$(printf '%s' "$now" | sed "s|]$|, 'slaidy.desktop']|"); fi
+    case "$now" in *"'$APPID.desktop'"*) return 0;; esac
+    now=$(printf '%s' "$now" | sed -e "s|'slaidy.desktop', ||" -e "s|, 'slaidy.desktop'||")
+    if [ "$now" = "[]" ]; then now="['$APPID.desktop']"
+    else now=$(printf '%s' "$now" | sed "s|]$|, '$APPID.desktop']|"); fi
     gsettings set $key favorite-apps "$now" 2>/dev/null && echo "  pinned to the dock"
   else
-    case "$now" in *"'slaidy.desktop'"*) ;; *) return 0;; esac
-    now=$(printf '%s' "$now" | sed -e "s|'slaidy.desktop', ||" -e "s|, 'slaidy.desktop'||" -e "s|'slaidy.desktop'||")
+    now=$(printf '%s' "$now" | sed -e "s|'$APPID.desktop', ||" -e "s|, '$APPID.desktop'||" -e "s|'$APPID.desktop'||" \
+      -e "s|'slaidy.desktop', ||" -e "s|, 'slaidy.desktop'||" -e "s|'slaidy.desktop'||")
     gsettings set $key favorite-apps "$now" 2>/dev/null && echo "  taken off the dock"
   fi
 }
 
 if [ "${1:-}" = "--remove" ]; then
   pin remove
-  rm -f "$BIN" "$APP" "$ICON"
+  rm -f "$BIN" "$APP" "$OLDAPP" "$ICON"
   for s in 16 24 32 48 64 128 256; do rm -f "$ICONS/${s}x${s}/apps/slaidy.png"; done
   command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -f -t "$ICONS" 2>/dev/null || true
   command -v update-desktop-database >/dev/null && update-desktop-database "$(dirname "$APP")" 2>/dev/null || true
@@ -102,6 +108,7 @@ MimeType=application/json;text/markdown;
 StartupNotify=true
 StartupWMClass=SlAIdy
 DESKTOP
+rm -f "$OLDAPP"
 command -v update-desktop-database >/dev/null && update-desktop-database "$(dirname "$APP")" 2>/dev/null || true
 [ "${1:-}" = "--no-pin" ] || pin add
 

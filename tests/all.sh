@@ -50,7 +50,9 @@ DESK
   desktop-file-validate "$tmp/slaidy.desktop" || fail=1
   rm -rf "$tmp"
 fi
-echo "  icon at 7 sizes, a desktop entry, and the same mark in the tab"
+python3 -c "import ast;ast.parse(open('scripts/window.py').read())" || { echo "  window.py does not parse"; fail=1; }
+grep -q "scripts/window.py" studio.sh || { echo "  studio.sh does not open the application window"; fail=1; }
+echo "  icon at 7 sizes, a desktop entry, its own window, and the same mark in the tab"
 
 printf '\n'
 [ "$fail" = 0 ] && echo "all good" || echo "SOMETHING FAILED"

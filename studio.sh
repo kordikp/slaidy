@@ -112,6 +112,25 @@ echo
 # the dock. Its own profile means its own process, which owns its own window.
 open_window() {
   sleep 1
+  # A window of its own, if this machine has what it takes to make one: GTK and
+  # WebKit, both of which Ubuntu ships. No address bar, no tabs, its own icon,
+  # and the dock files it under the application rather than under the browser.
+  #
+  # Tried, then checked: WebKit's sandbox needs user namespaces, which are not
+  # always there, and it exits rather than saying so. If it does not survive two
+  # seconds it is tried once without the sandbox — the page is localhost and
+  # nothing else — and if that fails too, a browser is opened, which is what
+  # this did before and is no worse than it was.
+  local wurl="http://localhost:$PORT/?v=$STAMP" wlog=/tmp/slaidy-window.log wp
+  if "$PY" -c 'import gi;gi.require_version("Gtk","4.0");gi.require_version("WebKit","6.0")' 2>/dev/null; then
+    : > "$wlog"
+    "$PY" scripts/window.py "$wurl" >>"$wlog" 2>&1 & wp=$!
+    sleep 2; kill -0 "$wp" 2>/dev/null && return
+    WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 \
+      "$PY" scripts/window.py "$wurl" >>"$wlog" 2>&1 & wp=$!
+    sleep 2; kill -0 "$wp" 2>/dev/null && return
+    echo "  the application window would not start — opening a browser instead ($wlog)"
+  fi
   # The address carries the hash of the file being served. A cache cannot
   # answer for a url it has never seen, so a window opened this way is the
   # application that was just installed and not a copy of last week's.

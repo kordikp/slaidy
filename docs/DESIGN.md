@@ -528,6 +528,26 @@ repository. On the web it is the page's `Last-Modified`, which is when it was de
 
 ### The application window
 
+`scripts/window.py` is forty lines of GTK4 and WebKitGTK — both of which Ubuntu already
+ships — and it is what makes this an application rather than a browser: no address bar, no
+tabs, its own icon, and a window the dock files under `io.github.kordikp.slaidy.desktop`
+because that is the id the window sets. It carries over the four things a browser window was
+doing: full screen (the presenter asks for it), printing (which is how a PDF is made — the
+GTK dialog has Print to File), downloads (into ~/Downloads), and the page's title, so the
+window says which deck this is.
+
+It is tried, then checked. WebKit's sandbox needs user namespaces, which are not always
+there, and it exits rather than explaining; if the window does not survive two seconds it is
+tried once more without the sandbox — the page is localhost and nothing else — and if that
+fails too a browser is opened, which is what this did before and is no worse than it was.
+`/tmp/slaidy-window.log` says which of the three happened.
+
+The File System Access API is Chrome's, so in this window there is no file picker — and it
+does not matter, because the deck is the file `studio.sh` is serving and saving writes it
+through the server. That is the local application's whole shape.
+
+### The browser fallback
+
 `--app=` gives a window without an address bar, `--class=SlAIdy` names it so the desktop can
 match it to `slaidy.desktop`, and `--user-data-dir` is the part that is easy to miss: without
 it, a Chrome that is already running opens the window itself, and the window is then that

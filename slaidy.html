@@ -36,7 +36,10 @@ button{cursor:pointer;background:none;border:none}
 #bar .logo svg{width:17px;height:17px;flex:none;border-radius:4px}
 #bar .logo:hover{color:var(--acc)}
 #bar .logo::after{content:'↗';font-size:9px;margin-left:3px;opacity:.45;vertical-align:2px}
-#bar .meta2{color:var(--faint);font-size:11.5px;max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bar .meta2{color:var(--faint);font-size:11.5px;max-width:34ch;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;background:none;border:0;padding:2px 5px;border-radius:var(--r6);cursor:text;text-align:left}
+#bar .meta2:hover{background:var(--accbg);color:var(--acc)}
+#bar input.meta2{cursor:text;color:var(--ink);background:#fff;border:1px solid var(--acc);width:22ch}
 #bar .sp{flex:1}
 #bar .div{width:1px;height:17px;background:var(--line);margin:0 2px}
 .b{padding:4px 10px;border:1px solid var(--line);border-radius:var(--r6);font-size:12.5px;background:#fff;
@@ -737,7 +740,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
        x="15" y="29" width="29" height="3.6" rx="1.8" fill="#C2BCF5"/><rect x="15" y="35" width="18" height="3.6" rx="1.8" fill="#C2BCF5"/><path
        d="M46 39l3.1 6.9L56 49l-6.9 3.1L46 59l-3.1-6.9L36 49l6.9-3.1z" fill="#FBBF24" stroke="#3A2FB0"
        stroke-width="2.6" stroke-linejoin="round"/></svg>SlAIdy</a>
-  <span class="meta2" id="deckInfo">no deck</span>
+  <button class="meta2" id="deckInfo" title="Rename this deck">no deck</button>
   <span id="status" class="busy" title="storage status">no deck</span>
   <span class="sp"></span>
   <button class="ic" id="bUndo" title="Undo (Ctrl-Z)" disabled>↶</button>
@@ -1105,6 +1108,7 @@ async function openDeckFile(){
        meta:b.meta||{},style:b.style||{}};
     normalise();cur=0;dirty=false;
     srvLinked=false;                 /* this file is now the deck's home, not the served one */
+    unbanner();
     await rememberHandle(h);
     document.getElementById('welcome').classList.add('hidden');
     lastSaved=new Date();setStatus('ok');paint();
@@ -1118,8 +1122,20 @@ async function saveDeckAs(){
       suggestedName:(S.id||'deck')+'.json',
       types:[{description:'Deck',accept:{'application/json':['.json']}}]});
     await rememberHandle(h);
+    /* the deck is that file now, not the one the server happens to be serving */
+    srvLinked=false;
     await writeFile();
     lastSaved=new Date();dirty=false;setStatus('ok');
+    unbanner();
+    /* A deck still called "Untitled deck" and now living in talk.json is called
+       talk — nobody names a file one thing and means another. */
+    const stem=String(fileName||'').replace(/\.[^.]+$/,'').split('/').pop();
+    if(stem&&/^(untitled|untitled deck|deck)$/i.test((S.title||'').trim())){
+      S.title=stem.replace(/[-_]+/g,' ').replace(/\s+/g,' ').trim();
+      S.id=stem.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||S.id;
+      touch();
+    }
+    paint();
     toast('Saved as '+fileName);
   }catch(e){}
 }
@@ -1162,7 +1178,9 @@ const UNDO=[];
    no maps, no cycles — so the round-trip is exact. */
 const clone=typeof structuredClone==='function'?structuredClone:(o=>JSON.parse(JSON.stringify(o)));
 function snap(label,figs){
-  UNDO.push({slides:clone(S.slides),cur,label,figs:figs||null});
+  /* the deck's own name goes in too: renaming it is an edit like any other, and
+     an edit you cannot take back is a trap */
+  UNDO.push({slides:clone(S.slides),cur,label,figs:figs||null,title:S.title});
   if(UNDO.length>40)UNDO.shift();
   const b=document.getElementById('bUndo');if(b){b.disabled=false;b.title='Undo '+label+' (Ctrl-Z)';}
 }
@@ -1170,6 +1188,7 @@ function undo(){
   if(!UNDO.length){toast('Nothing to undo');return;}
   const u=UNDO.pop();
   S.slides=u.slides;cur=Math.min(u.cur,S.slides.length-1);
+  if(u.title!=null)S.title=u.title;
   if(u.figs)for(const k in u.figs){if(u.figs[k]===null)delete S.figs[k];else S.figs[k]=u.figs[k];}
   const b=document.getElementById('bUndo');if(b&&!UNDO.length)b.disabled=true;
   touch();paint();toast('Undone — '+u.label);
@@ -6156,10 +6175,33 @@ document.getElementById('bNew').onclick=()=>{const s=S.slides[cur]||{};
 document.getElementById('bDup').onclick=()=>duplicateSlide(cur);
 document.getElementById('bDel').onclick=()=>deleteSlide(cur);
 
+/* Renaming the deck, where its name is. It was in Deck settings, three clicks
+   away, and the thing in the bar that looks like the name is the link to the
+   project — so the obvious click went to GitHub. */
+function renameDeck(){
+  const el=document.getElementById('deckInfo');
+  if(!el||el.tagName!=='BUTTON')return;
+  const inp=document.createElement('input');
+  inp.className='meta2';inp.id='deckInfo';inp.value=S.title||'';
+  inp.setAttribute('aria-label','Deck name');
+  el.replaceWith(inp);inp.focus();inp.select();
+  const done=save=>{
+    const v=inp.value.trim();
+    if(save&&v&&v!==S.title){snap('deck name');S.title=v;touch();}
+    paint();
+  };
+  inp.onblur=()=>done(true);
+  inp.onkeydown=e=>{
+    if(e.key==='Enter'){e.preventDefault();inp.blur();}
+    if(e.key==='Escape'){inp.onblur=null;paint();}
+  };
+}
 function paint(){
   applyStyle();
   titleTab();
-  document.getElementById('deckInfo').textContent=
+  const di=document.getElementById('deckInfo');
+  if(di&&di.tagName==='BUTTON')di.onclick=renameDeck;
+  di.textContent=
     S.slides.length?`${S.title} · ${S.slides.length} slides · ${Object.keys(S.figs).length} figures`:'no deck';
   paintNav();paintBoard();paintSide();
 }
@@ -6377,6 +6419,10 @@ async function offerNewer(loadedId){
       `last edited ${new Date(r.at).toLocaleString()}.`,'Open it',()=>recentDecks()),2400);
   }catch(e){}
 }
+/* Take down whatever is being nudged about, because it has just been done.
+   "Editing a copy in this browser" is a fair thing to say until you point it at
+   a file, and an infuriating thing to keep saying afterwards. */
+function unbanner(){document.getElementById('nudge')?.classList.remove('on');}
 function banner(text,label,fn){
   let el=document.getElementById('nudge');
   if(!el){el=document.createElement('div');el.id='nudge';document.body.appendChild(el);}

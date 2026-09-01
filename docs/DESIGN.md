@@ -395,6 +395,28 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Where the room goes
+
+Tidy measures. What it can change is the size of the first figure, the size of the type,
+and — this part was broken — where the room that is left over ends up.
+
+Three answers, and the flag is written into the slide so every surface draws the same thing:
+nothing, and the content sits where it was written; `center`, and the room is shared above
+and below it; `spread`, and the room goes *between* the blocks, which is a heading at the top
+and the line that lands at the bottom rather than both in the middle with a hole underneath.
+
+`center` had existed and done nothing at all. It was said on the column — `justify-content`
+on `.tx` — and `.txin` fills that column, so there was never anything left to distribute. A
+short slide sat glued to the top with four hundred pixels of nothing under it, whatever the
+flag said. It is said on the box that holds the blocks now.
+
+Spread is offered only when there is a modest amount to share: between 6% and 30% of the
+frame, and only with three blocks or more. Below that the gaps are invisible; above it, a
+hand's width of nothing between two paragraphs reads as a mistake rather than as
+composition. And the room is measured *before* it is placed — asking how much slack the
+spread version has left would always answer none, because spreading fills the frame by
+definition.
+
 ### A figure is a block
 
 There is no such thing as *the* figure on a slide. A drawing is `![[fig-id|60%]]` on a line

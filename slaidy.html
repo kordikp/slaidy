@@ -122,8 +122,17 @@ button{cursor:pointer;background:none;border:none}
 .stage h2.hd:focus{background:var(--accbg);box-shadow:0 0 0 3px #C9C3F6}
 .stage .stack{flex:1;min-height:0;display:flex;flex-direction:column}
 /* Tidy may decide a short slide sits better in the middle of the frame */
-.stage .stack.mid>.tx{justify-content:safe center}
-.stage .stack.mid{justify-content:safe center}
+/* Centred means the content sits in the middle of the frame rather than glued
+   to the top with the slack under it. It has to be said on the box that holds
+   the blocks — .txin fills the column, so telling the column to centre had
+   nothing left to distribute and the flag did nothing at all. */
+.stage .stack.mid>.tx,.stage .stack.mid{justify-content:safe center}
+.stage .stack.mid .txin,.stage .stack.mid .bdy,.stage .stack.mid .area{justify-content:safe center}
+/* Spread puts the room between the blocks instead of under them — a heading at
+   the top and the line that lands at the bottom, rather than both in the middle
+   with a hole below. Only ever chosen when the room to share is modest; a big
+   gap between two paragraphs reads as a mistake. */
+.stage .stack.spr .txin,.stage .stack.spr .bdy,.stage .stack.spr .area{justify-content:space-between}
 /* height:auto lets the viewBox set the box, so the element is the drawing rather
    than a column the drawing floats in the middle of */
 /* fit inside the column on both axes, at the size asked for */
@@ -2293,7 +2302,8 @@ function stageHtml(s,edit){
   const cols=L.areas.length>1;
   const bodyHtml=`<div class="txin${cols?' cols':''}">`+
     (edit?`<div id="bd" class="bdy${cols?' cols':''}"></div>`:areasHtml(list,L,ix))+'</div>';
-  const mid=(s.flags||[]).includes('center')?' mid':'';
+  const fl=s.flags||[];
+  const mid=(fl.includes('center')?' mid':'')+(fl.includes('spread')?' spr':'');
   const back=behind&&S.figs[behind.id]
     ? `<div class="bgl" id="bgl" style="--fsn:${behind.size/100}">${edit?'':fig(behind.id)}</div>` : '';
   return (L.header===false?'':`<div class="hdr">${hdrHtml(s)}</div>`)+
@@ -2778,26 +2788,44 @@ function tidySlide(i){
   const stamp=()=>JSON.stringify(TIDY_KEYS.map(k=>s[k]))+'|'+sizeNow();
   const before=stamp();
   const has=figBlocks(s).some(f=>S.figs[f.id]);
-  const others=(s.flags||[]).filter(f=>f!=='center');
+  const others=(s.flags||[]).filter(f=>f!=='center'&&f!=='spread');
   const figs=has?TIDY_FIG:[100];
 
   const words=stats(s).words;
-  const was={F:sizeNow()||100,tx:s.textScale||100,mid:(s.flags||[]).includes('center')};
+  const now=(s.flags||[]);
+  const was={F:sizeNow()||100,tx:s.textScale||100,
+             v:now.includes('spread')?'spread':now.includes('center')?'center':''};
+  /* Where the room goes: under the content, around it, or between the blocks.
+     Spreading needs something to spread — three blocks or more — and it is only
+     offered while the room is modest, because a hand's width of nothing between
+     two paragraphs reads as a mistake rather than as composition. */
+  const nblocks=blocks(s.body).filter(b=>b.kind!=='col').length;
+  const vs=['','center'].concat(nblocks>=3?['spread']:[]);
   let best=null;
   for(const tx of TIDY_TXT){
-    for(const F of figs) for(const mid of [false,true]){
+    for(const F of figs){
       if(has)setFigSize(s,0,F);
-      s.textScale=tx;s.flags=mid?[...others,'center']:others;
-      let sc=tidyScore(measureStage(s),s,words);
-      /* a nudge towards what the author already chose, so a tie does not churn the deck */
-      if(sc<1e9&&F===was.F&&tx===was.tx&&mid===was.mid)sc-=2.5;
-      if(!best||sc<best.sc)best={sc,F,tx,mid};
+      s.textScale=tx;
+      /* How much room there is to place, measured with the content where it was
+         written. Spreading fills the frame by definition, so asking how much
+         slack the spread version has left would always answer none. */
+      s.flags=others;
+      const plain=measureStage(s);
+      const room=Math.max(0,(plain?plain.slack:0))/Math.max(1,plain?plain.frame:1);
+      for(const v of vs){
+        if(v==='spread'&&(room>0.30||room<0.06))continue;
+        s.flags=v?[...others,v]:others;
+        let sc=tidyScore(v?measureStage(s):plain,s,words);
+        if(v==='spread')sc+=3;                     /* centred wins a tie */
+        if(sc<1e9&&F===was.F&&tx===was.tx&&v===was.v)sc-=2.5;
+        if(!best||sc<best.sc)best={sc,F,tx,v};
+      }
     }
     if(best&&best.sc<1e9)break;                    // only shrink the type to rescue an overflow
   }
-  const pick=(best&&best.sc<1e9)?best:{F:has?60:100,tx:82,mid:false};
+  const pick=(best&&best.sc<1e9)?best:{F:has?60:100,tx:82,v:''};
   if(has)setFigSize(s,0,pick.F);
-  s.textScale=pick.tx;s.flags=pick.mid?[...others,'center']:others;
+  s.textScale=pick.tx;s.flags=pick.v?[...others,pick.v]:others;
   return stamp()!==before;
 }
 function tidyDeck(only){

@@ -181,6 +181,38 @@ addEventListener('load',async()=>{
      Math.abs(asShown-inEditor)<8,inEditor+' vs '+asShown);
   w.S.slides[bi2].layout='text';w.setFigSize(w.S.slides[bi2],0,100);w.paint();await wait(200);
 
+  // ---------- Tidy places the room as well as measuring it ----------
+  // A short slide sat glued to the top with the whole of the rest empty under
+  // it, and the flag that was supposed to centre it did nothing: .txin fills
+  // the column, so telling the column to centre had nothing to distribute.
+  const tidyIx=w.S.slides.length-1, room2slide=w.S.slides[tidyIx];
+  room2slide.layout='text'; room2slide.flags=[]; room2slide.textScale=100;
+  room2slide.body='One line, and not a long one.\n\n> And a line that has to land.';
+  w.cur=tidyIx; w.paint(); await wait(250);
+  const room=()=>{const t=d.querySelector('#sheet .stage .tx'),k=[...t.querySelectorAll('.bk')];
+    const r=t.getBoundingClientRect(),sc=r.width/1280;
+    return {above:Math.round((Math.min(...k.map(x=>x.getBoundingClientRect().top))-r.top)/sc),
+            below:Math.round((r.bottom-Math.max(...k.map(x=>x.getBoundingClientRect().bottom)))/sc)};};
+  const vBefore=room();
+  ok('as written it sits at the top',vBefore.above<4&&vBefore.below>200,JSON.stringify(vBefore));
+  room2slide.flags=['center']; w.paint(); await wait(200);
+  const vMid=room();
+  ok('centred, the room is on both sides of it',
+     Math.abs(vMid.above-vMid.below)<6&&vMid.above>100,JSON.stringify(vMid));
+  room2slide.flags=['spread']; w.paint(); await wait(200);
+  const spr=room();
+  ok('spread, the room goes between the blocks instead',
+     spr.above<4&&spr.below<4,JSON.stringify(spr));
+  room2slide.flags=[]; w.paint(); await wait(150);
+  w.tidyDeck([tidyIx]); w.paint(); await wait(300);
+  ok('and Tidy chooses for itself rather than leaving it at the top',
+     (w.S.slides[tidyIx].flags||[]).includes('center'),JSON.stringify(w.S.slides[tidyIx].flags));
+  const vAfter=room();
+  ok('which is what the slide then looks like',Math.abs(vAfter.above-vAfter.below)<6,
+     JSON.stringify(vAfter));
+  ok('and it survives markdown',/^\*Flags:\*.*center/m.test(w.slideMd(w.S.slides[tidyIx])),
+     (w.slideMd(w.S.slides[tidyIx]).match(/^\*Flags:.*$/m)||[''])[0]);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

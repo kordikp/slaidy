@@ -6450,12 +6450,11 @@ async function boot(){
         if(held&&held.id!==(b.id||'deck')&&held.at>(srvDeck.mtime||0)+1000){
           const other=await get('deck:'+held.id);
           if(other&&other.slides&&other.slides.length){
+            /* Opened without comment. Carrying on where you left off is what
+               was asked for, and announcing it every single launch is the
+               application talking about itself. The pill says where this deck
+               lives, ⋯ → Open has the other one, and neither interrupts. */
             srvLinked=false;load(other);
-            setTimeout(()=>banner(
-              `Carried on with “${esc(other.title||held.id)}”, which you had open last. `+
-              `${srvDeck.path} is untouched.`,`Open ${srvDeck.path}`,
-              async()=>{const rr=await fetch('deck.json',{cache:'no-store'});
-                        const bb=await rr.json();srvLinked=true;load(bb);unbanner();}),900);
             return;
           }
         }
@@ -6517,8 +6516,6 @@ async function boot(){
       const mine2=await get('deck:'+held.id);
       if(mine2&&mine2.slides&&mine2.slides.length){
         load(mine2);dirty=false;
-        setTimeout(()=>banner(`Carried on with “${esc(mine2.title||held.id)}”, the deck you had open last.`,
-          'Open another',()=>recentDecks()),900);
         return;
       }
     }
@@ -6533,23 +6530,12 @@ async function boot(){
   if(!srvDeck&&!fileHandle&&canFile())setTimeout(()=>banner(
     'Editing a copy in this browser. Point it at the file to save straight to disk.',
     'Choose the file',()=>saveDeckAs(),'no-file'),1200);
-  offerNewer(file&&file.id);
 }
-/* The browser keeps a copy of every deck it has held, but boot only ever looked
-   for one under the id of the deck.json beside the page. Open somebody's file
-   on a static page, edit it, come back — and the page loads the example again
-   with your work sitting in storage under another name, unmentioned. Say it. */
-async function offerNewer(loadedId){
-  try{
-    const rows=(await heldDecks()).filter(r=>r.id!==loadedId&&r.n&&r.at);
-    if(!rows.length)return;
-    const r=rows[0];
-    if(Date.now()-r.at>60*24*3600e3)return;            /* a deck from months ago is not news */
-    setTimeout(()=>banner(
-      `This browser also holds “${r.title||r.id}” — ${r.n} slide${r.n===1?'':'s'}, `+
-      `last edited ${new Date(r.at).toLocaleString()}.`,'Open it',()=>recentDecks()),2400);
-  }catch(e){}
-}
+/* offerNewer used to live here: a banner at every start naming another deck the
+   browser was holding. The reason it existed is now handled by opening that
+   deck rather than talking about it, and ⋯ → Open lists every one of them
+   whenever you want the list. An application that comments on itself at every
+   launch is one you stop reading. */
 /* Take down whatever is being nudged about, because it has just been done.
    "Editing a copy in this browser" is a fair thing to say until you point it at
    a file, and an infuriating thing to keep saying afterwards. */

@@ -610,6 +610,19 @@ A launcher icon that always opens the sample deck is a launcher icon you stop pr
   a file on the disk. They were two menu entries, and the one that could rescue an afternoon
   was the one nobody knew was there.
 
+### Saying nothing
+
+Carrying on with the deck you had open last is what was asked for, so it happens without a
+word. It used to announce itself at every launch — "Carried on with X, which you had open
+last; the served file is untouched" — which is the application talking about itself in a
+black box you have to dismiss before you can work. An application that comments on itself at
+every start is one you stop reading, and then the message that matters is the one you skip.
+
+Everything that banner said is available where it belongs: the pill says where this deck
+lives, and `⋯ → Open` lists every deck the browser holds whenever you want the list. The
+same reasoning removed `offerNewer` — a startup banner naming another deck. The reason it
+existed is now handled by opening that deck.
+
 ### Told once
 
 A warning you cannot dismiss is not advice, it is nagging. Two of them were.

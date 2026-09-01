@@ -395,6 +395,24 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Work that outlives the panel
+
+Writing a slide takes ten or twenty seconds and the panel it was started from is rebuilt
+every time you touch anything, so the progress used to be drawn into a box that no longer
+existed by the time you came back to it: click to another slide and return, and the slide
+looked idle while the model was still working, and the answer arrived in a detached node
+nobody would ever see.
+
+The work is kept against the slide now — `JOBS`, keyed by the slide itself — and the panel
+draws whatever state that slide's job is in: queued, running, answered, failed. All four
+survive walking away. The slide list marks them too, so what is cooking is visible without
+opening each slide to find out.
+
+And they queue. Ask for four and they run one at a time, in the order asked: a shared
+endpoint is happier for it, and a queue you can see is easier to trust than four spinners
+racing. Nothing is applied behind your back — the answer waits on the slide with **Use this**
+and **Discard**, exactly as it did when it lived in the panel.
+
 ### Where the room goes
 
 Tidy measures. What it can change is the size of the first figure, the size of the type,

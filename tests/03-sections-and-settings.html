@@ -209,6 +209,79 @@ addEventListener('load',async()=>{
      wa.length===2?`${Math.round(wa[0].getBoundingClientRect().width)} vs ${Math.round(wa[1].getBoundingClientRect().width)}`:'');
   delete w.S.meta.layouts; sl.layout='text'; sl.body='Back to normal.'; w.paint(); await wait(150);
 
+  // ---------- sections are a secRun of slides that agree on a name ----------
+  // You could rename one and nothing else. Everything about a section is about
+  // where its secRun begins and ends, so the operations live on the heading.
+  const heads=()=>[...d.querySelectorAll('#nav .grp')];
+  const groups=()=>w.S.slides.map(x=>x.group||'');
+  const g0=groups();
+  const secH=heads()[1];
+  ok('the deck has sections to work with',heads().length>=2,heads().length+' headings');
+  secH.dispatchEvent(new W.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:60,clientY:120}));
+  await wait(200);
+  const menu=d.querySelector('.ctxmenu');
+  ok('right-clicking a heading opens a menu',!!menu);
+  const items=[...menu.querySelectorAll('button')].map(b=>b.dataset.a);
+  ok('with more than renaming in it',items.join(',').includes('new')&&items.join(',').includes('up')
+     &&items.join(',').includes('merge'),items.join(','));
+
+  // move the whole section up
+  const secAt=+secH.dataset.i, name=w.S.slides[secAt].group;
+  const secRun=w.runOf('group',name,secAt);
+  menu.querySelector('[data-a="up"]').click(); await wait(300);
+  const gNow=groups();
+  ok('moving it up takes every slide in it',
+     gNow.indexOf(name)<g0.indexOf(name)&&
+     gNow.filter(x=>x===name).length===secRun[1]-secRun[0]+1,
+     'was secAt '+g0.indexOf(name)+', gNow secAt '+gNow.indexOf(name));
+  w.undo(); await wait(250);
+  ok('and one undo puts the order back',groups().join('|')===g0.join('|'));
+
+  // merge it into the one above
+  const secH2=heads()[1], secAt2=+secH2.dataset.i, secName2=w.S.slides[secAt2].group, above=w.S.slides[secAt2-1].group;
+  const mergeRun=w.runOf('group',secName2,secAt2);
+  secH2.dispatchEvent(new W.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:60,clientY:120}));
+  await wait(200);
+  d.querySelector('.ctxmenu [data-a="merge"]').click(); await wait(300);
+  ok('merging joins that run to the section above',
+     w.S.slides.slice(mergeRun[0],mergeRun[1]+1).every(x=>x.group===above),
+     w.S.slides[secAt2].group+' — wanted '+above);
+  ok('and the heading it had is gone from the list',
+     !heads().some(h=>h.textContent===secName2),
+     heads().map(h=>h.textContent).join(' | ').slice(0,60));
+  w.undo(); await wait(250);
+  ok('undo brings the section back',groups().join('|')===g0.join('|'));
+
+  // start a new one secAt a slide
+  const startAt=w.S.slides.length-1, wasG=w.S.slides[startAt].group;
+  w.newSection('group',startAt); await wait(200);
+  d.getElementById('nsName').value='A New Act';
+  d.getElementById('nsOk').click(); await wait(300);
+  ok('a new section starts where you said',w.S.slides[startAt].group==='A New Act',
+     w.S.slides[startAt].group);
+  ok('and the slides after it come along',
+     w.S.slides.slice(startAt).every(x=>x.group==='A New Act'));
+  ok('while the ones before it are untouched',w.S.slides[startAt-1].group!=='A New Act',
+     String(w.S.slides[startAt-1].group));
+  w.undo(); await wait(250);
+  ok('undone',w.S.slides[startAt].group===wasG,String(w.S.slides[startAt].group));
+
+  // ---------- dropped on a heading means into that section ----------
+  // It took the group of whatever was above the drop, which secAt a heading is the
+  // last slide of the section before — so a slide let go just under a heading
+  // joined the act above it.
+  const target=heads()[1], want=w.S.slides[+target.dataset.i].group;
+  const dragFrom=w.S.slides.length-1, moving=w.S.slides[dragFrom].title;
+  const dt2=new W.DataTransfer();
+  const rows=[...d.querySelectorAll('#nav .item')];
+  rows[rows.length-1].dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dt2}));
+  target.dispatchEvent(new W.DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt2}));
+  await wait(350);
+  const landed=w.S.slides.find(x=>x.title===moving);
+  ok('a slide dropped on a heading joins that section',landed&&landed.group===want,
+     (landed&&landed.group)+' — wanted '+want);
+  w.undo(); await wait(250);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

@@ -102,7 +102,10 @@ addEventListener('load',async()=>{
   // The browser keeps its own copy of every deck it has held. Until now the
   // only route to one was the welcome screen, which you see only before a deck
   // is open — so the copy that could undo an accident was unreachable.
-  await w.persist();await wait(300);
+  await w.persist();
+  /* storage is asynchronous and this machine may be busy — wait for the index
+     to actually be there rather than for a fixed number of milliseconds */
+  for(let i=0;i<20;i++){ if((await w.heldDecks()).length)break; await wait(150); }
   await w.recentDecks();await wait(400);
   ok('Open lists them',d.getElementById('veil').classList.contains('on')&&
      /Open a deck/.test(d.getElementById('dlg').textContent),

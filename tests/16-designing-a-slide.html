@@ -330,6 +330,47 @@ addEventListener('load',async()=>{
   unstub();
   w.undo();await wait(250);
 
+  // ---------- the work outlives the panel, and queues ----------
+  // Press Write this slide, click another slide, come back: the progress was
+  // gone, because it lived in a box the panel rebuilds. And there was no way to
+  // ask for two at once.
+  calls=[];replies=[JSON.stringify({title:'First',body:'One.',notes:''}),
+                    JSON.stringify({title:'Second',body:'Two.',notes:''})];
+  stub();
+  const a=w.S.slides[0], b=w.S.slides[1];
+  w.queueDesign(a,'write the first one');
+  w.queueDesign(b,'write the second one');
+  ok('both are jobs now',!!w.jobOf(a)&&!!w.jobOf(b),
+     (w.jobOf(a)||{}).state+' / '+(w.jobOf(b)||{}).state);
+  ok('and the second is waiting its turn',w.jobOf(b).state==='queued',w.jobOf(b).state);
+  ok('the list marks them',d.querySelectorAll('#nav .item .jb').length>=2,
+     String(d.querySelectorAll('#nav .item .jb').length));
+  // walk away and back while it runs
+  w.cur=w.S.slides.length-1;w.paint();await wait(60);
+  w.cur=0;w.paint();await wait(60);
+  ok('coming back shows the job, not an empty box',
+     !!d.querySelector('#dsOut .wlab, #dsOut .pv, #dsOut .bad'),
+     (d.getElementById('dsOut').textContent||'').slice(0,40));
+  for(let i=0;i<40&&(w.jobOf(a)||{}).state!=='done';i++)await wait(120);
+  ok('the first finishes',(w.jobOf(a)||{}).state==='done',(w.jobOf(a)||{}).state);
+  for(let i=0;i<40&&(w.jobOf(b)||{}).state!=='done';i++)await wait(120);
+  ok('and then the second, one at a time',(w.jobOf(b)||{}).state==='done',
+     (w.jobOf(b)||{}).state);
+  ok('two calls were made, not one',calls.length>=2,calls.length+' calls');
+  // the answer is where the slide is, and applying it is still yours to do
+  w.cur=0;w.paint();await wait(120);
+  ok('the answer waited on the slide',/First/.test(d.getElementById('dsOut').textContent),
+     (d.getElementById('dsOut').textContent||'').slice(0,40));
+  ok('nothing was applied behind your back',w.S.slides[0].title!=='First',w.S.slides[0].title);
+  d.querySelector('#dsOut [data-job="apply"]').click(); await wait(500);
+  ok('pressing Use this takes it',w.S.slides[0].title==='First',w.S.slides[0].title);
+  ok('and the job is finished with',!w.jobOf(a));
+  w.cur=1;w.paint();await wait(120);
+  d.querySelector('#dsOut [data-job="drop"]').click(); await wait(200);
+  ok('discarding the other one leaves the slide alone',!w.jobOf(b)&&w.S.slides[1].title!=='Second',
+     w.S.slides[1].title);
+  unstub(); w.undo(); await wait(250);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  unstub();
  clearTimeout(__watchdog);

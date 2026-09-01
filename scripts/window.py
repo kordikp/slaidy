@@ -96,6 +96,18 @@ class Slaidy(Gtk.Application):
         # a cache that answers for the application is how you end up looking at
         # last week's; there is nothing here worth keeping anyway
         view.get_network_session().get_website_data_manager()
+        # The server may not be listening for another moment. A browser would
+        # show its own "could not connect" page; an application waits, because
+        # the thing it is connecting to is itself.
+        tries = {"n": 0}
+
+        def on_load_failed(_v, _event, _uri, _err):
+            if tries["n"] < 40:
+                tries["n"] += 1
+                GLib.timeout_add(250, lambda: (view.load_uri(self.url), False)[1])
+                return True                      # and nothing is shown meanwhile
+            return False
+        view.connect("load-failed", on_load_failed)
         view.load_uri(self.url)
         win.set_child(view)
 

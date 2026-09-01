@@ -111,7 +111,15 @@ echo
 # window is then that Chrome's — its class, its icon, filed under the browser in
 # the dock. Its own profile means its own process, which owns its own window.
 open_window() {
-  sleep 1
+  # Wait for the server to answer before opening anything. It used to sleep for
+  # a second and hope, and when the second was not enough the window showed the
+  # browser's own "could not connect" page — which is the application appearing
+  # to be broken because it was asked about too early.
+  local i
+  for i in $(seq 1 120); do
+    if (exec 3<>/dev/tcp/127.0.0.1/$PORT) 2>/dev/null; then exec 3<&- 3>&-; break; fi
+    sleep 0.25
+  done
   # A window of its own, if this machine has what it takes to make one: GTK and
   # WebKit, both of which Ubuntu ships. No address bar, no tabs, its own icon,
   # and the dock files it under the application rather than under the browser.

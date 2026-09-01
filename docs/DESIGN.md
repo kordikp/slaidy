@@ -610,6 +610,14 @@ A launcher icon that always opens the sample deck is a launcher icon you stop pr
   a file on the disk. They were two menu entries, and the one that could rescue an afternoon
   was the one nobody knew was there.
 
+### Starting up
+
+The window is opened when the server answers, not a second after it was asked to start.
+`studio.sh` polls the port; `window.py` retries a failed load for ten seconds and shows
+nothing while it waits. A browser showing "could not connect to localhost" is the
+application appearing broken because it was asked about too early, and both halves of that
+are now the application's problem rather than yours.
+
 ### Save has to mean the file
 
 The most important button in the application, and in the application *window* it was the

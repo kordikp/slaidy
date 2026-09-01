@@ -56,7 +56,32 @@ def budget(model, asked):
 DECK = None
 
 
+def app_stamp():
+    """Which copy of the application is being served — the question behind
+    every "this looks like an old version". A hash of the file and when it was
+    written, so the answer is a fact rather than a guess."""
+    try:
+        p = os.path.join(ROOT_DIR[0], "index.html")
+        b = open(p, "rb").read()
+        return {"sha": __import__("hashlib").sha1(b).hexdigest()[:7],
+                "at": int(os.stat(p).st_mtime * 1000), "size": len(b)}
+    except Exception:
+        return None
+
+
+ROOT_DIR = ["."]
+
+
 class Handler(SimpleHTTPRequestHandler):
+    # Nothing here is worth caching and one thing is actively harmful: the app is
+    # served from a fresh temporary directory every run, at the same address, so
+    # a browser applying heuristic freshness to a page with only a Last-Modified
+    # header will happily show you yesterday's application. That is exactly what
+    # "the local copy looks like an old version" was.
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        SimpleHTTPRequestHandler.end_headers(self)
+
     def log_message(self, fmt, *a):
         if "/api/generate" in (self.path or ""):
             sys.stderr.write("  ai: %s\n" % (fmt % a))
@@ -79,11 +104,17 @@ class Handler(SimpleHTTPRequestHandler):
         if DECK and self.path.split("?")[0].rstrip("/") in ("/deck.json", "/api/deck"):
             if self.path.split("?")[0].rstrip("/") == "/api/deck":
                 st = os.stat(DECK) if os.path.exists(DECK) else None
+                # what the AI actually is, so the page can say so rather than
+                # repeating what is true of the public demo and nowhere else
+                host = BASE.split("//")[-1].split("/")[0]
                 return self._json(200, {
                     "path": os.path.relpath(DECK, os.getcwd()), "abs": DECK,
                     "writable": os.access(os.path.dirname(DECK) or ".", os.W_OK),
                     "mtime": int(st.st_mtime * 1000) if st else 0,
-                    "size": st.st_size if st else 0})
+                    "size": st.st_size if st else 0,
+                    "ai": ({"model": MODEL, "host": host, "local": LOCAL}
+                           if (KEY or LOCAL) else None),
+                    "app": app_stamp()})
             try:
                 with open(DECK, "rb") as f:
                     b = f.read()
@@ -275,6 +306,7 @@ def main():
               flush=True)
     # 127.0.0.1, not every interface: this now writes a file on request, and
     # that is not something to offer the local network.
+    ROOT_DIR[0] = root
     ThreadingHTTPServer(("127.0.0.1", port), partial(Handler, directory=root)).serve_forever()
 
 

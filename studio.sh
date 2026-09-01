@@ -102,16 +102,23 @@ echo "  so always start it the same way — or keep a copy with Export."
        model (Ollama, LM Studio, llama.cpp, vLLM) and run this again."
 echo
 
-# A window of its own, not a tab among thirty. Chrome and its relatives take
-# --app=, which drops the address bar and gives the window the page's own icon;
-# anything else gets the ordinary open, which is no worse than it was.
+# A window of its own, not a tab among thirty, and under its own icon.
+#
+# --app= drops the address bar; --class names the window so the desktop can match
+# it to slaidy.desktop. The profile directory is the part that is easy to miss:
+# without it, a Chrome that is already running opens the window itself, and the
+# window is then that Chrome's — its class, its icon, filed under the browser in
+# the dock. Its own profile means its own process, which owns its own window.
 open_window() {
   sleep 1
   local url="http://localhost:$PORT"
+  local prof="${XDG_DATA_HOME:-$HOME/.local/share}/slaidy/browser"
   local b
   for b in google-chrome chromium chromium-browser brave-browser microsoft-edge; do
     if command -v "$b" >/dev/null 2>&1; then
-      "$b" --app="$url" --class=SlAIdy >/dev/null 2>&1 &
+      mkdir -p "$prof"
+      "$b" --app="$url" --class=SlAIdy --user-data-dir="$prof" \
+           --no-first-run --no-default-browser-check >/dev/null 2>&1 &
       return
     fi
   done

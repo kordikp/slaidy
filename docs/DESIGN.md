@@ -513,6 +513,36 @@ What a reader does on a published page is theirs: the deck they edit is the brow
 and there is nothing there that could write back. AI on that page goes through the demo's
 function, with its daily limits, because it is the same origin.
 
+### Which copy is this
+
+"That looks like an old version" was unanswerable without reading the source, and it was
+asked three times in one afternoon — twice correctly. Two causes and two answers.
+
+The local server sent a page with only a `Last-Modified` header, and a browser applying
+heuristic freshness will happily show you yesterday's application from the same address.
+Everything `serve.py` sends is `no-store` now; there is nothing here worth caching.
+
+And the ⋯ menu carries a stamp: `app 884aa53 · 1 Sep 14:47`. Served by `studio.sh`, that is
+a hash of the file being served and when it was written, so it can be compared with the
+repository. On the web it is the page's `Last-Modified`, which is when it was deployed.
+
+### The application window
+
+`--app=` gives a window without an address bar, `--class=SlAIdy` names it so the desktop can
+match it to `slaidy.desktop`, and `--user-data-dir` is the part that is easy to miss: without
+it, a Chrome that is already running opens the window itself, and the window is then that
+Chrome's — its class, its icon, filed under the browser in the dock. Its own profile means
+its own process, which owns its own window.
+
+### What the AI actually is
+
+The page used to say the AI ran on capacity from CESNET e-INFRA CZ, on every copy, including
+one running locally against OpenAI. `aiSays()` answers for the copy you are looking at: the
+demo says CESNET with thanks and mentions its daily allowance; a copy served by `studio.sh`
+says the model and host the server was pointed at, and whether that is this machine; a page
+with a browser-held endpoint says which one. The thanks stay everywhere, because the project
+was built on that capacity — which is a different claim from where a request goes.
+
 ### One codebase, two ways of running it
 
 There is one SlAIdy: this repository. The web page and the desktop application are two ways

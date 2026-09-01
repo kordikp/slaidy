@@ -54,6 +54,10 @@ button{cursor:pointer;background:none;border:none}
  border-radius:var(--r10);box-shadow:0 8px 26px rgba(15,18,26,.13);padding:4px;display:none;z-index:30}
 .pop.on{display:block}
 .pop button{display:block;width:100%;text-align:left;padding:6px 10px;border-radius:var(--r6);font-size:12.5px}
+/* which copy of the application this is — the answer to "that looks like an
+   old version", which is otherwise unanswerable without reading the source */
+.popfoot{padding:7px 10px 3px;margin-top:4px;border-top:1px solid var(--line);
+ font:11px/1.4 ui-monospace,monospace;color:var(--faint);white-space:nowrap}
 .pop button:hover{background:#F4F5F7}
 #status{font-size:11.5px;padding:2px 8px;border-radius:20px;border:1px solid transparent;cursor:default;
  font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -756,6 +760,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bTidyAll">Tidy every slide…</button>
       <button id="bDeck">Deck settings…</button>
       <button id="bCfg2">AI usage…</button>
+      <div class="popfoot" id="appStamp"></div>
     </div>
   </div>
   <button class="ic" id="bOpenNow" title="Open a deck…"><svg viewBox="0 0 14 14" width="15" height="15"
@@ -808,13 +813,8 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 
   <div id="recent" class="recent"></div>
 
-  <p class="tip" style="margin-top:18px">
-    <b>The AI here runs on capacity from
-    <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
-    with thanks.</b> Nothing on this page needs it — the editor, the presenter and the exports all
-    work without any AI at all. To use it, put your own endpoint under <b>⋯ → AI usage</b>; there is
-    a one-click preset for e-INFRA, which is free to anyone <b>affiliated at a Czech academic
-    institution</b>.
+  <p class="tip" style="margin-top:18px" id="wAi">
+    Nothing here needs AI — the editor, the presenter and the exports all work without any.
   </p>
   <p class="tip">
     Also accepted, dropped anywhere on this window: one or more <code>.md</code> files, a whole folder
@@ -1013,6 +1013,25 @@ let srvDeck=null;
    built from a brief and a deck you opened are all not that file, and writing
    them there overwrites the talk you were serving. Which is what happened. */
 let srvLinked=false;
+/* Served by studio.sh: it hashes the file it is serving. On the web: the
+   Last-Modified of this page, which is when it was deployed. Either way, one
+   short string that says which copy you are looking at. */
+async function stampApp(){
+  const el=document.getElementById('appStamp');if(!el)return;
+  const when=t=>new Date(t).toLocaleString(undefined,{day:'numeric',month:'short',
+    hour:'2-digit',minute:'2-digit'});
+  try{
+    const r=await fetch('api/deck',{cache:'no-store'});
+    if(r.ok){const d=await r.json();
+      if(d&&d.app){el.textContent=`app ${d.app.sha} · ${when(d.app.at)}`;return;}}
+  }catch(e){}
+  try{
+    const r=await fetch(location.pathname,{method:'HEAD',cache:'no-store'});
+    const lm=r.headers.get('last-modified');
+    if(lm){el.textContent='app · '+when(Date.parse(lm));return;}
+  }catch(e){}
+  el.textContent='app · this file';
+}
 async function probeServer(){
   if(location.protocol==='file:')return null;
   try{
@@ -3810,12 +3829,32 @@ function usageHtml(){
   <p class="tip">Counted in this browser only, and never sent anywhere. Tokens are what the endpoint
     reported; where it reports none, none are shown rather than guessed.</p>
   ${demoLimitsHtml()}
-  <p class="tip" style="margin-top:9px">The AI in this editor was built and is run on capacity from
-    <a href="https://www.e-infra.cz/en" target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>,
-    with thanks. <b>If you are affiliated at a Czech academic institution you can get a key of your
-    own there</b> — and on your own machine there is no allowance at all.</p>`;
+  <p class="tip" style="margin-top:9px">${aiSays()}</p>`;
 }
 
+/* Where the AI on THIS page actually goes. The demo runs on capacity from
+   CESNET e-INFRA CZ and says so with thanks; a copy running on your own machine
+   goes wherever studio.sh was pointed, and saying otherwise is just wrong. */
+function aiSays(){
+  const thanks=`Built on capacity from <a href="https://www.e-infra.cz/en" target="_blank"
+    rel="noopener noreferrer">CESNET e-INFRA CZ</a>, with thanks.`;
+  if(DEMO_AI&&DEMO_HOSTS.includes(location.hostname))
+    return `<b>The AI on this page runs on capacity from <a href="https://www.e-infra.cz/en"
+      target="_blank" rel="noopener noreferrer">CESNET e-INFRA CZ</a>, with thanks</b>, within a
+      daily allowance. On your own machine there is no allowance: run it with your own key, or a
+      model already running there. ${''}`;
+  if(srvDeck&&srvDeck.ai)
+    return `<b>The AI here is <code>${esc(srvDeck.ai.model||'?')}</code> via
+      <code>${esc(srvDeck.ai.host||'?')}</code></b>${srvDeck.ai.local
+        ? ' — on this machine, so nothing you write leaves it.'
+        : ', reached by studio.sh with the key from its .env, which the page never sees.'}
+      ${thanks}`;
+  const c=cfg();
+  if(c&&c.url)return `<b>The AI here is what you pointed it at: <code>${esc(c.url)}</code></b>,
+    with a key held by this browser. ${thanks}`;
+  return `<b>No AI is configured.</b> Run it with <code>./studio.sh</code> and a key in
+    <code>.env</code>, or point it at an endpoint under <b>⋯ → AI usage</b>. ${thanks}`;
+}
 function configure(){
   const c=cfg();
   dialog(`<h3>AI usage</h3>
@@ -6211,7 +6250,12 @@ async function recentDecks(){
    is no dialog: nothing is discarded, and the pill says where the deck is.
 --------------------------------------------------------------------------- */
 async function boot(){
-  setStatus('none');paintRecent();
+  setStatus('none');paintRecent();stampApp();
+  /* the welcome screen tells the truth about this copy, once the server has
+     been asked what it is */
+  setTimeout(()=>{const w=document.getElementById('wAi');
+    if(w)w.innerHTML='Nothing here needs AI — the editor, the presenter and the exports all '+
+      'work without any. '+aiSays();},600);
   IDB.adopt();                       /* once, in the background, out of the way */
 
   const load=b=>{

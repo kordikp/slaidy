@@ -511,7 +511,7 @@ body.presenting #nudge,body.presenting #toast,body.presenting #swipehint{display
 #turn{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:53;
  background:#161A22;color:#8C97AA;border:1px solid #262E3C;border-radius:999px;
  padding:7px 15px;font-size:12.5px;display:none;pointer-events:none}
-#turn.on{display:block;animation:fadeout 4s forwards}
+#turn.on{display:block;animation:fadeout 7s forwards}
 @keyframes fadeout{0%,60%{opacity:1}100%{opacity:0}}
 #prog{position:fixed;left:0;right:0;bottom:0;height:2px;background:#161A22;z-index:52;display:none}
 #prog i{display:block;height:100%;background:var(--d-accent);width:0;transition:width .2s}
@@ -6273,6 +6273,28 @@ function paintDeck(){
    grant late, or — in a frame that is not allowed it — leave hanging, and the
    deck must be on the screen either way. fullscreenchange re-fits it when the
    answer arrives. Waiting here once meant a projector that never painted. */
+/* A browser will not fill the screen because a link asked it to — only because
+   a person did something. So the deck comes up presented, and the first thing
+   you do to it, whatever that is, also takes the browser out of the way. The
+   line says so, and goes when it happens. */
+function armFullscreen(){
+  if(document.fullscreenElement)return;
+  const t=document.getElementById('turn');
+  if(t){t.textContent='Click, or press any key, to fill the screen';
+        t.classList.remove('on');void t.offsetWidth;t.classList.add('on');}
+  const go=()=>{
+    off();
+    try{const p=document.documentElement.requestFullscreen({navigationUI:'hide'});
+        if(p&&p.catch)p.catch(()=>{});}catch(e){}
+  };
+  const off=()=>{
+    document.removeEventListener('pointerdown',go,true);
+    document.removeEventListener('keydown',go,true);
+    if(t)t.classList.remove('on');
+  };
+  document.addEventListener('pointerdown',go,true);
+  document.addEventListener('keydown',go,true);
+}
 async function present(on){
   showing=on;
   if(on){ try{ const p=document.documentElement.requestFullscreen({navigationUI:'hide'});
@@ -6730,6 +6752,10 @@ async function recentDecks(){
 --------------------------------------------------------------------------- */
 async function boot(){
   setStatus('none');paintRecent();stampApp();
+  /* #present is the link you send someone, or paste into the lectern machine.
+     It means present, whichever of the four ways below found the deck — and it
+     means no banner over the first slide either. */
+  const byLink=location.hash.replace('#','')==='present';
   /* the welcome screen tells the truth about this copy, once the server has
      been asked what it is */
   setTimeout(()=>{const w=document.getElementById('wAi');
@@ -6743,6 +6769,7 @@ async function boot(){
     normalise();cur=0;dirty=false;
     document.getElementById('welcome').classList.add('hidden');
     lastSaved=new Date();setStatus('ok');paint();
+    if(byLink)setTimeout(()=>{present(true);armFullscreen();},300);
   };
 
   /* 1. the deck the server is serving, which it will also write */
@@ -6761,7 +6788,7 @@ async function boot(){
         }catch(e){}
         if(mine&&mine.slides&&mine.slides.length&&mineAt>(srvDeck.mtime||0)+1000){
           srvLinked=true;load(mine);dirty=true;setStatus('warn');
-          banner(`Unsaved edits from ${new Date(mineAt).toTimeString().slice(0,5)} — `+
+          if(!byLink)banner(`Unsaved edits from ${new Date(mineAt).toTimeString().slice(0,5)} — `+
                  `newer than ${srvDeck.path}.`,'Save them',()=>persist());
           return;
         }
@@ -6820,11 +6847,13 @@ async function boot(){
   if(mine&&mine.slides&&mine.slides.length&&mineAt>fileAt+1000){
     load(mine);
     dirty=true;setStatus('warn');
-    toast('Continuing with your edits — newer than the file on disk');
-    setTimeout(()=>{
-      if(!fileHandle)banner('These edits live in this browser only.',
-        'Save to a file',()=>saveDeckAs(),'no-file');
-    },900);
+    if(!byLink){
+      toast('Continuing with your edits — newer than the file on disk');
+      setTimeout(()=>{
+        if(!fileHandle)banner('These edits live in this browser only.',
+          'Save to a file',()=>saveDeckAs(),'no-file');
+      },900);
+    }
     return;
   }
   /* A deck published as a link is the thing that link is for, so it opens as
@@ -6845,7 +6874,7 @@ async function boot(){
     }
   }
   load(file);
-  if(location.hash.replace('#','')==='present'){setTimeout(()=>present(true),300);return;}
+  if(byLink)return;
   if(shared){
     setTimeout(()=>banner(`${esc(S.title||'This deck')} — press P to present, N for the notes.`,
       'Present it',()=>present(true)),1000);

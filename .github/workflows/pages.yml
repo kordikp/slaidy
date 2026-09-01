@@ -40,6 +40,11 @@ jobs:
             mkdir -p "_site/$n"
             cp slaidy.html "_site/$n/index.html"
             cp "$d/deck.json" "_site/$n/deck.json"
+            # the speaker notes, for a lectern rather than a browser
+            if [ -f "$d/notes/index.html" ]; then
+              mkdir -p "_site/$n/notes"
+              cp "$d/notes/index.html" "_site/$n/notes/index.html"
+            fi
             echo "  published /$n  ($(du -h "$d/deck.json" | cut -f1))"
           done
       - uses: actions/configure-pages@v5

@@ -1,0 +1,93 @@
+<!doctype html><meta charset=utf-8><body style="margin:0">
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,90000);
+
+addEventListener('load',async()=>{
+ try{
+  // ---------- a link that opens presented ----------
+  // github.io/…/isd2026/#present is the link you send someone, or paste into the
+  // lectern machine ten seconds before you speak. It has to arrive on the slide,
+  // fill the screen, and answer the keys you already know.
+  const f=document.createElement('iframe');
+  f.style.cssText='width:1000px;height:640px;border:0;position:absolute;left:-9999px;top:0';
+  f.src='/index.html?26#present';
+  document.body.appendChild(f);
+  await new Promise(r=>{f.onload=r;setTimeout(r,9000);});
+  const W=f.contentWindow,D=f.contentDocument;
+  for(let i=0;i<70;i++){await wait(120);if(W.__api&&W.__api.showing)break;}
+  await wait(400);
+
+  ok('the link comes up presenting, with no click first',W.__api.showing===true);
+  ok('and on the first slide',W.__api.cur===0,'slide '+(W.__api.cur+1));
+  ok('the deck is drawn',!!D.querySelector('#deck h2'));
+
+  // A browser refuses full screen to a link — only a person can ask for it. So
+  // the deck says so, once, and the first thing you do to it also asks.
+  const turn=D.getElementById('turn');
+  ok('a line says how to fill the screen',
+     !!turn&&turn.classList.contains('on')&&/fill the screen/i.test(turn.textContent),
+     turn?turn.textContent:'no #turn');
+
+  let asked=0;
+  D.documentElement.requestFullscreen=()=>{asked++;return Promise.reject(new Error('headless'));};
+
+  // N is the notes key. It must do both: take the browser away, and show notes.
+  const notes=D.getElementById('notes');
+  const notesBefore=notes.classList.contains('on');
+  D.dispatchEvent(new W.KeyboardEvent('keydown',{key:'n',bubbles:true}));
+  await wait(250);
+  ok('the first key asks for full screen',asked===1,asked+' asks');
+  ok('and the line goes',!turn.classList.contains('on'));
+  ok('while N still reaches the notes',
+     notes.classList.contains('on')!==notesBefore,
+     'notes '+notes.classList.contains('on'));
+
+  // one-shot: it does not keep asking on every keypress for the rest of the talk
+  D.dispatchEvent(new W.KeyboardEvent('keydown',{key:'n',bubbles:true}));
+  await wait(200);
+  ok('but it asks once, not on every key',asked===1,asked+' asks');
+  ok('and N toggles the notes back',notes.classList.contains('on')===notesBefore);
+
+  // O is the overview, the other key a speaker uses in the dark
+  D.dispatchEvent(new W.KeyboardEvent('keydown',{key:'o',bubbles:true}));
+  await wait(300);
+  const grid=D.getElementById('grid');
+  ok('O opens the overview',!!grid&&getComputedStyle(grid).display!=='none');
+  const cells=D.querySelectorAll('#grid .gcell');
+  const want=W.__api.S.slides.filter(s=>!s.skip).length;
+  ok('with a cell per slide you would show',cells.length===want,
+     cells.length+' of '+want);
+  D.dispatchEvent(new W.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  await wait(250);
+  ok('Esc closes it again, still presenting',
+     W.__api.showing===true&&(!grid||getComputedStyle(grid).display==='none'));
+
+  // and the arrows still walk the deck
+  D.dispatchEvent(new W.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  await wait(250);
+  ok('the arrows move on',W.__api.cur===1,'slide '+(W.__api.cur+1));
+  D.dispatchEvent(new W.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
+  await wait(250);
+  ok('and back',W.__api.cur===0,'slide '+(W.__api.cur+1));
+
+  // a pointer would have done as well as a key, on a fresh arming
+  asked=0;
+  W.__api.armFullscreen();
+  await wait(120);
+  ok('armed again, the line is back',turn.classList.contains('on'));
+  D.dispatchEvent(new W.PointerEvent('pointerdown',{bubbles:true}));
+  await wait(200);
+  ok('a click asks too',asked===1,asked+' asks');
+  f.remove();
+
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

@@ -28,7 +28,7 @@ i = s.rindex("</script>")
 hook = """
 window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feUnnest,feDel,feResolve,feHtml,
   feUndo,feDup,feAdd,feBounds,feResize,feParentScale,feZoom,feRect,feBox,feDown,feMarquee,
-  present,paint,moveSlide,checkFit,shortcuts,snap,undo,insertBlock,insertMenu,blocks,where,slideMd,
+  present,armFullscreen,paint,moveSlide,checkFit,shortcuts,snap,undo,insertBlock,insertMenu,blocks,where,slideMd,
   importMarkdown,deckSettings,applyStyle,style,hdrHtml,paintNav,paintBody,paintSide,editMarkdown,stats,
   mdParse,mdPreview,mdNormalise,llm,stageHtml,blocks,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
   fig,measureStage,toggleSkip,liveIdx,liveStats,clock,

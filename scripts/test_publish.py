@@ -18,8 +18,11 @@ def check(name, cond, detail=""):
         bad += 1
 
 
-deck = {"id": "x", "title": "A Talk", "slides": [{"n": 1, "title": "One", "body": "Hello."}],
-        "figs": {"fig-a": "<svg/>"}, "meta": {"author": "Someone"}, "style": {}}
+deck = {"id": "x", "title": "A Talk",
+        "slides": [{"n": 1, "title": "One", "body": "Hello.\n\n> The line that lands.",
+                    "notes": "Say it slowly.", "group": "Intro"},
+                   {"n": 2, "title": "Two", "body": "![[fig-a]]", "group": "Intro"}],
+        "figs": {"fig-a": "<svg viewBox=\"0 0 10 10\"><rect width=\"10\" height=\"10\"/></svg>"}, "meta": {"author": "Someone"}, "style": {}}
 tmp = tempfile.mkdtemp()
 src = os.path.join(tmp, "d.json")
 json.dump(deck, open(src, "w", encoding="utf-8"))
@@ -57,6 +60,19 @@ try:
     check("and the page is the same single file as everywhere else",
           os.path.getsize(os.path.join(site, name, "index.html")) ==
           os.path.getsize(os.path.join(ROOT, "slaidy.html")))
+
+    # the notes, for a lectern rather than a browser
+    np = os.path.join(ROOT, "site", name, "notes", "index.html")
+    check("the notes are written beside the deck", os.path.isfile(np), np)
+    nh = open(np, encoding="utf-8").read()
+    check("with every slide in them", nh.count('class="s') >= len(deck["slides"]),
+          "%d blocks" % nh.count('class="s'))
+    check("the title, and the notes themselves",
+          "A Talk" in nh and "Slide One" not in nh, nh[:0] or "")
+    check("no script anywhere in it — it is paper",
+          "<script" not in nh.lower(), "plain")
+    check("and it links back to the deck and to presenting it",
+          'href="../"' in nh and 'href="../#present"' in nh)
 
     app = open(os.path.join(ROOT, "slaidy.html"), encoding="utf-8").read()
     check("the app opens a published deck ready to watch", "meta.shared" in app)

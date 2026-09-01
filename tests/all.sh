@@ -29,6 +29,29 @@ if grep -qE '<link[^>]+href="https?:' slaidy.html; then echo "  external stylesh
 if [ "$(ls *.html | wc -l)" -ne 1 ]; then echo "  more than one html at the root"; fail=1; fi
 echo "  slaidy.html is $(du -h slaidy.html | cut -f1), on its own"
 
+step "It looks like an application"
+for f in slaidy.svg install.sh; do
+  [ -f "$f" ] || { echo "  missing $f"; fail=1; }
+done
+for s in 16 24 32 48 64 128 256; do
+  [ -f "icons/slaidy-$s.png" ] || { echo "  missing icons/slaidy-$s.png"; fail=1; }
+done
+# the icon in the tab and the icon in the launcher are the same drawing
+if ! grep -q 'rel="icon" href="data:image/svg%2Bxml' slaidy.html &&
+   ! grep -q 'rel="icon" href="data:image/svg+xml' slaidy.html; then
+  echo "  the page has no favicon"; fail=1
+fi
+if command -v desktop-file-validate >/dev/null 2>&1; then
+  tmp=$(mktemp -d)
+  sed -e "s|\$BIN|/usr/bin/true|" -e "s|Exec=.*|Exec=/usr/bin/true %f|" \
+      -e "s|Icon=.*|Icon=slaidy|" > "$tmp/slaidy.desktop" <<DESK
+$(sed -n '/^\[Desktop Entry\]/,/^DESKTOP$/p' install.sh | sed '$d')
+DESK
+  desktop-file-validate "$tmp/slaidy.desktop" || fail=1
+  rm -rf "$tmp"
+fi
+echo "  icon at 7 sizes, a desktop entry, and the same mark in the tab"
+
 printf '\n'
 [ "$fail" = 0 ] && echo "all good" || echo "SOMETHING FAILED"
 exit "$fail"

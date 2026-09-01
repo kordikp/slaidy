@@ -1,8 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="14" fill="#4B3FCF"/>
-  <rect x="12" y="16" width="40" height="24" rx="3" fill="#FFFFFF"/>
-  <rect x="16" y="20" width="18" height="3.4" rx="1.7" fill="#4B3FCF"/>
-  <rect x="16" y="27" width="24" height="2.6" rx="1.3" fill="#C9C3F6"/>
-  <rect x="16" y="32" width="19" height="2.6" rx="1.3" fill="#C9C3F6"/>
-  <path d="M46 44l2.2 4.8L53 51l-4.8 2.2L46 58l-2.2-4.8L39 51l4.8-2.2z" fill="#F59E0B"/>
+  <!-- A slide, and the spark that helps you write it. The star is outlined in the
+       ground colour so it still separates from the white card at 24 pixels, which
+       is the size the launcher actually draws. -->
+  <defs><linearGradient id="slaidy-g" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#5B4DE0"/><stop offset="1" stop-color="#3A2FB0"/></linearGradient></defs>
+  <rect width="64" height="64" rx="15" fill="url(#slaidy-g)"/>
+  <rect x="10" y="15" width="44" height="26" rx="4" fill="#FFFFFF"/>
+  <rect x="15" y="20" width="23" height="5" rx="2.5" fill="#2A2270"/>
+  <rect x="15" y="29" width="29" height="3.6" rx="1.8" fill="#C2BCF5"/>
+  <rect x="15" y="35" width="18" height="3.6" rx="1.8" fill="#C2BCF5"/>
+  <path d="M46 39l3.1 6.9L56 49l-6.9 3.1L46 59l-3.1-6.9L36 49l6.9-3.1z"
+    fill="#FBBF24" stroke="#3A2FB0" stroke-width="2.6" stroke-linejoin="round"/>
 </svg>

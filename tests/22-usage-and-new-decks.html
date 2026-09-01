@@ -105,7 +105,11 @@ addEventListener('load',async()=>{
   await w.persist();
   /* storage is asynchronous and this machine may be busy — wait for the index
      to actually be there rather than for a fixed number of milliseconds */
-  for(let i=0;i<20;i++){ if((await w.heldDecks()).length)break; await wait(150); }
+  /* bounded in time, not in attempts: each look at storage can itself take
+     seconds when storage is unwell, and twenty of those is longer than this
+     file is allowed to run */
+  const t0=Date.now();
+  while(Date.now()-t0<3000){ if((await w.heldDecks()).length)break; await wait(150); }
   await w.recentDecks();await wait(400);
   ok('Open lists them',d.getElementById('veil').classList.contains('on')&&
      /Open a deck/.test(d.getElementById('dlg').textContent),

@@ -643,6 +643,22 @@ columns, the deck list and everything else landed in one place and not the other
 launcher icon opened the old one. Those are symlinks into this repository now, and the
 keynote's `studio.sh` is a wrapper that runs this one with a deck of its own.
 
+### Which deck was it, last time, and the few before that
+
+`~/.local/state/slaidy/last-deck` is written by `serve.py`, not by `studio.sh`. That
+distinction is the whole of a bug: the deck can change *while the server is running* — Save
+As and Open both move it — so a note taken once at startup then says the wrong thing. Rename
+a file and the next launch opened it under its old name, and the old name went on receiving
+the edits while the new one sat still. One writer, and it writes whenever the deck moves.
+
+The same writer keeps the six before it, and `⋯ → Open` shows them: **On this machine**,
+newest first, with the size of each and one click to open — beside the decks this browser is
+holding, which is the other half of the same question. Files that have since gone are not
+offered.
+
+`scripts/test_server.py` covers this and the rest of what the server does with the file,
+which the browser suite cannot: it never starts one.
+
 ### Opening what you had open
 
 A launcher icon that always opens the sample deck is a launcher icon you stop pressing. So:

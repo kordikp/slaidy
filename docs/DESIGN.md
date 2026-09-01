@@ -491,6 +491,28 @@ that same script. They were four separate steps in the workflow once, and the ma
 trip was therefore a check that nobody ran before pushing: the first anyone heard of it was
 an email saying the build was red, four commits after it broke.
 
+### The application and the web page
+
+They are the same single file used two ways, and keeping that straight is worth a paragraph.
+
+**The application** is `studio.sh`: a local server that owns one deck file, writes it on
+every save, and proxies the AI so no key reaches the page. `install.sh` adds a launcher
+entry, an icon and `~/.local/bin/slaidy`, and the browser is opened with `--app=` where one
+of the Chromium family is present, so it is a window rather than a tab. Nothing is
+installed system-wide and nothing runs when it is not open; the entry only records where
+this folder is.
+
+**The web page** is the same `slaidy.html` with a `deck.json` beside it, and no server at
+all. Every folder under `site/` becomes one: the Pages workflow copies the file and the deck
+into `_site/<name>/`, so a published talk is a link, and the link presents. `publish.py`
+writes that folder and marks the deck `meta.shared`, which is how the page knows to open
+ready to watch rather than asking a reader where they would like to save it. `#present`
+opens the projector directly.
+
+What a reader does on a published page is theirs: the deck they edit is the browser's copy,
+and there is nothing there that could write back. AI on that page goes through the demo's
+function, with its daily limits, because it is the same origin.
+
 ### Where a deck actually is
 
 Three places, and the pill in the bar says which. **A file on disk**, when the browser holds

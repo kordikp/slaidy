@@ -6175,6 +6175,17 @@ async function boot(){
     return;
   }
   load(file);
+  /* A deck someone published is a link they sent you, not a file you are
+     keeping — so it opens ready to watch rather than nagging about where to
+     save. #present goes straight to the projector, which is what a link to a
+     talk should do. */
+  const shared=!!(file&&file.meta&&file.meta.shared);
+  if(location.hash.replace('#','')==='present'){setTimeout(()=>present(true),300);return;}
+  if(shared){
+    setTimeout(()=>banner(`${esc(S.title||'This deck')} — press P to present, N for the notes.`,
+      'Present it',()=>present(true)),1000);
+    return;
+  }
   if(!srvDeck&&!fileHandle&&canFile())setTimeout(()=>banner(
     'Editing a copy in this browser. Point it at the file to save straight to disk.',
     'Choose the file',()=>saveDeckAs()),1200);

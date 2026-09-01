@@ -89,5 +89,20 @@ echo "  so always start it the same way — or keep a copy with Export."
        model (Ollama, LM Studio, llama.cpp, vLLM) and run this again."
 echo
 
-( sleep 1; (xdg-open "http://localhost:$PORT" || open "http://localhost:$PORT") >/dev/null 2>&1 || true ) &
+# A window of its own, not a tab among thirty. Chrome and its relatives take
+# --app=, which drops the address bar and gives the window the page's own icon;
+# anything else gets the ordinary open, which is no worse than it was.
+open_window() {
+  sleep 1
+  local url="http://localhost:$PORT"
+  local b
+  for b in google-chrome chromium chromium-browser brave-browser microsoft-edge; do
+    if command -v "$b" >/dev/null 2>&1; then
+      "$b" --app="$url" --class=SlAIdy >/dev/null 2>&1 &
+      return
+    fi
+  done
+  (xdg-open "$url" || open "$url") >/dev/null 2>&1 || true
+}
+open_window &
 exec "$PY" scripts/serve.py "$WORK" "$PORT" "$DECK"

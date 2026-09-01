@@ -24,12 +24,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lay out the demo
+      - name: Lay out the site
         run: |
+          set -e
           mkdir -p _site
           cp slaidy.html _site/index.html
           cp decks/example.json _site/deck.json
           cp LICENSE _site/LICENSE
+          # Every folder under site/ becomes a page of its own carrying the same
+          # single file and its own deck — so a talk is a link, and the link
+          # presents, reads and exports without anything to install.
+          for d in site/*/; do
+            [ -f "$d/deck.json" ] || continue
+            n=$(basename "$d")
+            mkdir -p "_site/$n"
+            cp slaidy.html "_site/$n/index.html"
+            cp "$d/deck.json" "_site/$n/deck.json"
+            echo "  published /$n  ($(du -h "$d/deck.json" | cut -f1))"
+          done
       - uses: actions/configure-pages@v5
         with: {enablement: true}      # turn Pages on the first time rather than asking
       - uses: actions/upload-pages-artifact@v3

@@ -29,6 +29,37 @@ cd slaidy
 That serves the example deck at `http://localhost:8080` and opens it. Press `?` for
 the shortcuts, `P` to present.
 
+### On your machine, or on the web
+
+Two ways to use it, and they are not the same thing.
+
+**On your machine** — the editor you work in. `./install.sh` puts it in the launcher with an
+icon and opens in a window of its own; `./studio.sh` does the same from a terminal. The deck
+is a file on your disk, saving writes that file, and the AI is whatever you point it at
+(below). This is where a talk gets made.
+
+```bash
+git clone https://github.com/kordikp/slaidy && cd slaidy
+./install.sh          # launcher entry, icon, and 'slaidy' on the command line
+./studio.sh           # or just run it
+```
+
+**On the web** — a talk you have finished and want to send. Any deck under `site/` becomes a
+page of its own, carrying the whole editor:
+
+```bash
+python3 scripts/publish.py decks/isd2026.json isd2026keynote
+git add site && git commit -m "Publish it" && git push
+```
+
+→ `https://kordikp.github.io/slaidy/isd2026keynote/` — a link that presents. Whoever opens it
+can watch it (`P`), read the notes (`N`), take a PDF, or edit their own copy; their edits stay
+in their browser and never touch what you published. `#present` on the end opens straight
+into the projector.
+
+The [demo](https://kordikp.github.io/slaidy/) is the same thing with the tour deck in it,
+and a small daily allowance of AI so you can see what the panels do.
+
 ### Its own model, or yours
 
 The AI is where you point it, and it never reaches the browser: the page talks to

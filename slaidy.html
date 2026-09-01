@@ -150,7 +150,19 @@ button{cursor:pointer;background:none;border:none}
 .stage .area:first-child{padding-left:0}
 .stage .area:last-child{padding-right:0}
 #sheet .stage .area+.area{border-left:1px solid var(--hair)}
+#sheet .stage .area{position:relative}
+/* A way into every column that costs the column no height: a strip at the foot
+   on hover, and the whole box when there is nothing in it yet. */
+#sheet .stage .addhere{position:absolute;left:0;right:0;bottom:0;height:24px;opacity:0;
+ display:flex;align-items:center;justify-content:center;gap:6px;border:0;cursor:pointer;
+ background:var(--accbg);color:var(--acc);font:600 11px/1 system-ui;border-radius:5px;
+ transition:opacity .12s}
+#sheet .stage .area:hover .addhere{opacity:.9}
+#sheet .stage .area.bare .addhere{top:0;height:auto;opacity:1;background:transparent;
+ border:1px dashed #CFD3DA;color:var(--faint);font-weight:600}
+#sheet .stage .area.bare:hover .addhere{border-color:var(--acc);color:var(--acc);background:var(--accbg)}
 .stage .colbrk{display:none}
+#sheet .stage .bk.iscol{position:relative;z-index:1}
 #sheet .stage .colbrk{display:flex;align-items:center;gap:9px;margin:10px 0;color:var(--faint);
  font:600 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase}
 #sheet .stage .colbrk:before,#sheet .stage .colbrk:after{content:"";flex:1;height:0;
@@ -1559,6 +1571,45 @@ function areaGroups(list,n){
   while(g.length<n)g.push([]);
   return g;
 }
+/* Choosing "two columns" should move the overflow into the second column, not
+   sit there waiting to be told where to cut. So: measure every block at the
+   width of one column and cut where the columns come out most even. The cut is
+   written into the body as a marker, which keeps what every surface draws the
+   same as what the markdown says — and leaves it yours to drag afterwards.
+   Only ever done when the body says nothing; a marker you placed is an
+   instruction, not a starting point. */
+function splitBody(s,n){
+  const list=blocks(s.body), had=list.filter(b=>b.kind==='col').length;
+  if(had>=n-1)return false;
+  if(had){                       /* some of the cuts are yours — just add the rest */
+    while(list.filter(b=>b.kind==='col').length<n-1)list.push({kind:'col',src:'<!-- col -->'});
+    s.body=list.map(b=>b.src).join('\n\n');
+    return true;
+  }
+  if(list.length<n)return false;                    /* not enough to share out */
+  let m=document.getElementById('measure');
+  if(!m){m=document.createElement('div');m.id='measure';document.body.appendChild(m);}
+  const probe=Object.assign({},s);
+  m.className=stageClass(probe)+' measure';m.style.cssText=styleVars(probe);
+  m.innerHTML=stageHtml(probe,false);
+  const area=m.querySelector('.area')||m.querySelector('.txin');
+  const kids=area?[...area.children]:[];
+  if(kids.length!==list.length)return false;
+  const h=kids.map(k=>k.getBoundingClientRect().height+12);
+  const total=h.reduce((a,b)=>a+b,0);
+  if(!total)return false;
+  const cuts=[];let run=0,col=1;
+  for(let i=0;i<h.length-1;i++){
+    run+=h[i];
+    if(col<n&&run>=total*col/n){cuts.push(i+1);col++;}
+  }
+  if(!cuts.length)return false;
+  const out=[];
+  list.forEach((b,i)=>{ if(cuts.indexOf(i)>=0)out.push({kind:'col',src:'<!-- col -->'}); out.push(b); });
+  while(out.filter(b=>b.kind==='col').length<n-1)out.push({kind:'col',src:'<!-- col -->'});
+  s.body=out.map(b=>b.src).join('\n\n');
+  return true;
+}
 function areasHtml(s,L){
   if(L.areas.length<2)return body2html(s.body);
   return areaGroups(blocks(s.body),L.areas.length).map((g,i)=>
@@ -2366,8 +2417,27 @@ function paintBody(s){
       write(a);
     };
   });
+  /* Every column gets its own way in. The bar under the slide inserts beside
+     the block you last touched, which is no help at all when the column you
+     want is empty — there is nothing in it to touch. */
+  const addHere=()=>{
+    if(n<2)return;
+    const all=blocks(s.body);
+    cells.forEach((c,ci)=>{
+      /* the break that ends a column lives in it, and is not content — a column
+         holding only that one is still empty, and has to say so */
+      const bare=!c.querySelector('.bk:not(.iscol)');
+      c.classList.toggle('bare',bare);
+      const z=document.createElement('button');
+      z.type='button';z.className='addhere';
+      z.title='Add something to this column';
+      z.innerHTML=bare?'<span>＋ add to this column</span>':'<span>＋</span>';
+      z.onclick=e=>{e.stopPropagation();insertMenu(z,areaEnd(all,ci));};
+      c.appendChild(z);
+    });
+  };
   blocks(s.body).forEach((b,bi)=>{
-    const d=document.createElement('div');d.className='bk';
+    const d=document.createElement('div');d.className='bk'+(b.kind==='col'?' iscol':'');
     const isFig=b.kind==='fig';
     d.innerHTML=block(b)+`<div class="bkt">
       <button class="grip" data-m="grip" title="Drag to reorder">⠿</button>
@@ -2468,6 +2538,7 @@ function paintBody(s){
       }
     }
   });
+  addHere();
 }
 
 /* ---------- inspector ---------- */
@@ -3013,6 +3084,8 @@ function paintSide(){
   }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
+    const n=layOf(s).areas.length;
+    if(n>1&&splitBody(s,n))toast(`Split across ${n} columns — drag the break to move it`);
     if(!layOf(s).hero||s.fig){touch();paint();return;}
     /* A figure already drawn into the body is the answer to "which figure" —
        asking anyway, with every figure in the deck to choose from, was the

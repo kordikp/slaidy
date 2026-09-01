@@ -132,6 +132,70 @@ addEventListener('load',async()=>{
   ok('and reading it back gets the shape',lback[0].layout==='two',lback[0].layout);
   ok('with the separator still in the body',/<!-- col -->/.test(lback[0].body));
 
+  // choosing two columns moves the overflow into the second, rather than
+  // waiting to be told where to cut
+  sl.layout='text';
+  sl.body=['#### One','Alpha alpha alpha.','Beta beta beta.','Gamma gamma gamma.',
+           'Delta delta delta.','> Epsilon.'].join('\n\n');
+  w.paint();await wait(250);
+  d.querySelector('#side #segLay button[data-v="two"]').click();await wait(450);
+  const bl2=w.blocks(sl.body);
+  ok('switching to two columns cuts the body itself',
+     bl2.filter(b=>b.kind==='col').length===1,bl2.map(b=>b.kind).join(','));
+  ok('and leaves something on each side',
+     bl2[0].kind!=='col'&&bl2[bl2.length-1].kind!=='col',bl2.map(b=>b.kind).join(','));
+  const drawn=d.querySelectorAll('#sheet .stage .area');
+  ok('both columns have something in them',
+     drawn.length===2&&drawn[0].querySelector('.bk')&&drawn[1].querySelector('.bk'),
+     [...drawn].map(a=>a.querySelectorAll('.bk').length+' blocks').join(' · '));
+  const cutAt=bl2.findIndex(b=>b.kind==='col');
+  d.querySelector('#side #segLay button[data-v="three"]').click();await wait(450);
+  const bl3=w.blocks(sl.body);
+  ok('going to three adds the missing cut',bl3.filter(b=>b.kind==='col').length===2,
+     bl3.map(b=>b.kind).join(','));
+  ok('and keeps the one that was already there',
+     bl3.findIndex(b=>b.kind==='col')===cutAt,'was '+cutAt+', now '+bl3.findIndex(b=>b.kind==='col'));
+
+  // every column has a way in, which matters most when it is empty
+  sl.layout='three';sl.body='Only this.\n\n<!-- col -->\n\n<!-- col -->';
+  w.paint();await wait(300);
+  const cs=d.querySelectorAll('#sheet .stage .area');
+  ok('an empty column says so and offers a way in',
+     cs.length===3&&cs[2].classList.contains('bare')&&cs[2].querySelector('.addhere'),
+     [...cs].map(c=>c.className).join(' | '));
+  cs[2].querySelector('.addhere').click();await wait(200);
+  const ip=d.querySelector('.inspop');
+  ok('pressing it opens the block menu',!!ip);
+  ip.querySelector('[data-k="quote"]').click();await wait(350);
+  const after=w.blocks(sl.body);
+  ok('and what you pick lands in that column, after both breaks',
+     after[after.length-1].src.indexOf('>')===0&&
+     after.filter(b=>b.kind==='col').length===2,after.map(b=>b.src.slice(0,12)).join('|'));
+  const cs2=d.querySelectorAll('#sheet .stage .area');
+  ok('so the third column now holds it',!!cs2[2].querySelector('.bk'),
+     [...cs2].map(c=>c.querySelectorAll('.bk').length).join(','));
+
+  // and a block can be dragged from one column into another
+  sl.body='Alpha.\n\nBeta.\n\n<!-- col -->\n\nGamma.\n\n<!-- col -->\n\nDelta.';
+  w.paint();await wait(300);
+  const bks=d.querySelectorAll('#sheet .stage .bk');
+  const alpha=bks[0], gamma=[...bks].find(x=>/Gamma/.test(x.textContent));
+  const dtx=new W.DataTransfer();
+  alpha.querySelector('.grip').dispatchEvent(new W.MouseEvent('mousedown',{bubbles:true}));
+  alpha.dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dtx}));
+  const rg=gamma.getBoundingClientRect();
+  gamma.dispatchEvent(new W.DragEvent('dragover',
+    {bubbles:true,cancelable:true,dataTransfer:dtx,clientY:rg.bottom-2}));
+  await wait(80);
+  gamma.dispatchEvent(new W.DragEvent('drop',
+    {bubbles:true,cancelable:true,dataTransfer:dtx,clientY:rg.bottom-2}));
+  await wait(350);
+  const moved=w.blocks(sl.body).map(b=>b.src);
+  const c1=moved.indexOf('<!-- col -->'), c2=moved.lastIndexOf('<!-- col -->');
+  const at=moved.indexOf('Alpha.');
+  ok('a block dragged into the middle column lands there',at>c1&&at<c2,
+     moved.map(x=>x.slice(0,7)).join('|'));
+
   // a deck can add its own
   w.S.meta.layouts={'wide-left':{label:'Wide left',areas:[{w:62},{w:38}]}};
   ok('a deck layout joins the built-in ones',!!w.LAYS()['wide-left']&&Object.keys(w.LAYS()).length===10);

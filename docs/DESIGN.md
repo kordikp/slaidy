@@ -414,6 +414,22 @@ the body says only where the split happens, with `<!-- col -->` on a line of its
 division is the point: a separator on its own could never tell you how wide a column is,
 because it does not know whether it is one of two or one of three. The layout always knows.
 
+**Choosing the layout does the split.** Picking two columns and being handed the same
+overflowing single column, with a separator to place by hand, is not an answer. So the
+switch measures every block at the width of one column — a paragraph two lines wide across
+the slide is four lines wide in half of it — and cuts where the columns come out most even.
+What it writes is an ordinary marker in the body, so what each surface draws is still what
+the markdown says, and the cut is then yours to drag. A cut you placed is an instruction:
+if the body already has separators, going to more columns adds the missing ones at the end
+rather than re-cutting.
+
+**Every column has its own way in.** The bar under the slide inserts beside the block you
+last touched, which is no help when the column you want is empty — there is nothing in it to
+touch. Each column carries a target of its own: a strip at the foot on hover, the whole box
+when it holds nothing. It is positioned absolutely, so it costs the column no height and
+cannot push a slide past its own edge. The separator that ends a column lives in that
+column but is not content, so a column holding only that still reads as empty.
+
 A separator is a block like `<!-- gap -->` or `***`, which makes the rest fall out: block
 indices stay global, so inserting, moving and deleting need to know nothing about areas;
 dragging a block past a separator moves it into the next column; and the markdown stays

@@ -43,7 +43,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   snapDiff,history_,snapshot,downloadDeck,recentDecks,heldDecks,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
   deleteSlide,duplicateSlide,srcEditor,feEditText,scalePreview,tex2mml,slideRanges,block,inl,
   get BLOCKIX(){return BLOCKIX},set BLOCKIX(v){BLOCKIX=v},SNIP,analyseSlide,briefWizard,
-  feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
+  splitBody,feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
   copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,useLoad,useNote,useReset,usageHtml,
   KIND_LABEL,nfmt,safeUrl,askReplace,writeServer,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY,swipes,step};"""

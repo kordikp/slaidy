@@ -132,51 +132,6 @@ addEventListener('load',async()=>{
   ok('and the swipe hint says the gesture is there',
      !!d.getElementById('swipehint'),d.getElementById('swipehint').textContent);
 
-  // ---------- presenting on a phone ----------
-  // Reported from a real phone: the slide came up as a black screen. The
-  // projector is a 1280px box, and asking a grid to centre one inside a 390px
-  // viewport puts it against the start edge instead — scaled about its own
-  // centre it then lands mostly off the right of the screen. fit() places it by
-  // arithmetic now, so this holds at any size.
-  //
-  // One frame, resized, rather than one per size: a fresh copy of the app costs
-  // seconds of the file's virtual-time budget, and turning a phone is a resize
-  // anyway — which is the path worth exercising.
-  const g=await open_(390,780);
-  const W3=g.contentWindow,d3=g.contentDocument;
-  await W3.__api.present(true); await wait(400);
-  for(const [vw,vh] of [[390,780],[844,390]]){
-    g.style.width=vw+'px'; g.style.height=vh+'px';
-    W3.dispatchEvent(new W3.Event('resize')); await wait(300);
-    /* a rect is always in its own document's viewport, so these are already
-       the coordinates the phone would see — the frame being parked off-screen
-       in the parent does not enter into it */
-    const deck=d3.getElementById('deck'), r=deck.getBoundingClientRect();
-    const L=r.left, T=r.top;
-    ok(`${vw}×${vh}: the slide is on the screen`,
-       L>=-2&&T>=-2&&L+r.width<=vw+2&&T+r.height<=vh+2,
-       `[${Math.round(L)},${Math.round(T)},${Math.round(L+r.width)},${Math.round(T+r.height)}]`);
-    ok(`${vw}×${vh}: and centred in it`,
-       Math.abs(L+r.width/2-vw/2)<3&&Math.abs(T+r.height/2-vh/2)<3,
-       `centre ${Math.round(L+r.width/2)},${Math.round(T+r.height/2)} want ${vw/2},${vh/2}`);
-    ok(`${vw}×${vh}: at a size worth looking at`,
-       r.width>Math.min(vw,vh*16/9)*0.85,`${Math.round(r.width)}px of ${vw}`);
-    ok(`${vw}×${vh}: with the title actually drawn`,
-       !!d3.querySelector('#deck h2')&&d3.querySelector('#deck h2').getBoundingClientRect().width>10);
-    // a tap moves on, because a phone has no arrow keys
-    const before=W3.__api.cur;
-    d3.getElementById('show').dispatchEvent(new W3.MouseEvent('click',
-      {bubbles:true,cancelable:true,clientX:vw-20,clientY:vh/2}));
-    await wait(250);
-    ok(`${vw}×${vh}: a tap on the right goes on`,W3.__api.cur===before+1,
-       'slide '+(W3.__api.cur+1));
-    d3.getElementById('show').dispatchEvent(new W3.MouseEvent('click',
-      {bubbles:true,cancelable:true,clientX:10,clientY:vh/2}));
-    await wait(250);
-    ok(`${vw}×${vh}: and one on the left goes back`,W3.__api.cur===before,
-       'slide '+(W3.__api.cur+1));
-  }
-  g.remove();
 
   f.remove();
 

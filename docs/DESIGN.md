@@ -474,6 +474,15 @@ losing what someone wrote is worse than an untidy column.
 Tidy rearranges the five hero layouts and leaves the rest alone: it measures type and
 figures, and a named layout is a decision.
 
+### Full screen is asked for, not waited on
+
+`present()` used to `await requestFullscreen()`. That is a request the browser may refuse,
+grant late, or — in a frame that is not permitted it — leave hanging forever, and a hanging
+promise there meant the projector never painted at all. It is fired and forgotten now, with
+the rejection swallowed; `fullscreenchange` re-fits the slide when the answer arrives, and
+`fit()` has already put it on the screen either way. Found by a test that hung, which is a
+better place to find it than a stage.
+
 ### The suite is one script
 
 `tests/all.sh` runs the name check and browser floor (`preflight.py`), the markdown round

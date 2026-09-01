@@ -5707,10 +5707,19 @@ function paintDeck(){
   fit();
 }
 
+/* Asked for, not waited on. Full screen is a request the browser may refuse,
+   grant late, or — in a frame that is not allowed it — leave hanging, and the
+   deck must be on the screen either way. fullscreenchange re-fits it when the
+   answer arrives. Waiting here once meant a projector that never painted. */
 async function present(on){
   showing=on;
-  if(on){ try{ await document.documentElement.requestFullscreen({navigationUI:'hide'}); }catch(e){} }
-  else if(document.fullscreenElement){ fsGuard=true; try{ await document.exitFullscreen(); }catch(e){} fsGuard=false; }
+  if(on){ try{ const p=document.documentElement.requestFullscreen({navigationUI:'hide'});
+               if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+  else if(document.fullscreenElement){
+    fsGuard=true;
+    try{ const p=document.exitFullscreen(); if(p&&p.then)await Promise.race([p,new Promise(r=>setTimeout(r,400))]); }catch(e){}
+    fsGuard=false;
+  }
   document.getElementById('show').classList.toggle('on',on);
   document.body.classList.toggle('presenting',on);
   if(on&&window.innerHeight>window.innerWidth*1.2){

@@ -424,6 +424,20 @@ losing what someone wrote is worse than an untidy column.
 Tidy rearranges the five hero layouts and leaves the rest alone: it measures type and
 figures, and a named layout is a decision.
 
+### Moving a block
+
+Drag from the grip, not the block, or selecting a word in a paragraph would start a drag.
+The line showing where it lands is drawn outside the block so it is not hidden under its
+neighbour; dropping in the space under everything means the end, and dropping into a column
+means the end of that column — otherwise an empty column is the one place you cannot put
+anything.
+
+The window also listens for a dragged-in file, to offer to open it as a deck. It was
+answering an internal drag too: pick up a paragraph and a near-opaque curtain came down over
+the whole window, so you could not see where you were dropping — and being on top, it took
+the drop as well, which is why nothing moved. Only a drag whose `dataTransfer.types`
+contains `Files` is an offer of a deck.
+
 ### Which browsers
 
 Chrome, Edge, Firefox and Safari 15.4 upward, on a desktop or a phone. `tests/preflight.py`

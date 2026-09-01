@@ -169,6 +169,15 @@ addEventListener('load',async()=>{
   await wait(60);
   ok('the drop line shows where it would land',third.classList.contains('dropafter'),
      third.className);
+  // Reported: grab a block and the screen goes dark. The window listens for a
+  // dragged-in file to offer a deck, and it was answering an internal drag too
+  // — a near-opaque overlay over everything, which also swallowed the drop, so
+  // nothing moved.
+  d.dispatchEvent(new W.DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));
+  await wait(60);
+  ok('moving a block does not raise the file-drop curtain',
+     !d.getElementById('drop').classList.contains('on'),
+     d.getElementById('drop').className);
   third.dispatchEvent(new W.DragEvent('drop',
     {bubbles:true,cancelable:true,dataTransfer:dt,clientY:r3.bottom-2}));
   await wait(300);
@@ -180,6 +189,45 @@ addEventListener('load',async()=>{
   w.undo();await wait(250);
   ok('one undo puts the order back',
      w.blocks(w.S.slides[w.cur].body).map(x=>x.src).join('|')===src0.join('|'));
+
+  // dropping in the space below the blocks means the end
+  const dt2=new W.DataTransfer();
+  const one=blk()[0];
+  one.querySelector('.grip').dispatchEvent(new W.MouseEvent('mousedown',{bubbles:true}));
+  one.dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dt2}));
+  const bd=d.getElementById('bd');
+  bd.dispatchEvent(new W.DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt2}));
+  await wait(60);
+  bd.dispatchEvent(new W.DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt2}));
+  await wait(300);
+  const tail=w.blocks(w.S.slides[w.cur].body).map(x=>x.src);
+  ok('dropping under everything puts it last',tail[tail.length-1]===src0[0],
+     tail[tail.length-1].slice(0,18));
+  ok('and still nothing was lost',tail.length===src0.length,tail.length+' of '+src0.length);
+  w.undo();await wait(250);
+
+  // a column that is empty is still somewhere you can drop
+  const sv={layout:w.S.slides[w.cur].layout,body:w.S.slides[w.cur].body};
+  w.S.slides[w.cur].layout='two';
+  w.S.slides[w.cur].body='Alpha.\n\nBeta.\n\n<!-- col -->';
+  w.paint();await wait(300);
+  const cells=d.querySelectorAll('#sheet .stage #bd .area');
+  ok('the second column is there and empty',cells.length===2&&!cells[1].querySelector('.bk'),
+     cells.length+' areas');
+  const dt3=new W.DataTransfer(), alpha=blk()[0];
+  alpha.querySelector('.grip').dispatchEvent(new W.MouseEvent('mousedown',{bubbles:true}));
+  alpha.dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dt3}));
+  cells[1].dispatchEvent(new W.DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt3}));
+  await wait(60);
+  ok('the column you are over lights up',cells[1].classList.contains('dropin'),cells[1].className);
+  cells[1].dispatchEvent(new W.DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt3}));
+  await wait(300);
+  const two=w.blocks(w.S.slides[w.cur].body).map(x=>x.src);
+  ok('and the block lands in it',two[two.length-1]==='Alpha.',two.join('|'));
+  ok('after the separator, which is what puts it in that column',
+     two.indexOf('<!-- col -->')<two.indexOf('Alpha.'),two.join('|'));
+  w.undo();await wait(250);
+  w.S.slides[w.cur].layout=sv.layout;w.S.slides[w.cur].body=sv.body;w.paint();await wait(200);
 
   // and ＋ inserts right below the block you pressed it on
   blk()[0].querySelector('[data-m="add"]').dispatchEvent(new W.MouseEvent('click',{bubbles:true}));

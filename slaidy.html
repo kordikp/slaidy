@@ -270,9 +270,16 @@ button{cursor:pointer;background:none;border:none}
    block's own top-right corner instead, over the content, on hover only. */
 .bk{position:relative;border-radius:5px;padding:0 6px;margin:0 -6px}
 .bk:hover{background:#F6F7F9;cursor:text}
-.bk.dragging{opacity:.4}
-.bk.dropbefore{box-shadow:0 -2px 0 var(--acc)}
-.bk.dropafter{box-shadow:0 2px 0 var(--acc)}
+.bk.dragging{opacity:.35}
+/* The line has to be findable while something is over it, so it is drawn
+   outside the block and given a nub at each end. */
+.bk.dropbefore,.bk.dropafter{position:relative}
+.bk.dropbefore:before,.bk.dropafter:before{content:"";position:absolute;left:-3px;right:-3px;height:3px;
+ background:var(--acc);border-radius:2px;box-shadow:0 0 0 3px var(--accbg)}
+.bk.dropbefore:before{top:-5px}
+.bk.dropafter:before{bottom:-5px}
+/* and the column you are aiming at lights up, so an empty one is a target */
+#sheet .stage .area.dropin,#sheet .stage #bd.dropin{background:var(--accbg);border-radius:6px}
 /* right:9 not 3 — the block hangs 6px past the column on each side (margin:0 -6px),
    and the column is what clips */
 .bkt{position:absolute;right:9px;top:3px;display:none;flex-direction:row;gap:1px;z-index:3;
@@ -2315,6 +2322,37 @@ function paintBody(s){
   const w={appendChild:el=>cells[Math.min(ai,cells.length-1)].appendChild(el),
            querySelectorAll:sel=>host.querySelectorAll(sel)};
   const write=arr=>{s.body=arr.filter(x=>x.src.trim()).map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();};
+  /* Dropping in the space below the blocks, or into a column that has nothing
+     in it yet, means the end of that column — otherwise an empty area is the
+     one place you cannot put anything. */
+  const areaEnd=(list,i)=>{
+    let seen=0;
+    for(let k=0;k<list.length;k++)
+      if(list[k].kind==='col'){ if(seen===i)return k; seen++; }
+    return list.length;
+  };
+  cells.forEach((c,ci)=>{
+    c.ondragover=e=>{
+      if(!e.dataTransfer.types.includes('bk')||e.target.closest('.bk'))return;
+      e.preventDefault();e.dataTransfer.dropEffect='move';
+      cells.forEach(x=>x.classList.remove('dropin'));c.classList.add('dropin');
+    };
+    c.ondragleave=()=>c.classList.remove('dropin');
+    c.ondrop=e=>{
+      const from=+e.dataTransfer.getData('bk');
+      cells.forEach(x=>x.classList.remove('dropin'));
+      if(!isFinite(from))return;
+      e.preventDefault();e.stopPropagation();
+      const a=blocks(s.body);
+      let to=areaEnd(a,ci);
+      if(from===to||from===to-1)return paintBody(s);
+      snap('move paragraph');
+      const[m]=a.splice(from,1);
+      if(from<to)to--;
+      a.splice(to,0,m);
+      write(a);
+    };
+  });
   blocks(s.body).forEach((b,bi)=>{
     const d=document.createElement('div');d.className='bk';
     const isFig=b.kind==='fig';
@@ -2360,7 +2398,8 @@ function paintBody(s){
       d.classList.add('dragging');
     };
     d.ondragend=()=>{d.draggable=false;d.classList.remove('dragging');
-      w.querySelectorAll('.bk').forEach(x=>x.classList.remove('dropbefore','dropafter'));};
+      w.querySelectorAll('.bk').forEach(x=>x.classList.remove('dropbefore','dropafter'));
+      cells.forEach(x=>x.classList.remove('dropin'));};
     d.ondragover=e=>{
       if(!e.dataTransfer.types.includes('bk'))return;
       e.preventDefault();e.dataTransfer.dropEffect='move';
@@ -5620,10 +5659,22 @@ document.addEventListener('fullscreenchange',()=>{
   if(!document.fullscreenElement&&showing&&!fsGuard)present(false);
   else if(showing)setTimeout(fit,60);
 });
-['dragenter','dragover'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();document.getElementById('drop').classList.add('on');}));
-['dragleave','drop'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();
+/* Only a drag carrying files is an offer of a deck. Picking up a paragraph
+   raised the same near-opaque overlay across the whole window, so you could not
+   see where you were dropping it — and the overlay, being on top, took the drop
+   as well, which is why nothing moved. */
+const fileDrag=e=>{const t=e.dataTransfer&&e.dataTransfer.types;
+  return !!t&&Array.prototype.indexOf.call(t,'Files')>=0;};
+['dragenter','dragover'].forEach(t=>document.addEventListener(t,e=>{
+  if(!fileDrag(e))return;
+  e.preventDefault();document.getElementById('drop').classList.add('on');}));
+['dragleave','drop'].forEach(t=>document.addEventListener(t,e=>{
+  if(t==='drop'&&!fileDrag(e))return;
+  if(t==='dragleave'&&!document.getElementById('drop').classList.contains('on'))return;
+  e.preventDefault();
   if(t==='drop'||e.relatedTarget===null)document.getElementById('drop').classList.remove('on');}));
 document.addEventListener('drop',async e=>{
+  if(!fileDrag(e))return;
   const fs=[];const it=e.dataTransfer.items;
   if(it&&it[0]?.webkitGetAsEntry){
     const walk=async(en,path='')=>{ if(en.isFile){const f=await new Promise(r=>en.file(r));f.webkitRelativePath2=path+en.name;fs.push(f);}

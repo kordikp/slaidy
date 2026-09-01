@@ -222,8 +222,10 @@ addEventListener('load',async()=>{
   const menu=d.querySelector('.ctxmenu');
   ok('right-clicking a heading opens a menu',!!menu);
   const items=[...menu.querySelectorAll('button')].map(b=>b.dataset.a);
-  ok('with more than renaming in it',items.join(',').includes('new')&&items.join(',').includes('up')
+  ok('with more than renaming in it',items.join(',').includes('up')
      &&items.join(',').includes('merge'),items.join(','));
+  /* "start a new one here" would only rename it — the run already starts here */
+  ok('and not the one that would only rename it again',!items.includes('new'),items.join(','));
 
   // move the whole section up
   const secAt=+secH.dataset.i, name=w.S.slides[secAt].group;
@@ -309,9 +311,12 @@ addEventListener('load',async()=>{
   row.dispatchEvent(new W.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:60,clientY:200}));
   await wait(200);
   const sm=d.querySelector('.ctxmenu');
-  ok('a slide can start one too',!!sm.querySelector('[data-a="sect"]'),
-     [...sm.querySelectorAll('button')].map(b=>b.dataset.a).join());
-  sm.querySelector('[data-a="sect"]').click(); await wait(250);
+  const smk=[...sm.querySelectorAll('button')].map(b=>b.dataset.a);
+  const startsAlready=(w.S.slides[si2].group||'')!==(w.S.slides[si2-1].group||'');
+  ok('a slide that does not begin a section can start one',
+     startsAlready?smk.includes('rens'):smk.includes('sect'),smk.join());
+  if(startsAlready){ w.newSection('group',si2); await wait(250); }
+  else { sm.querySelector('[data-a="sect"]').click(); await wait(250); }
   d.getElementById('nsName').value='Begun Here';
   d.getElementById('nsOk').click(); await wait(300);
   ok('and the section begins with that slide',w.S.slides[si2].group==='Begun Here',

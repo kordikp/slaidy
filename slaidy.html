@@ -2134,7 +2134,10 @@ function slideMenu(e,i){
     ['cut',`Cut ${n>1?n+' slides':'this slide'}`],
     ['paste','Paste slides here'],
     ['dup','Duplicate'],
-    ['sect','Start a new section here'],
+    /* On a slide that already begins one, starting a section would only rename
+       it, so that is what it offers instead. */
+    (i===0||(S.slides[i].group||'')!==(S.slides[i-1].group||''))
+      ? ['rens','Rename this section…'] : ['sect','Start a new section here'],
     ['-',''],
     ['skip',S.slides[i].skip?'Show it again':'Hide from the presentation'],
     ['del',`Delete ${n>1?n+' slides':'this slide'}`],
@@ -2153,6 +2156,10 @@ function slideMenu(e,i){
     if(a==='paste'){cur=i;return pasteSlides();}
     if(a==='dup')return duplicateSlide(i);
     if(a==='sect')return newSection('group',i);
+    if(a==='rens'){
+      const h=[...document.querySelectorAll('#nav .grp')].find(x=>+x.dataset.i===i);
+      return h&&h.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));
+    }
     if(a==='skip')return toggleSkip(i);
     if(a==='del'){
       const ix=picked();
@@ -2328,8 +2335,9 @@ function sectionMenu(e,field,name,at){
   const m=document.createElement('div');
   m.className='pop ctxmenu on';
   m.innerHTML=[
+    /* No "start a new one here": the run already starts here, so it would only
+       rename it — which is the item above. */
     ['ren',`Rename this ${word}…`],
-    ['new',`Start a new ${word} here`],
     ['-',''],
     ['up',`Move the ${word} up`],
     ['down',`Move the ${word} down`],

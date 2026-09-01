@@ -17,7 +17,10 @@ SLIDE_RE = re.compile(r"^### (\d+)\.\s*`\[([SDEB])\]`\s*(.+?)\s*$", re.M)
 SUB_RE = re.compile(r"^##\s+(?!#)(.+?)\s*$", re.M)          # subsection inside an act
 FIG_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*"
                     r"(?:·[ \t]*([a-z-]+))?[ \t]*(?:·[ \t]*(\d{2,3})%)?[^\n]*$", re.M)
-LAYOUTS = {"figure", "split-l", "split-r", "background", "text"}
+LAYOUTS = {"figure", "split-l", "split-r", "background", "text",
+           "two", "three", "cover", "closing"}
+# A layout the figure line cannot carry — two columns, a cover — says so outright
+LAY_RE = re.compile(r"^\*Layout:\*\s*([A-Za-z0-9_-]+)", re.M)
 FIG_NONE_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:none|žádná).*$", re.M | re.I)
 NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$", re.M)
 SUM_RE = re.compile(r"^\*Summary:\*\s*(.+)$", re.M)
@@ -83,11 +86,13 @@ def parse_slides(text, group):
         fl = FLAGS_RE.search(body)
         ts = TEXT_RE.search(body)
         st = STYLE_RE.search(body)
+        ly = LAY_RE.search(body)
         body = SUM_RE.sub("", body)
         body = SKIP_RE.sub("", body)
         body = FLAGS_RE.sub("", body)
         body = TEXT_RE.sub("", body)
         body = STYLE_RE.sub("", body)
+        body = LAY_RE.sub("", body)
         body = FIG_RE.sub("", body)
         body = FIG_NONE_RE.sub("", body)
         body = NOTE_RE.sub("", body)
@@ -96,7 +101,8 @@ def parse_slides(text, group):
         slides.append({"tag": payload.group(2), "group": group, "sub": sub,
                        "title": payload.group(3).strip(),
                        "fig": f.group(1) if f else None,
-                       "layout": (f.group(2) if f and f.group(2) in LAYOUTS else "figure") if f else "text",
+                       "layout": (f.group(2) if f and f.group(2) in LAYOUTS else "figure") if f
+                                 else (ly.group(1) if ly and ly.group(1) in LAYOUTS else "text"),
                        "figScale": int(f.group(3)) if f and f.group(3) else 100,
                        "textScale": int(ts.group(1)) if ts else 100,
                        "body": body, "notes": notes, "summary": sm.group(1).strip() if sm else "",

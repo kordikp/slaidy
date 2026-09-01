@@ -74,6 +74,74 @@ addEventListener('load',async()=>{
   const md=w.slideMd(w.S.slides[8]);
   const back=w.importMarkdown('t.md','# Act I\n\n## Room 1 — Alpha\n\n'+md);
   ok('reimport recovers the subsection',back[0].sub==='Room 1 — Alpha',back[0].sub);
+  // ---------- layouts are data ----------
+  // The deck holds the shapes a slide can be; the slide names one. That is
+  // where a cover, a closing slide and two columns come from without any of
+  // them being a special case in the renderer.
+  const li=w.S.slides.length-1, sl=w.S.slides[li];
+  w.cur=li;
+  ok('the nine built in are all offered',Object.keys(w.LAY).length===9,Object.keys(w.LAY).join(' '));
+  ok('and the five that always existed are still among them',
+     ['figure','split-l','split-r','background','text'].every(k=>w.LAY[k]));
+
+  // areas: how many, and what a separator does
+  ok('one area by default',w.LAY.text.areas.length===1);
+  ok('two and three say so',w.LAY.two.areas.length===2&&w.LAY.three.areas.length===3);
+  const bl=w.blocks('A\n\n<!-- col -->\n\nB\n\n<!-- col -->\n\nC');
+  ok('a column break is a block like any other',
+     bl.length===5&&bl[1].kind==='col'&&bl[3].kind==='col',bl.map(b=>b.kind).join(','));
+  const g2=w.areaGroups(bl,2);
+  ok('a layout with two areas takes two groups',g2.length===2,String(g2.length));
+  ok('and the surplus carries on in the last, rather than being lost',
+     g2[1].filter(b=>b.kind!=='col').map(b=>b.src).join('|')==='B|C',
+     g2[1].map(b=>b.src).join('|'));
+  ok('a layout with three takes three',w.areaGroups(bl,3).length===3);
+  ok('and one with more areas than separators still gets them all',
+     w.areaGroups(w.blocks('only this'),3).length===3);
+
+  // rendered
+  sl.layout='two'; sl.fig=null;
+  sl.body='Left side.\n\n<!-- col -->\n\nRight side.';
+  w.paint(); await wait(300);
+  const areas=d.querySelectorAll('#sheet .stage .area');
+  ok('two areas are drawn',areas.length===2,String(areas.length));
+  ok('and they sit side by side',
+     areas.length===2&&areas[1].getBoundingClientRect().left>areas[0].getBoundingClientRect().right-2,
+     areas.length===2?`${Math.round(areas[0].getBoundingClientRect().right)} then ${Math.round(areas[1].getBoundingClientRect().left)}`:'');
+  ok('the text went where the separator put it',
+     /Left side/.test(areas[0].textContent)&&/Right side/.test(areas[1].textContent));
+  ok('the separator itself is not projected',
+     !/col/.test(w.stageHtml(sl,false).replace(/class="[^"]*"/g,'')),'');
+  ok('the insert bar offers a column break here',
+     !!d.querySelector('#plus button[data-k="col"]'));
+
+  // a cover drops the header and grows the title
+  sl.layout='cover'; w.paint(); await wait(250);
+  ok('a cover has no header',!d.querySelector('#sheet .stage .hdr'));
+  ok('and a bigger title',d.querySelector('#sheet .stage h2').classList.contains('big'));
+  sl.layout='text'; w.paint(); await wait(200);
+  ok('and an ordinary slide still has one',!!d.querySelector('#sheet .stage .hdr'));
+  ok('the insert bar drops the break where it would do nothing',
+     !d.querySelector('#plus button[data-k="col"]'));
+
+  // it survives markdown
+  sl.layout='two'; sl.body='Left.\n\n<!-- col -->\n\nRight.';
+  const lmd=w.slideMd(sl);
+  ok('markdown says which layout',/^\*Layout:\* two$/m.test(lmd),(lmd.match(/^\*Layout:.*$/m)||[''])[0]);
+  const lback=w.importMarkdown('x.md','# G\n\n'+lmd);
+  ok('and reading it back gets the shape',lback[0].layout==='two',lback[0].layout);
+  ok('with the separator still in the body',/<!-- col -->/.test(lback[0].body));
+
+  // a deck can add its own
+  w.S.meta.layouts={'wide-left':{label:'Wide left',areas:[{w:62},{w:38}]}};
+  ok('a deck layout joins the built-in ones',!!w.LAYS()['wide-left']&&Object.keys(w.LAYS()).length===10);
+  sl.layout='wide-left'; w.paint(); await wait(250);
+  const wa=d.querySelectorAll('#sheet .stage .area');
+  ok('and it is drawn in the proportion it asked for',
+     wa.length===2&&wa[0].getBoundingClientRect().width>wa[1].getBoundingClientRect().width*1.4,
+     wa.length===2?`${Math.round(wa[0].getBoundingClientRect().width)} vs ${Math.round(wa[1].getBoundingClientRect().width)}`:'');
+  delete w.S.meta.layouts; sl.layout='text'; sl.body='Back to normal.'; w.paint(); await wait(150);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

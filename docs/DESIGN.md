@@ -395,6 +395,35 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Layouts are data
+
+A layout is not a branch in the renderer. It is a record — a label, whether the header and
+the title are drawn, where a hero figure sits, and the **areas** the body flows through:
+
+```json
+"wide-left": { "label": "Wide left", "areas": [{"w": 62}, {"w": 38}] }
+```
+
+Nine are built in: the five that always existed (`figure`, `split-l`, `split-r`,
+`background`, `text`), plus `two`, `three`, `cover` and `closing`. A deck adds its own under
+`meta.layouts`, they appear in the slide's Layout row, and they travel with the deck —
+`⋯ → Deck settings → Layouts`.
+
+**Areas are what a column is.** The layout says how many there are and in what proportion;
+the body says only where the split happens, with `<!-- col -->` on a line of its own. That
+division is the point: a separator on its own could never tell you how wide a column is,
+because it does not know whether it is one of two or one of three. The layout always knows.
+
+A separator is a block like `<!-- gap -->` or `***`, which makes the rest fall out: block
+indices stay global, so inserting, moving and deleting need to know nothing about areas;
+dragging a block past a separator moves it into the next column; and the markdown stays
+linear, so the file still reads top to bottom for a person, for `git` and for a model.
+Surplus separators are not an error — content past the last area carries on in it, because
+losing what someone wrote is worse than an untidy column.
+
+Tidy rearranges the five hero layouts and leaves the rest alone: it measures type and
+figures, and a named layout is a decision.
+
 ### Which browsers
 
 Chrome, Edge, Firefox and Safari 15.4 upward, on a desktop or a phone. `tests/preflight.py`

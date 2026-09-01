@@ -30,13 +30,13 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   feUndo,feDup,feAdd,feBounds,feResize,feParentScale,feZoom,feRect,feBox,feDown,feMarquee,
   present,paint,moveSlide,checkFit,shortcuts,snap,undo,insertBlock,insertMenu,blocks,where,slideMd,
   importMarkdown,deckSettings,applyStyle,style,hdrHtml,paintNav,paintBody,paintSide,editMarkdown,stats,
-  mdParse,mdPreview,mdNormalise,llm,stageHtml,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
+  mdParse,mdPreview,mdNormalise,llm,stageHtml,blocks,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
   fig,measureStage,toggleSkip,liveIdx,liveStats,clock,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},get showing(){return showing},
   pickFigure,figRef,figMark,hoistFig,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,
   feArm,feConnect,arrowGeom,makeArrow,arrowEnds,setEnds,isArrow,reroute,rerouteAll,feTab,
-  srcHtml,srcSync,feId,edgePoint,figChrome,LAYNAME,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
+  srcHtml,srcSync,feId,edgePoint,figChrome,layName,LAY,LAYS,layOf,areaGroups,areasHtml,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
   progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
   aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
   get srvDeck(){return srvDeck},get dirty(){return dirty},get fileName(){return fileName},
@@ -81,7 +81,7 @@ for t in "${FILES[@]}"; do
   # rather than whatever the previous one left behind
   cp tests/fixture.json "$WORK/real-deck.json"
   prof="$WORK/prof-$t"
-  out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=30000 \
+  out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=45000 \
         --user-data-dir="$prof" \
         --dump-dom "http://localhost:$PORT/$t.html" 2>/dev/null \
         | sed -n '/<pre id="out">/,/<\/pre>/p' | sed 's/<[^>]*>//g')

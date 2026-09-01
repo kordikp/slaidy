@@ -142,6 +142,22 @@ button{cursor:pointer;background:none;border:none}
 #sheet .stage .tx{overflow:auto;scrollbar-width:none}
 #sheet .stage .tx::-webkit-scrollbar{width:0;height:0}
 .stage .txin{min-height:0}
+/* Areas. The layout says how many and in what proportion; this only lays them
+   out. A hairline between them so the boundary is visible while editing —
+   projected there is nothing to see, which is the point. */
+.stage .txin.cols,.stage #bd.cols{display:flex;flex-direction:row;gap:0;align-items:stretch;min-height:0;flex:1}
+.stage .area{flex:1 1 0;min-width:0;display:flex;flex-direction:column;padding:0 22px}
+.stage .area:first-child{padding-left:0}
+.stage .area:last-child{padding-right:0}
+#sheet .stage .area+.area{border-left:1px solid var(--hair)}
+.stage .colbrk{display:none}
+#sheet .stage .colbrk{display:flex;align-items:center;gap:9px;margin:10px 0;color:var(--faint);
+ font:600 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase}
+#sheet .stage .colbrk:before,#sheet .stage .colbrk:after{content:"";flex:1;height:0;
+ border-top:1px dashed #CFD3DA}
+/* A slide that opens or closes a talk: no header, and the title carries it */
+.stage.titled{justify-content:center}
+.stage h2.big{font-size:calc(var(--d-title)*1.7);margin-bottom:26px}
 .stage .tx.under{flex:none;max-height:46%;margin-top:20px}
 /* The backdrop honours the figure size like every other layout. It did not: the
    width was written into the stylesheet, so the slider moved and nothing
@@ -803,9 +819,40 @@ function slideKind(s){
   if(words)return 'text';
   return 'empty';
 }
-const LAYHINT={figure:'Only the figure is projected — the body moves below, as speaker material.','split-l':'Figure on the left, text on the right.','split-r':'Text on the left, figure on the right.',background:'Figure faint behind the text.',text:'Text only.'};
-const LAYOUTS=['figure','split-l','split-r','background','text'];
-const LAYNAME={figure:'Figure',"split-l":'Fig ◧',"split-r":'Fig ◨',background:'Behind',text:'Text'};
+/* ---------- layouts ---------------------------------------------------------
+   A layout is data, not a branch: a name, whether the header and the title are
+   drawn, where a hero figure sits, and the areas the body flows through. The
+   first five are the ones that always existed and their rendering is unchanged.
+
+   Areas are what a column is. The layout says how many there are and in what
+   proportion — so the width of a column is known from the layout, not guessed
+   from how many separators someone happened to type. A `<!-- col -->` in the
+   body only says "the next area starts here"; anything past the last area
+   carries on in it, so nothing is ever dropped.
+
+   A deck adds its own under meta.layouts, keyed by name, and every slide names
+   one. That is where a cover and a closing slide come from without either being
+   a special case in the code. */
+const LAY={
+  figure:    {label:'Figure',        hero:'above',  areas:[{}],
+              hint:'Only the figure is projected — the body moves below, as speaker material.'},
+  'split-l': {label:'Fig ◧',         hero:'left',   areas:[{}], hint:'Figure on the left, text on the right.'},
+  'split-r': {label:'Fig ◨',         hero:'right',  areas:[{}], hint:'Text on the left, figure on the right.'},
+  background:{label:'Behind',        hero:'behind', areas:[{}], hint:'Figure faint behind the text.'},
+  text:      {label:'Text',                         areas:[{}], hint:'Text only.'},
+  two:       {label:'Two columns',                  areas:[{},{}],
+              hint:'Two columns. <!-- col --> in the body says where the second starts.'},
+  three:     {label:'Three columns',                areas:[{},{},{}],
+              hint:'Three columns, split by two <!-- col --> lines.'},
+  cover:     {label:'Cover',   header:false, title:'big', areas:[{}],
+              hint:'No header, a large title — for the slide that opens the talk.'},
+  closing:   {label:'Closing', header:false, title:'big', areas:[{}],
+              hint:'No header, a large title — for the one that ends it.'},
+};
+const LAYS=()=>Object.assign({},LAY,(S.meta&&S.meta.layouts)||{});
+const layOf=s=>LAYS()[s&&s.layout]||LAY.text;
+const layName=k=>(LAYS()[k]||{}).label||k;
+const LAYOUTS=Object.keys(LAY);          /* what markdown will accept as a name */
 
 let S={id:'untitled',title:'Untitled deck',slides:[],figs:{},meta:{},style:{}};
 let cur=0,dirty=false,showing=false,notesOn=false,gridOn=false;
@@ -1430,6 +1477,8 @@ function blocks(md){
     if(/^!\[\[[a-zA-Z0-9._-]+(\|\d{2,3}%)?\]\]$/.test(t)){flush();out.push({kind:'fig',src:t});continue;}
     /* an HTML comment renders as nothing everywhere else, so the markdown stays clean */
     if(/^<!--\s*gap\s*-->$/.test(t)){flush();out.push({kind:'gap',src:'<!-- gap -->'});continue;}
+    /* the next area starts here; how wide it is comes from the slide's layout */
+    if(/^<!--\s*col\s*-->$/.test(t)){flush();out.push({kind:'col',src:'<!-- col -->'});continue;}
     if(/^\*\*\*+$/.test(t)){flush();out.push({kind:'rule',src:'***'});continue;}
     const k=t.startsWith('|')?'table':/^([-*]|\d+\.)\s+/.test(t)?'list':t.startsWith('>')?'quote':t===''?null:'para';
     if(k===null){flush();continue;}
@@ -1447,6 +1496,7 @@ let BLOCKIX=null;
 function block(b,ix){
   const at=(ix==null||BLOCKIX===null)?'':` data-b="${ix}"`;
   if(b.kind==='gap')return `<div class="gap"${at}></div>`;
+  if(b.kind==='col')return `<div class="colbrk"${at}><span>column break</span></div>`;
   if(b.kind==='rule')return `<hr class="rule"${at}>`;
   const L=b.src.split('\n');
   if(b.kind==='head'){
@@ -1480,6 +1530,21 @@ function block(b,ix){
   return `<p${at}>`+inl(L.join(' '))+'</p>';
 }
 const body2html=md=>blocks(md).map(block).join('');
+/* Groups of blocks, one per area. More separators than the layout has areas is
+   not an error — the surplus carries on in the last one, because losing what
+   someone wrote is worse than an untidy column. */
+function areaGroups(list,n){
+  const g=[[]];
+  list.forEach(b=>{ if(b.kind==='col'&&g.length<n)g.push([]); else g[g.length-1].push(b); });
+  while(g.length<n)g.push([]);
+  return g;
+}
+function areasHtml(s,L){
+  if(L.areas.length<2)return body2html(s.body);
+  return areaGroups(blocks(s.body),L.areas.length).map((g,i)=>
+    `<div class="area" style="flex:${(L.areas[i]||{}).w||1} 1 0">${g.map(b=>block(b)).join('')}</div>`
+  ).join('');
+}
 
 /* ---------- importers ---------- */
 const KEYNOTE_RE=/^###\s+(\d+)\.\s*`\[([SDEB])\]`\s*(.+?)\s*$/gm;
@@ -1515,16 +1580,18 @@ function importMarkdown(name,text){
       const tsm=bd.match(/^\*Text:\*\s*(\d{2,3})%/m);
       const stm=bd.match(/^\*Style:\*\s*(.+)$/m);
       const flm=bd.match(/^\*Flags:\*\s*(.+)$/m);
+      const lym=bd.match(/^\*Layout:\*\s*([a-zA-Z0-9_-]+)/m);
       const fl=flm?flm[1].split(',').map(x=>x.trim()).filter(Boolean):[];
       bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
-           .replace(/^\*Text:\*.*$/gm,'').replace(/^\*Style:\*.*$/gm,'')
+           .replace(/^\*Text:\*.*$/gm,'').replace(/^\*Style:\*.*$/gm,'').replace(/^\*Layout:\*.*$/gm,'')
            .replace(/^\*\*Figure:\*\*.*$/gm,'').replace(/^\*(?:Delivery note|Transition)[^:]*:\*.*$/gm,'')
            .replace(/^---\s*$/gm,'')
            /* #, ## and ### structure the file; #### and deeper are a heading
               inside the slide and must survive the round trip */
            .replace(/^#{1,3}\s+.*$/gm,'').replace(/\n{3,}/g,'\n\n').trim();
       slides.push({tag:m[2],group:act,sub:subAt(m.index),title:m[3],fig:f?f[1]:null,
-                   layout:f?(LAYOUTS.includes(f[2])?f[2]:'figure'):'text',body:bd,notes:nt,
+                   layout:f?(LAYS()[f[2]]?f[2]:'figure'):(lym&&LAYS()[lym[1]]?lym[1]:'text'),
+                   body:bd,notes:nt,
                    figScale:f&&f[3]?+f[3]:100,summary:sm?sm[1].trim():'',skip:sk,flags:fl,
                    textScale:tsm?+tsm[1]:100,style:parseStyle(stm?stm[1]:'')});
     });
@@ -1985,33 +2052,36 @@ function moveSlide(d){
    draw the same 1280x720 stage and only differ in how far it is scaled down,
    so what you arrange is what the room sees. */
 function stageHtml(s,edit){
+  const L=layOf(s);
   const has=s.fig&&S.figs[s.fig];
-  const beside=s.layout==='split-l'||s.layout==='split-r';
   const figHtml=edit?'<div class="hero" id="hero"></div>':(has?fig(s.fig):'');
   const fsz=s.figScale&&s.figScale!==100?` style="--fsn:${s.figScale/100}"`:'';
   const tsz=s.textScale&&s.textScale!==100
     ? ` style="font-size:calc(var(--d-body)*${s.textScale/100})"` : '';
-  const bodyHtml='<div class="txin">'+(edit?'<div id="bd"></div>':body2html(s.body))+'</div>';
+  const cols=L.areas.length>1;
+  const bodyHtml=`<div class="txin${cols?' cols':''}">`+
+    (edit?'<div id="bd"'+(cols?' class="cols"':'')+'></div>':areasHtml(s,L))+'</div>';
   const hasBody=edit||(s.body||'').trim();
   const mid=(s.flags||[]).includes('center')?' mid':'';
   let stack;
-  if(s.layout==='background'&&has)
+  if(L.hero==='behind'&&has)
     stack=`<div class="bgl"${fsz}>${figHtml}</div><div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
-  else if(beside&&has)
-    stack=`<div class="stack${s.layout==='split-r'?' rev':''}${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
+  else if((L.hero==='left'||L.hero==='right')&&has)
+    stack=`<div class="stack${L.hero==='right'?' rev':''}${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
           `<div class="tx"${tsz}>${bodyHtml}</div></div>`;
-  else if(has&&s.layout!=='text')
+  else if(L.hero==='above'&&has)
     stack=`<div class="stack col${mid}"><div class="fg"${fsz}>${figHtml}</div>`+
           (hasBody?`<div class="tx under"${tsz}>${bodyHtml}</div>`:'')+`</div>`;
   else
     stack=`<div class="stack col${mid}"><div class="tx"${tsz}>${bodyHtml}</div></div>`;
-  return `<div class="hdr">${hdrHtml(s)}</div>`+
-    (edit?`<h2 class="hd" contenteditable spellcheck="false"></h2>`:`<h2>${inl(s.title)}</h2>`)+
+  return (L.header===false?'':`<div class="hdr">${hdrHtml(s)}</div>`)+
+    (edit?`<h2 class="hd${L.title==='big'?' big':''}" contenteditable spellcheck="false"></h2>`
+         :`<h2${L.title==='big'?' class="big"':''}>${inl(s.title)}</h2>`)+
     stack;
 }
 function stageClass(s){
-  const has=s.fig&&S.figs[s.fig];
-  return 'stage'+(s.layout==='background'&&has?' bgfig':'');
+  const L=layOf(s),has=s.fig&&S.figs[s.fig];
+  return 'stage'+(L.hero==='behind'&&has?' bgfig':'')+(L.title==='big'?' titled':'');
 }
 /* the overrides ride on the stage element itself, so every surface that draws a
    stage — editor, projector, print — gets them without knowing about them */
@@ -2022,7 +2092,8 @@ function paintBoard(){
   if(!s){sh.innerHTML='';return;}
   sh.innerHTML=`<div class="stagewrap" id="stagewrap">
       <div class="${stageClass(s)}" id="stage"${stageStyle(s)}>${stageHtml(s,true)}</div></div>
-    <div class="ins" id="plus">${['para','head','list','quote','table','math','code','fig','rule','gap'].map(k=>
+    <div class="ins" id="plus">${['para','head','list','quote','table','math','code','fig','rule','gap']
+      .concat(layOf(s).areas.length>1?['col']:[]).map(k=>
       `<button data-k="${k}" title="${SNIP[k].l}" aria-label="${SNIP[k].l}">${ico(k)}</button>`).join('')}</div>
     <div id="overflag"><span>past the edge of the slide</span>
       <button data-fix="tidy">Fit it</button>
@@ -2038,7 +2109,7 @@ function paintBoard(){
   h.onblur=()=>{const v=h.textContent.trim();
     if(v&&v!==s.title){snap('title');s.title=v;touch();paintNav();}};
   h.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();h.blur();}};
-  if(s.fig&&S.figs[s.fig]&&s.layout!=='text')paintHero(s);
+  if(s.fig&&S.figs[s.fig]&&layOf(s).hero)paintHero(s);
   paintBody(s);
   scaleStage();
   setTimeout(checkFit,0);
@@ -2063,7 +2134,7 @@ function paintBoard(){
         const still=document.getElementById('overflag')?.classList.contains('on');
         toast(still
           ? 'Rearranged, but there is still too much for one slide — move some to the notes'
-          : `Fitted — ${LAYNAME[S.slides[cur].layout]}, figure ${S.slides[cur].figScale} %`);
+          : `Fitted — ${layName(S.slides[cur].layout)}, figure ${S.slides[cur].figScale} %`);
       },40);
       return;}
     if(f==='small'){snap('figure size');
@@ -2182,6 +2253,7 @@ const ICO={
   quote:'<path d="M2.6 2.6v8.8"/><path d="M6 4h6.5M6 7h6.5M6 10h4.5"/>',
   gap  :'<path d="M1.5 2.2h11M1.5 11.8h11"/><path d="M7 4.6v4.8M5.6 6L7 4.6 8.4 6M5.6 8L7 9.4 8.4 8"/>',
   rule :'<path d="M1.5 7h11"/><path d="M4 3.6h6M4 10.4h6" opacity=".33"/>',
+  col  :'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/><path d="M7 2.9v8.2" stroke-dasharray="1.6 1.4"/>',
   table:'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/><path d="M1.9 5.9h10.2M7 2.9v8.2"/>',
   fig  :'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/>'+
         '<circle cx="5" cy="5.9" r="1" fill="currentColor" stroke="none"/>'+
@@ -2200,6 +2272,7 @@ const SNIP={
   quote:{l:'Quote',     src:'> The line that has to land.'},
   rule :{l:'Divider',   src:'***'},
   gap  :{l:'Space',     src:'<!-- gap -->'},
+  col  :{l:'Column break', src:'<!-- col -->'},
   fig  :{l:'Figure',    src:null},
   /* #### and deeper only: ### is what starts a slide, so a body cannot use it */
   head :{l:'Sub-head',  src:'#### A heading inside the slide'},
@@ -2228,7 +2301,19 @@ function insertMenu(anchor,at){
   setTimeout(()=>document.addEventListener('click',function off(){m.remove();document.removeEventListener('click',off);}),0);
 }
 function paintBody(s){
-  const w=document.getElementById('bd');w.innerHTML='';
+  const host=document.getElementById('bd');host.innerHTML='';
+  /* One container per area, and blocks appended to whichever the separators put
+     them in. The block index stays global — a separator is a block like any
+     other — so inserting, moving and deleting need to know nothing about this,
+     and dragging a block past a separator moves it to the next column. */
+  const L=layOf(s),n=L.areas.length;
+  let ai=0,cells=[host];
+  if(n>1){
+    cells=L.areas.map((a,i)=>{const c=document.createElement('div');
+      c.className='area';c.style.flex=`${a.w||1} 1 0`;host.appendChild(c);return c;});
+  }
+  const w={appendChild:el=>cells[Math.min(ai,cells.length-1)].appendChild(el),
+           querySelectorAll:sel=>host.querySelectorAll(sel)};
   const write=arr=>{s.body=arr.filter(x=>x.src.trim()).map(x=>x.src).join('\n\n');touch();paintBody(s);checkFit();};
   blocks(s.body).forEach((b,bi)=>{
     const d=document.createElement('div');d.className='bk';
@@ -2298,6 +2383,7 @@ function paintBody(s){
       write(a);
     };
     w.appendChild(d);
+    if(b.kind==='col')ai++;      /* everything after it belongs to the next area */
     if(b.kind==='fig'){
       const box=d.querySelector('.inlinefig .figbox');
       const put=(nid,nsz)=>{const a=blocks(s.body);
@@ -2397,7 +2483,12 @@ function tidySlide(i){
   const body=(s.body||'').trim();
   const others=(s.flags||[]).filter(f=>f!=='center');
 
-  const layouts = !has ? ['text']
+  /* Tidy rearranges the five layouts that are about where a figure sits. A
+     layout the deck named — two columns, a cover — is a decision, and Tidy
+     measures type and figures, not decisions. */
+  const HEROIC=['figure','split-l','split-r','background','text'];
+  const layouts = !HEROIC.includes(s.layout) ? [s.layout]
+    : !has ? ['text']
     : !body ? ['figure']
     : s.layout==='background' ? ['background']     // a deliberate choice, left alone
     : ['figure','split-r','split-l'];
@@ -2793,8 +2884,9 @@ function paintSide(){
 
   <div class="sec"><div class="sect">Layout</div>
     <div class="seg" id="segLay">
-      ${LAYOUTS.map(l=>`<button data-v="${l}" class="${s.layout===l?'on':''}" title="${LAYHINT[l]}"
-        style="${s.layout===l?'background:var(--ink)':''}">${LAYNAME[l]}</button>`).join('')}
+      ${Object.entries(LAYS()).map(([l,L])=>`<button data-v="${l}" class="${s.layout===l?'on':''}"
+        title="${esc(L.hint||L.label||l)}"
+        style="${s.layout===l?'background:var(--ink)':''}">${esc(L.label||l)}</button>`).join('')}
     </div>
     ${has?`<div class="fld" style="margin-top:10px"><label>Figure size
         <span class="pos" id="fsLab">${s.figScale||100} %</span></label>
@@ -2869,7 +2961,7 @@ function paintSide(){
   }
   el.querySelectorAll('#segLay button').forEach(b=>b.onclick=()=>{
     snap('layout');s.layout=b.dataset.v;
-    if(s.layout==='text'||s.fig){touch();paint();return;}
+    if(!layOf(s).hero||s.fig){touch();paint();return;}
     /* A figure already drawn into the body is the answer to "which figure" —
        asking anyway, with every figure in the deck to choose from, was the
        worst possible moment to open that dialog. Promote it, carrying its size,
@@ -2896,7 +2988,7 @@ function paintSide(){
     snap('tidy');
     const changed=tidyDeck([cur]);
     touch();paint();
-    toast(changed?`Tidied — ${LAYNAME[S.slides[cur].layout]}, figure ${S.slides[cur].figScale} %`
+    toast(changed?`Tidied — ${layName(S.slides[cur].layout)}, figure ${S.slides[cur].figScale} %`
                  :'Already as good as it gets');};
 
   el.querySelector('#bSkip').onclick=()=>toggleSkip(cur);
@@ -4876,11 +4968,35 @@ function deckSettings(){
             style="${style('header')===v?'background:var(--ink)':''}">${l}</button>`).join('')}
      </div></div>
    </div>
+   <div class="sec"><div class="sect">Layouts</div>
+     <p class="tip">What shapes a slide can be. The nine below are built in; anything you add
+      here joins them in the slide's Layout row and travels with the deck.
+      <code>areas</code> are the columns — how many, and in what proportion — and a
+      <code>&lt;!-- col --&gt;</code> in a body says where the next one starts.</p>
+     <textarea id="dsLay" rows="6" spellcheck="false"
+       placeholder='{"wide-left": {"label": "Wide left", "areas": [{"w": 62}, {"w": 38}]}}'
+       style="font:12px/1.55 ui-monospace,monospace">${esc(M.layouts?JSON.stringify(M.layouts,null,1):'')}</textarea>
+     <div class="tip" id="dsLayMsg"></div>
+   </div>
    <div class="rw" style="margin-top:12px"><button class="b p" id="dsOk">Done</button>
      <button class="b" id="dsReset">Reset style</button></div>`,'tall');
   S.meta=S.meta||{};S.style=S.style||{};
   const live=()=>{applyStyle();paint();};
   document.getElementById('dsT').onchange=e=>{snap('deck title');S.title=e.target.value.trim();touch();paint();};
+  const lay=document.getElementById('dsLay'),layMsg=document.getElementById('dsLayMsg');
+  lay.onchange=()=>{
+    const t=lay.value.trim();
+    if(!t){snap('layouts');delete S.meta.layouts;touch();paint();layMsg.textContent='';return;}
+    let v;try{v=JSON.parse(t);}catch(e){layMsg.textContent='Not JSON yet — '+e.message;return;}
+    if(!v||typeof v!=='object'||Array.isArray(v)){layMsg.textContent='Expected an object keyed by name.';return;}
+    /* areas is the only field that has to be right; the rest has sane defaults */
+    for(const k in v){
+      const a=v[k]&&v[k].areas;
+      if(a===undefined)v[k].areas=[{}];
+      else if(!Array.isArray(a)||!a.length){layMsg.textContent=`"${k}": areas must be a non-empty list.`;return;}
+    }
+    snap('layouts');S.meta.layouts=v;touch();paint();
+    layMsg.textContent=`${Object.keys(v).length} of your own, on top of the nine built in.`;};
   document.querySelectorAll('.dlg [data-m]').forEach(i=>i.onchange=()=>{
     snap('deck details');S.meta[i.dataset.m]=i.value.trim();touch();});
   document.querySelectorAll('.dlg [data-s]').forEach(i=>i.oninput=()=>{
@@ -5260,6 +5376,10 @@ function slideMd(s){
   let m=`### ${s.n}. \`[${s.tag}]\` ${s.title}\n\n`;
   if(s.fig)m+=`**Figure:** \`${s.fig}\`${s.layout&&s.layout!=='figure'?' · '+s.layout:''}${
     s.figScale&&s.figScale!==100?' · '+s.figScale+'%':''}\n\n`;
+  /* The figure line carries the layout when there is a figure. Without one —
+     two columns, a cover — it needs saying outright, or the shape of the slide
+     would not survive a round trip through markdown. */
+  if(!s.fig&&s.layout&&s.layout!=='text')m+=`*Layout:* ${s.layout}\n\n`;
   if(s.textScale&&s.textScale!==100)m+=`*Text:* ${s.textScale}%\n\n`;
   /* only what this slide disagrees with; the rest is the deck's */
   const ov=STYLE_KEYS.filter(k=>s.style&&s.style[k]!=null)

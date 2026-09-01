@@ -16,19 +16,8 @@ jobs:
         with:
           chrome-version: stable
 
-      - name: The markdown round trip
-        run: python3 scripts/test_roundtrip.py
-
-      - name: The browser suite
-        run: tests/run.sh
+      # One script, run here and before pushing, so the two cannot drift apart
+      - name: Everything
+        run: tests/all.sh
         env:
           CHROME_BIN: chrome
-
-      - name: One file, no dependencies
-        run: |
-          set -e
-          # the promise the project makes, checked rather than asserted in prose
-          grep -q "<script src=" slaidy.html && { echo "external script found"; exit 1; } || true
-          grep -qE '<link[^>]+href="https?:' slaidy.html && { echo "external stylesheet"; exit 1; } || true
-          test "$(ls *.html | wc -l)" -eq 1
-          echo "slaidy.html is $(du -h slaidy.html | cut -f1), on its own"

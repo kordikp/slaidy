@@ -474,6 +474,14 @@ losing what someone wrote is worse than an untidy column.
 Tidy rearranges the five hero layouts and leaves the rest alone: it measures type and
 figures, and a named layout is a decision.
 
+### The suite is one script
+
+`tests/all.sh` runs the name check and browser floor (`preflight.py`), the markdown round
+trip, the browser suite, and the one-file promise — and the workflow's only step is to call
+that same script. They were four separate steps in the workflow once, and the markdown round
+trip was therefore a check that nobody ran before pushing: the first anyone heard of it was
+an email saying the build was red, four commits after it broke.
+
 ### Where a deck actually is
 
 Three places, and the pill in the bar says which. **A file on disk**, when the browser holds
@@ -645,7 +653,8 @@ failed with *cannot read properties of undefined* and none of them said why.
 
 ```bash
 python3 scripts/test_roundtrip.py     # markdown -> bundle, content loss
-tests/run.sh                          # 253 browser tests, headless Chrome
+tests/all.sh                          # everything CI runs, and CI runs this same script
+tests/run.sh                          # just the browser suite, headless Chrome
 tests/run.sh t5 t6                    # just those
 ```
 

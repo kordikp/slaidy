@@ -40,8 +40,13 @@ for name in ("FIG_RE", "SUM_RE", "NOTE_RE", "FIG_NONE_RE"):
 slides = bb.parse_slides(sample, "G")
 check("one slide parsed", len(slides) == 1, str(len(slides)))
 s = slides[0]
-check("figure read", s["fig"] == "fig-x", str(s["fig"]))
-check("layout read", s["layout"] == "split-r", s["layout"])
+# A figure is a block in the body now, not a field with a layout to place it.
+# The old **Figure:** line still reads, and is translated on the way through.
+check("no slide carries a figure field", "fig" not in s, str(s.get("fig")))
+check("the figure is in the body", "![[fig-x]]" in s["body"], s["body"][:60])
+check("split-r became two columns", s["layout"] == "two", s["layout"])
+check("with the drawing after the break, which is what split-r meant",
+      s["body"].index("<!-- col -->") < s["body"].index("![[fig-x]]"), s["body"][:80])
 check("summary read", s["summary"] == "one line.", repr(s["summary"]))
 check("note read", s["notes"] == "say it slowly.", repr(s["notes"]))
 check("paragraph after the figure survives", "must survive" in s["body"])

@@ -19,7 +19,8 @@ directory by itself and can reach `/api/generate`.
 
 ```bash
 python3 scripts/test_roundtrip.py    # the markdown path
-tests/run.sh                         # the app, in headless Chrome
+tests/all.sh                         # everything CI runs — run this before pushing
+tests/run.sh                         # just the browser suite, in headless Chrome
 tests/run.sh 16-designing-a-slide    # just one file
 ```
 

@@ -2134,6 +2134,7 @@ function slideMenu(e,i){
     ['cut',`Cut ${n>1?n+' slides':'this slide'}`],
     ['paste','Paste slides here'],
     ['dup','Duplicate'],
+    ['sect','Start a new section here'],
     ['-',''],
     ['skip',S.slides[i].skip?'Show it again':'Hide from the presentation'],
     ['del',`Delete ${n>1?n+' slides':'this slide'}`],
@@ -2151,6 +2152,7 @@ function slideMenu(e,i){
     if(a==='cut')return cutSlides();
     if(a==='paste'){cur=i;return pasteSlides();}
     if(a==='dup')return duplicateSlide(i);
+    if(a==='sect')return newSection('group',i);
     if(a==='skip')return toggleSkip(i);
     if(a==='del'){
       const ix=picked();
@@ -2445,11 +2447,19 @@ function dragOver(e){
 function dragOff(){this.style.boxShadow='';}
 function dropAt(e){
   e.preventDefault();e.stopPropagation();dragOff.call(this);
-  /* Dropped on a section heading means into that section. It used to take the
-     group of whatever was above the drop, which at a heading is the last slide
-     of the section before — so a slide let go just under a heading joined the
-     act above it, which is the one place you were certainly not aiming at. */
+  /* Which section a drop means. Just below a heading is the same INDEX as just
+     above it — the end of one section and the start of the next are one place —
+     so the index cannot answer it and what was under the cursor has to. On the
+     heading, or on the top half of the slide that heading introduces, means the
+     section below; anywhere else means carry on with what is above. Getting
+     this wrong put a slide let go under a heading into the act above it, which
+     is the one place you were certainly not aiming at. */
   const onHeader=this.classList.contains('grp')||this.classList.contains('sub');
+  const tIx=+this.dataset.i;
+  const startsSection=!onHeader&&S.slides[tIx]&&(tIx===0||
+    (S.slides[tIx].group||'')!==(S.slides[tIx-1].group||'')||
+    (S.slides[tIx].sub||null)!==(S.slides[tIx-1].sub||null));
+  const joinBelow=onHeader||(startsSection&&!this.dataset.below);
   const from=String(e.dataTransfer.getData('i')||'').split(',')
     .map(Number).filter(n=>!isNaN(n)&&S.slides[n]).sort((a,b)=>a-b);
   if(!from.length)return;
@@ -2466,7 +2476,7 @@ function dropAt(e){
   S.slides.splice(to,0,...moved);
   /* adopt the section they landed in — otherwise the list grows a stray header mid-act */
   const after=S.slides[to-1], before=S.slides[to+moved.length];
-  const nb=onHeader?(before||after):(after||before);
+  const nb=joinBelow?(before||after):(after||before);
   if(nb&&nb.group&&nb.group!==moved[0].group){
     moved.forEach(m=>{m.group=nb.group;m.sub=nb.sub||null;});
     toast(`Moved ${moved.length>1?moved.length+' slides':''} into ${nb.group}`.replace('  ',' '));

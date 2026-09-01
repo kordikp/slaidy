@@ -282,6 +282,44 @@ addEventListener('load',async()=>{
      (landed&&landed.group)+' — wanted '+want);
   w.undo(); await wait(250);
 
+  // and the same thing dropped on the first slide UNDER that heading, which is
+  // the same index and a different intention
+  const head2=heads()[1], firstIx=+head2.dataset.i, want2=w.S.slides[firstIx].group;
+  const above2=w.S.slides[firstIx-1].group;
+  ok('the two sections really are different',want2!==above2,want2+' vs '+above2);
+  const rows2=[...d.querySelectorAll('#nav .item')];
+  const first=rows2.find(r=>+r.dataset.i===firstIx);
+  const moving2=w.S.slides[w.S.slides.length-1].title;
+  const dt3=new W.DataTransfer();
+  rows2[rows2.length-1].dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dt3}));
+  const fr=first.getBoundingClientRect();
+  first.dispatchEvent(new W.DragEvent('dragover',
+    {bubbles:true,cancelable:true,dataTransfer:dt3,clientY:fr.top+2}));
+  first.dispatchEvent(new W.DragEvent('drop',
+    {bubbles:true,cancelable:true,dataTransfer:dt3,clientY:fr.top+2}));
+  await wait(350);
+  const landed2=w.S.slides.find(x=>x.title===moving2);
+  ok('dropped just under a heading, it joins the section below it',
+     landed2&&landed2.group===want2,(landed2&&landed2.group)+' — wanted '+want2);
+  w.undo(); await wait(250);
+
+  // starting a section from the slide itself
+  const si2=w.S.slides.length-1, wasG2=w.S.slides[si2].group;
+  const row=[...d.querySelectorAll('#nav .item')].find(r=>+r.dataset.i===si2);
+  row.dispatchEvent(new W.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:60,clientY:200}));
+  await wait(200);
+  const sm=d.querySelector('.ctxmenu');
+  ok('a slide can start one too',!!sm.querySelector('[data-a="sect"]'),
+     [...sm.querySelectorAll('button')].map(b=>b.dataset.a).join());
+  sm.querySelector('[data-a="sect"]').click(); await wait(250);
+  d.getElementById('nsName').value='Begun Here';
+  d.getElementById('nsOk').click(); await wait(300);
+  ok('and the section begins with that slide',w.S.slides[si2].group==='Begun Here',
+     w.S.slides[si2].group);
+  ok('while the one before it keeps its own',w.S.slides[si2-1].group===wasG2,
+     String(w.S.slides[si2-1].group));
+  w.undo(); await wait(250);
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

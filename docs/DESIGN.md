@@ -395,6 +395,17 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Which section a drop means
+
+Just below a heading and just above it are the **same index**: the end of one section and the
+start of the next are one place in the list. So the index cannot say which section a slide
+was meant for, and what was under the cursor has to.
+
+On the heading, or on the top half of the slide that heading introduces, means the section
+below. Anywhere else means carry on with whatever is above. Getting this wrong put a slide
+let go under a heading into the act above it — the one place you were certainly not aiming
+at — and fixing only the heading case left the commoner one, because people aim at the slide.
+
 ### Work that outlives the panel
 
 Writing a slide takes ten or twenty seconds and the panel it was started from is rebuilt

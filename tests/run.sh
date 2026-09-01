@@ -39,14 +39,14 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   srcHtml,srcSync,feId,edgePoint,figChrome,layName,LAY,LAYS,layOf,areaGroups,areasHtml,tidyDeck,get feDraw(){return feDraw},set feDraw(v){feDraw=v},
   progress,propose,blankSlide,wantedFigures,drawFigure,fulfilFigures,designSlide,suggestSlides,ask,
   aiHost,DESIGN_SEEDS,STUB,FIGREF,persist,probeServer,writeServer,touch,setStatus,
-  get srvDeck(){return srvDeck},get dirty(){return dirty},get fileName(){return fileName},
-  snapDiff,history_,snapshot,downloadDeck,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
+  get srvDeck(){return srvDeck},get srvLinked(){return srvLinked},set srvLinked(v){srvLinked=v},get dirty(){return dirty},get fileName(){return fileName},
+  snapDiff,history_,snapshot,downloadDeck,recentDecks,heldDecks,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
   deleteSlide,duplicateSlide,srcEditor,feEditText,scalePreview,tex2mml,slideRanges,block,inl,
   get BLOCKIX(){return BLOCKIX},set BLOCKIX(v){BLOCKIX=v},SNIP,analyseSlide,briefWizard,
   feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
   copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,useLoad,useNote,useReset,usageHtml,
-  KIND_LABEL,nfmt,safeUrl,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY,swipes,step};"""
+  KIND_LABEL,nfmt,safeUrl,askReplace,writeServer,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,transient,RETRY,swipes,step};"""
 ready = """
 /* Transitions never settle under Chrome's virtual time, so getComputedStyle
    reads the value a property is animating *from* — an assertion about a drawer

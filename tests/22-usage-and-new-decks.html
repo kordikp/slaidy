@@ -73,14 +73,45 @@ addEventListener('load',async()=>{
   ok('trim to length is gone from it',!/Trim to length/.test(pop));
   ok('so are copy and paste',!/Copy slides|Paste slides/.test(pop));
 
-  // ---------- a new deck arrives empty and asks where it lives ----------
-  const wasTitle=w.S.title;
-  await w.newDeck();await wait(500);
+  // ---------- a new deck asks before it replaces the one you have ----------
+  // Reported: "new deck" wiped the presentation without a word — and under
+  // studio.sh it then saved the empty deck straight over the file being served.
+  const wasTitle=w.S.title, wasSlides=w.S.slides.length;
+  let p=w.newDeck();await wait(400);
+  ok('it asks first',d.getElementById('veil').classList.contains('on'),
+     (d.getElementById('dlg').textContent||'').slice(0,44));
+  ok('and says what is at stake',
+     new RegExp(wasTitle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(d.getElementById('dlg').textContent)&&
+     new RegExp(wasSlides+' slide').test(d.getElementById('dlg').textContent),
+     (d.getElementById('dlg').textContent||'').slice(0,90));
+  d.getElementById('arNo').click();await p;await wait(200);
+  ok('cancel leaves the deck exactly where it was',
+     w.S.title===wasTitle&&w.S.slides.length===wasSlides,w.S.title);
+
+  p=w.newDeck();await wait(400);
+  d.getElementById('arGo').click();await p;await wait(500);
   ok('a new deck has one empty slide',w.S.slides.length===1&&!w.S.slides[0].body,
      w.S.slides.length+' slides');
   ok('and is not the one we had',w.S.title!==wasTitle,w.S.title);
-  ok('it goes straight to a file when the server holds one',
-     !!w.srvDeck?w.fileName===w.srvDeck.path:true,String(w.fileName));
+  ok('it does not take over the file the server is serving',
+     !w.srvLinked&&w.fileName!==(w.srvDeck&&w.srvDeck.path),String(w.fileName));
+  ok('so nothing it does can be written there',
+     (await w.writeServer())===false,'writeServer refused');
+
+  // ---------- the way back to a deck this browser still holds ----------
+  // The browser keeps its own copy of every deck it has held. Until now the
+  // only route to one was the welcome screen, which you see only before a deck
+  // is open — so the copy that could undo an accident was unreachable.
+  await w.persist();await wait(300);
+  await w.recentDecks();await wait(400);
+  ok('the menu opens a list of them',d.getElementById('veil').classList.contains('on')&&
+     /Decks in this browser/.test(d.getElementById('dlg').textContent));
+  const rows=d.querySelectorAll('.recentlist button[data-id]');
+  ok('with at least the deck we are in',rows.length>=1,rows.length+' listed');
+  ok('each says how big it is and when it was touched',
+     rows.length?/\d+ slide/.test(rows[0].textContent)&&/last edited/.test(rows[0].textContent):false,
+     rows.length?rows[0].textContent.replace(/\s+/g,' ').slice(0,60):'');
+  d.getElementById('rdNo').click();await wait(200);
 
   // ---------- the name, the link, and who paid for the AI ----------
   const logo=d.querySelector('#bar .logo');

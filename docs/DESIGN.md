@@ -424,6 +424,26 @@ losing what someone wrote is worse than an untidy column.
 Tidy rearranges the five hero layouts and leaves the rest alone: it measures type and
 figures, and a named layout is a decision.
 
+### Which deck the served file belongs to
+
+`studio.sh` serves one deck and writes it back at `PUT /api/deck`. `srvDeck` is that file;
+`srvLinked` says whether the deck **in the window** is that file. They have to be two
+questions, and for a while they were one: a new deck, a deck built from a brief and a deck
+you opened were all saved straight over the talk being served. "New deck" ate a keynote
+that way — 238 slides replaced by an empty one, silently, on the next autosave.
+
+So: nothing replaces the deck in the window without asking, and the question names the deck
+you have, how big it is and where it lives (`askReplace`). And a deck that did not come out
+of the served file never writes to it — `writeServer()` returns false unless `srvLinked`,
+which only `boot()` sets, and only for the deck it loaded from there.
+
+Two more nets behind that. `⋯ → Decks in this browser…` lists every deck this browser has
+held, from IndexedDB and from the localStorage fallback both, one click to open — that copy
+existed before, but only the welcome screen showed it, and you only see the welcome screen
+before a deck is open, so the thing that could undo the accident was unreachable. And
+`serve.py` copies the file to `<deck>.bak` before writing, whenever what arrives has a
+different `id` or less than half the slides, and says so in the terminal.
+
 ### Moving a block
 
 Drag from the grip, not the block, or selecting a word in a paragraph would start a drag.

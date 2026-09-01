@@ -134,6 +134,27 @@ class Handler(SimpleHTTPRequestHandler):
                     "error": "%s changed on disk since this deck was loaded" % os.path.basename(DECK),
                     "mtime": now})
 
+        # A deck that arrives with a different id, or a small fraction of the
+        # slides, is not an edit of this one — it is a different deck being
+        # saved over it. That has happened, and it cost a talk. The write still
+        # goes through, because refusing a save is its own way to lose work, but
+        # the old file is kept beside it first and the terminal says so.
+        try:
+            if os.path.exists(DECK) and os.path.getsize(DECK) > 0:
+                old = json.load(open(DECK, encoding="utf-8"))
+                was, now_n = len(old.get("slides") or []), len(d["slides"])
+                other = (old.get("id") and d.get("id") and old["id"] != d["id"])
+                if was >= 8 and (other or now_n * 2 < was):
+                    keep = DECK + ".bak"
+                    shutil.copy2(DECK, keep)
+                    sys.stderr.write(
+                        "  ! %s (%d slides, id %s) is being replaced by %d slides, id %s\n"
+                        "    the old one is kept at %s\n"
+                        % (os.path.basename(DECK), was, old.get("id"), now_n, d.get("id"),
+                           os.path.basename(keep)))
+        except Exception:
+            pass                       # a backup is a courtesy; never block the save
+
         # write beside the target and rename, so a failure half way through
         # cannot leave a truncated deck where the real one was
         try:

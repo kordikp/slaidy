@@ -447,6 +447,12 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
  border-radius:4px;text-transform:none}
 .dlg .ovrx:hover{background:var(--accbg)}
 .dlg .ovr.on>label{color:var(--acc)}
+.recentlist{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;margin-top:10px}
+.recentlist button{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:var(--r6);
+ border:1px solid var(--line);background:#fff}
+.recentlist button:hover{border-color:var(--acc);background:var(--accbg)}
+.recentlist button b{display:block;font-size:13px;color:var(--ink)}
+.recentlist button span{display:block;font-size:11.5px;color:var(--gray);margin-top:2px}
 .pvbad{background:#FDF0F0;border:1px solid #F0B4B7;border-radius:var(--r6);padding:11px 13px;
  font-size:12.5px;color:#B4232A}
 
@@ -721,6 +727,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bNewDeck">New deck…</button>
       <button id="bBrief">New deck from a brief…</button>
       <button id="bOpen">Open a deck…</button>
+      <button id="bRecent">Decks in this browser…</button>
       <button id="bSaveAs">Save to a file…</button>
       <button id="bImport">Import markdown…</button>
       <button id="bHist">Version history</button>
@@ -958,7 +965,7 @@ function setStatus(state,info){
   }[state]||state;
   el.title=state==='bad'?(saveErr||'could not write the deck'):
     fileName?'Written to '+fileName+' every time it saves'+
-      (srvDeck?' — by the server that is serving this page':''):
+      (srvDeck&&srvLinked?' — by the server that is serving this page':''):
     'Held in this browser only. Open a deck file, or Save as, to put it somewhere you own.';
 }
 /* ---------- where the deck lives ------------------------------------------
@@ -974,6 +981,11 @@ let fileHandle=null, fileName=null;
    after a restart, no second copy, and the file the app edits is the file on
    disk. The handle stays as the fallback for any other way of opening this. */
 let srvDeck=null;
+/* srvDeck is the file studio.sh serves. srvLinked says whether the deck in this
+   window IS that file. It has to be a separate question: a new deck, a deck
+   built from a brief and a deck you opened are all not that file, and writing
+   them there overwrites the talk you were serving. Which is what happened. */
+let srvLinked=false;
 async function probeServer(){
   if(location.protocol==='file:')return null;
   try{
@@ -984,7 +996,7 @@ async function probeServer(){
   }catch(e){return null;}
 }
 async function writeServer(){
-  if(!srvDeck)return false;
+  if(!srvDeck||!srvLinked)return false;
   const r=await fetch('api/deck',{method:'PUT',
     headers:{'Content-Type':'application/json',
              ...(srvDeck.mtime?{'X-Deck-Mtime':String(srvDeck.mtime)}:{})},
@@ -1046,6 +1058,7 @@ async function openDeckFile(){
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
        meta:b.meta||{},style:b.style||{}};
     normalise();cur=0;dirty=false;
+    srvLinked=false;                 /* this file is now the deck's home, not the served one */
     await rememberHandle(h);
     document.getElementById('welcome').classList.add('hidden');
     lastSaved=new Date();setStatus('ok');paint();
@@ -1075,7 +1088,7 @@ async function persist(){
        await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()}); }
   catch(e){ where=null; }
   try{
-    const toDisk=srvDeck?await writeServer():await writeFile();
+    const toDisk=(srvDeck&&srvLinked)?await writeServer():await writeFile();
     lastSaved=new Date();dirty=false;saveErr=null;
     if(Date.now()-lastSnap>90000){lastSnap=Date.now();snapshot().catch(()=>{});}
     setStatus('ok',toDisk?null:(where==='local storage'?where:'in this browser only'));
@@ -1687,7 +1700,7 @@ async function importWizard(files){
         const b=r.bundle;
         S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
            meta:b.meta||{},style:b.style||{}};
-        normalise();cur=0;fileHandle=null;fileName=null;
+        normalise();cur=0;fileHandle=null;fileName=null;srvLinked=false;
         document.getElementById('welcome').classList.add('hidden');
         closeDialog();await persist();paint();toast('Opened');};
       return;
@@ -1726,7 +1739,7 @@ async function importWizard(files){
       S={id:t.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||'deck',
          title:t,slides:p.slides,figs:{...(S.figs||{})},meta:S.meta||{},style:S.style||{}};
       r.svgs.forEach(([id,svg])=>{S.figs[id]=svg;});
-      normalise();cur=0;fileHandle=null;fileName=null;
+      normalise();cur=0;fileHandle=null;fileName=null;srvLinked=false;
       document.getElementById('welcome').classList.add('hidden');
       closeDialog();await persist();paint();
       toast(`${S.slides.length} slides · ${Object.keys(S.figs).length} figures`);
@@ -3272,7 +3285,34 @@ let BRIEF=null;
 /* An empty deck that immediately asks where it will be saved. A deck with
    nowhere to go is how work gets lost, and "save it later" is the sentence
    people say before they lose it. */
+/* Nothing replaces the deck in this window without being asked, and the answer
+   says what happens to the one you have. It used to just do it — and under
+   studio.sh it then saved the new empty deck straight over the file being
+   served, so "new deck" ate the talk. */
+function askReplace(what){
+  const n=S.slides.length, f=Object.keys(S.figs||{}).length;
+  const home=(srvDeck&&srvLinked)?esc(srvDeck.path):fileHandle?esc(fileName||'the file you chose'):null;
+  const blank=n<2&&!(S.slides[0]&&((S.slides[0].body||'').trim()||(S.slides[0].title||'')!=='Untitled'));
+  if(blank)return Promise.resolve('go');
+  return new Promise(r=>{
+    dialog(`<h3>${esc(what)}</h3>
+      <p class="tip"><b>${esc(S.title||'This deck')}</b> — ${n} slide${n>1?'s':''}${
+        f?`, ${f} figure${f>1?'s':''}`:''}. ${
+        home?`It stays in <code>${home}</code>; this window will hold the new one instead.`
+            :`<b>It is not saved to any file yet.</b> Take a copy first, or it is gone.`}</p>
+      <div class="rw" style="margin-top:14px">
+        <button class="b p" id="arGo">${esc(what)}</button>
+        <button class="b" id="arSave">Download a copy first</button>
+        <span style="flex:1"></span>
+        <button class="b" id="arNo">Cancel</button></div>`,'tall');
+    const end=v=>{closeDialog();r(v);};
+    document.getElementById('arGo').onclick=()=>end('go');
+    document.getElementById('arNo').onclick=()=>end('no');
+    document.getElementById('arSave').onclick=()=>{downloadDeck();end('no');};
+  });
+}
 async function newDeck(){
+  if(await askReplace('Start a new deck')!=='go')return;
   if(dirty){await persist();
     if(saveErr)return banner(`Not starting a new one — the deck you have is not saved (${saveErr}).`,
       'Download a copy',()=>downloadDeck());}
@@ -3280,14 +3320,10 @@ async function newDeck(){
      slides:[{tag:'S',group:'',sub:null,title:'Untitled',body:'',notes:'',fig:null,
               layout:'text',figScale:100,textScale:100,summary:'',skip:false,flags:[]}]};
   normalise();cur=0;PICKED.clear();fileHandle=null;
+  /* a new deck is not the file the server is serving */
+  srvLinked=false;fileName=null;
   document.getElementById('welcome').classList.add('hidden');
   paint();
-  if(srvDeck){
-    fileName=srvDeck.path;dirty=true;setStatus('warn');
-    toast('New deck — saving to '+srvDeck.path);
-    return persist();
-  }
-  fileName=null;
   if(canFile()){
     await saveDeckAs();                      /* the picker, right now */
     if(!fileHandle)banner('This deck has nowhere to be saved yet.','Choose a file',()=>saveDeckAs());
@@ -3421,7 +3457,7 @@ every claim carrying a number, a named system or a citation.`,
        slides:rows.map(r=>({tag:'S',group:r.group||'',sub:null,title:r.title||'Untitled',
          fig:null,layout:'text',figScale:100,textScale:100,
          body:'',notes:'',summary:r.purpose||'',skip:false,flags:[]}))};
-    normalise();cur=0;fileHandle=null;fileName=srvDeck?srvDeck.path:null;
+    normalise();cur=0;fileHandle=null;srvLinked=false;fileName=null;
     document.getElementById('welcome').classList.add('hidden');
     closeDialog();touch();paint();
     banner(`${S.slides.length} slides, each with what it is for. `+
@@ -5827,6 +5863,10 @@ document.getElementById('bSaveNow').onclick=()=>{
 document.getElementById('bOpen').onclick=openDeckFile;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
 document.getElementById('bNewDeck').onclick=newDeck;
+/* The browser keeps every deck it has held, and until now the only way back to
+   one was the welcome screen, which you only see before a deck is open. So the
+   copy that could undo an accident was there and unreachable. */
+document.getElementById('bRecent').onclick=recentDecks;
 document.getElementById('bImport').onclick=()=>importWizard(null);
 document.getElementById('bBrief').onclick=briefWizard;
 document.getElementById('wBrief').onclick=briefWizard;
@@ -5873,6 +5913,53 @@ async function paintRecent(){
     lastSaved=new Date();setStatus('ok');paint();});
 }
 
+/* Both stores, because the copy that undoes an accident is only useful if it is
+   found — and which store it landed in depends on how the day went. */
+async function heldDecks(){
+  const seen={},rows=[];
+  try{
+    const keys=(await IDB.keys()).map(String).filter(k=>k.startsWith('index:'));
+    for(const k of keys){const v=await IDB.get(k);if(v&&!seen[v.id]){seen[v.id]=1;rows.push(v);}}
+  }catch(e){}
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k||k.indexOf('index:')!==0)continue;
+      const v=JSON.parse(localStorage.getItem(k)||'null');
+      if(v&&v.id&&!seen[v.id]){seen[v.id]=1;rows.push(v);}
+    }
+  }catch(e){}
+  rows.sort((a,b)=>(b.at||0)-(a.at||0));
+  return rows;
+}
+async function recentDecks(){
+  const rows=await heldDecks();
+  dialog(`<h3>Decks in this browser</h3>
+    <p class="tip">Every deck this browser has held, newest first — its own copy, kept apart
+     from any file. Opening one replaces what is in the window; what you have now is asked
+     about first.</p>
+    ${rows.length?`<div class="recentlist">${rows.map(r=>
+      `<button data-id="${esc(r.id)}"><b>${esc(r.title||r.id)}</b>
+        <span>${r.n} slide${r.n===1?'':'s'} · last edited ${esc(new Date(r.at).toLocaleString())}</span>
+       </button>`).join('')}</div>`
+     :'<p class="tip">Nothing yet — this is the first deck this browser has held.</p>'}
+    <div class="rw" style="margin-top:14px"><button class="b" id="rdNo">Close</button></div>`,'tall');
+  document.getElementById('rdNo').onclick=closeDialog;
+  document.querySelectorAll('.recentlist button[data-id]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id;
+    if(await askReplace('Open “'+(b.querySelector('b').textContent)+'”')!=='go')return;
+    const d=await get('deck:'+id);
+    if(!d||!d.slides||!d.slides.length)return toast('That deck is gone from this browser');
+    if(dirty)await persist();
+    S=d;normalise();cur=0;PICKED.clear();
+    /* it came from the browser, so it is not the served file until you save it there */
+    srvLinked=false;fileHandle=null;fileName=null;
+    closeDialog();lastSaved=new Date();setStatus('ok');paint();
+    banner(`${S.slides.length} slides from this browser's copy. It has no file yet.`,
+      'Save it to a file',()=>saveDeckAs());
+  });
+}
+
 /* ---------- what to open at startup ----------------------------------------
    In order: the file you last saved to, then a deck.json served beside this
    page, and if the browser holds a copy newer than that file, that copy wins —
@@ -5906,12 +5993,12 @@ async function boot(){
           if(ix&&ix.at){mineAt=ix.at;mine=await get('deck:'+(b.id||'deck'));}
         }catch(e){}
         if(mine&&mine.slides&&mine.slides.length&&mineAt>(srvDeck.mtime||0)+1000){
-          load(mine);dirty=true;setStatus('warn');
+          srvLinked=true;load(mine);dirty=true;setStatus('warn');
           banner(`Unsaved edits from ${new Date(mineAt).toTimeString().slice(0,5)} — `+
                  `newer than ${srvDeck.path}.`,'Save them',()=>persist());
           return;
         }
-        load(b);return;
+        srvLinked=true;load(b);return;
       }
     }catch(e){}
   }

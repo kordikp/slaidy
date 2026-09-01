@@ -4210,6 +4210,21 @@ If a change needs a different title, make the FIRST line exactly "TITLE: <the ne
    reach the application at all — the same class of bug that used to send the
    toolbar label flying is structurally impossible here. It also means the
    element we edit is the real one, so saving is just serialising it back.
+
+   The sandbox says allow-scripts, and it has to. Without it WebKit refuses to
+   run *any* script for that document — including the listeners this editor
+   attaches to it from outside — so the canvas mounted, drew, and then ignored
+   every click. Chrome runs them, which is why hand editing worked in a browser
+   and not in the application window, and why the message that finally said so
+   was "Blocked script execution in about:srcdoc".
+
+   With allow-same-origin beside it, allow-scripts is as good as no sandbox for
+   scripts, and pretending otherwise would be worse than saying it: the thing
+   that actually keeps a figure from running anything is disarmSvg(), which
+   strips <script>, on* handlers, javascript: urls and <foreignObject> before a
+   figure is mounted anywhere at all, and which the suite holds. What the
+   sandbox still buys is the rest of its list — a figure cannot navigate the
+   window it is in, open a popup, submit a form or put up a modal.
 --------------------------------------------------------------------------- */
 const PAL=[['#1E1B4B','ink'],['#6B7280','gray'],['#FFFFFF','white'],['#FAFAF7','bg'],['#E5E7EB','line'],
  ['#0EA5E9','blue'],['#E0F2FE','blue light'],['#075985','blue dark'],
@@ -4248,7 +4263,7 @@ function figEdit(s,figId,onRename){
           <button data-a="con" title="Join the two selected (Ctrl-J)">${fico('con')}</button>
           <button data-a="dup" title="Duplicate (Ctrl-D)">${fico('dup')}</button>
         </div>
-        <iframe id="fefr" sandbox="allow-same-origin"></iframe>
+        <iframe id="fefr" sandbox="allow-same-origin allow-scripts"></iframe>
         <div class="fehint" id="fehint">Click takes the whole object · double-click steps inside ·
           lasso by dragging empty space · handles resize · tools on the left add shapes</div>
       </div>
@@ -4268,6 +4283,13 @@ function figEdit(s,figId,onRename){
 }
 
 function feMount(){
+  /* Nothing scriptable is ever mounted. The canvas has to allow scripts for the
+     editor's own listeners to run at all, so the guard is here instead: every
+     figure is disarmed on the way in, whatever brought it — the deck, the model,
+     the source tab, an undo. What is mounted is what is saved, so this is also
+     the last point at which a figure could carry something out again. */
+  const clean=disarmSvg(FE.src);
+  if(clean)FE.src=clean;
   const fr=document.getElementById('fefr');
   fr.srcdoc=`<!doctype html><meta charset="utf-8"><style>
     html,body{margin:0;height:100%;background:#fff;cursor:default}

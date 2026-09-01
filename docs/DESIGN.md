@@ -623,6 +623,27 @@ lives, and `⋯ → Open` lists every deck the browser holds whenever you want t
 same reasoning removed `offerNewer` — a startup banner naming another deck. The reason it
 existed is now handled by opening that deck.
 
+### The editor's canvas, and what may run in it
+
+The figure editor draws into an `<iframe srcdoc>` so that a figure's own `<style>` cannot
+reach the application. The sandbox on that frame says `allow-same-origin allow-scripts`, and
+the second half is not optional: without it WebKit refuses to run *any* script for that
+document — **including the listeners the editor attaches to it from outside** — so the canvas
+mounted, drew, and then ignored every click. That is why hand editing worked in a browser and
+not in the application window, and the message that finally said so was
+`Blocked script execution in about:srcdoc`.
+
+`allow-same-origin` next to `allow-scripts` is as good as no sandbox for scripts, and
+pretending otherwise would be worse than saying it. What the attribute still buys is the rest
+of its list: a figure cannot navigate the window it is in, open a popup, submit a form or put
+up a modal. What actually keeps a figure from running anything is `disarmSvg()` — and it is
+now called in `feMount()`, so nothing scriptable is ever mounted whatever brought the figure
+in: the deck, the model, the source tab, an undo. That was a real hole while the editor
+mounted `S.figs[id]` raw, and allowing scripts would have opened it.
+
+Test 23 asserts the behaviour rather than the attribute: a poisoned figure is mounted in the
+editor, clicked, and nothing runs.
+
 ### Told once
 
 A warning you cannot dismiss is not advice, it is nagging. Two of them were.

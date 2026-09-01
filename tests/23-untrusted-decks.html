@@ -58,8 +58,20 @@ addEventListener('load',async()=>{
   w.figEdit(w.S.slides[0],'fig-nasty');
   await wait(700);
   const canvas=d.getElementById('fefr');
-  ok('the editor canvas is sandboxed',canvas.getAttribute('sandbox')==='allow-same-origin',
+  /* The attribute is not the promise; what runs is. allow-scripts has to be
+     there — without it WebKit refuses to run the listeners this editor attaches
+     to that document from outside, and the canvas draws and then ignores every
+     click. What keeps a figure from running anything is disarmSvg, below. */
+  ok('the canvas still refuses navigation, popups, forms and modals',
+     /allow-same-origin/.test(canvas.getAttribute('sandbox'))&&
+     !/allow-top-navigation|allow-popups|allow-forms|allow-modals/.test(canvas.getAttribute('sandbox')),
      String(canvas.getAttribute('sandbox')));
+  ok('and the poisoned figure in it ran nothing',!W.__pwned,String(W.__pwned));
+  ok('because what could run was taken out before it was mounted',
+     !/<script/i.test(w.FE.svg.outerHTML)&&
+     !/\son\w+\s*=/i.test(w.FE.svg.outerHTML)&&
+     !/javascript:/i.test(w.FE.svg.outerHTML),
+     (w.FE.svg.outerHTML.match(/<script[\s\S]{0,20}|\son\w+=|javascript:/i)||['nothing left'])[0]);
   ok('which still leaves the editor able to read it',!!w.FE&&!!w.FE.svg,'still editable');
   ok('and nothing ran there either',!W.__pwned,String(W.__pwned));
   d.getElementById('feCancel').click();await wait(200);

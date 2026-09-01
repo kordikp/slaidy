@@ -129,7 +129,8 @@ button{cursor:pointer;background:none;border:none}
 /* height:auto lets the viewBox set the box, so the element is the drawing rather
    than a column the drawing floats in the middle of */
 /* fit inside the column on both axes, at the size asked for */
-.stage .fg .figbox{width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
+.stage .fg .figbox{width:calc(100%*var(--fsn,1));   /* before container queries */
+ width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
  aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
 .stage .fg svg{width:100%;height:100%;display:block}
 /* safe center: centred when it fits, top-aligned when it would otherwise be cut */
@@ -222,7 +223,8 @@ button{cursor:pointer;background:none;border:none}
 /* editing affordances live on the same stage, so nothing shifts when you present */
 .stage .hero{position:relative;width:100%;height:100%;display:flex;align-items:safe center;
  justify-content:center;container-type:size}
-.stage .hero .figbox{width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
+.stage .hero .figbox{width:calc(100%*var(--fsn,1));
+ width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
  aspect-ratio:var(--arw)/var(--arh);position:relative;max-width:100%}
 .stage .hero:hover{outline:1px dashed #CFD3DA;border-radius:6px}
 .stage .hero svg{width:100%;height:100%;display:block}
@@ -426,9 +428,23 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
  font-size:12.5px;color:#B4232A}
 
 /* ---------- present ---------- */
-#show{position:fixed;inset:0;background:#0A0C10;display:none;place-items:center;z-index:50}
-#show.on{display:grid}
-#deck{transform-origin:center}
+#show{position:fixed;inset:0;background:#0A0C10;display:none;z-index:50;overflow:hidden}
+#show.on{display:block}
+/* Placed and scaled from the top left by fit(), rather than centred by the
+   layout. A grid asked to centre a 1280px box inside a 390px phone puts it
+   against the start edge instead, and the scaled slide then lands mostly off
+   the right of the screen — which is the black page people saw on a phone. */
+#deck{position:absolute;left:0;top:0;transform-origin:top left}
+/* The editor's own furniture has no business on a projected slide, and on a
+   phone the "editing a copy" banner covered a third of it. */
+body.presenting #nudge,body.presenting #toast,body.presenting #swipehint{display:none!important}
+/* A 16:9 slide in a portrait phone is small and there is nothing to be done
+   about it except say so, once, quietly. */
+#turn{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:53;
+ background:#161A22;color:#8C97AA;border:1px solid #262E3C;border-radius:999px;
+ padding:7px 15px;font-size:12.5px;display:none;pointer-events:none}
+#turn.on{display:block;animation:fadeout 4s forwards}
+@keyframes fadeout{0%,60%{opacity:1}100%{opacity:0}}
 #prog{position:fixed;left:0;right:0;bottom:0;height:2px;background:#161A22;z-index:52;display:none}
 #prog i{display:block;height:100%;background:var(--d-accent);width:0;transition:width .2s}
 #count{position:fixed;right:14px;bottom:11px;color:#4E5666;font:11.5px ui-monospace,monospace;z-index:52;
@@ -447,7 +463,7 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 
 /* ---------- overlays ---------- */
 #veil{position:fixed;inset:0;background:rgba(10,12,16,.5);display:none;place-items:center;z-index:60;
- backdrop-filter:blur(2px)}
+ -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
 #veil.on{display:grid}
 .dlg{background:#fff;border-radius:14px;width:min(880px,93vw);max-height:85vh;overflow:auto;padding:19px;
  box-shadow:0 20px 60px rgba(10,12,16,.28)}
@@ -708,6 +724,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 
 <div id="show"><div id="deck"></div></div>
 <div id="prog"><i></i></div><div id="count"></div>
+<div id="turn">Turn the phone sideways for a bigger slide</div>
 <div id="notes"></div><div id="grid"></div>
 <div id="veil"><div class="dlg" id="dlg"></div></div>
 <div id="scrim"></div>
@@ -830,6 +847,7 @@ const IDB=(()=>{
     has.onerror=()=>done();
     has.onsuccess=()=>{
       if(has.result&&has.result.length)return done();   /* already lived in */
+      if(!indexedDB.databases)return done();   /* Firefox before 126, Safari before 14 */
       indexedDB.databases().then(list=>{
         if(!(list||[]).some(x=>x.name==='slide-studio'))return done();
         let o; try{o=indexedDB.open('slide-studio');}catch(e){return done();}  /* no version: never upgrades */
@@ -1027,8 +1045,11 @@ async function snapshot(){
 }
 const UNDO=[];
 /* one snapshot per editing gesture, not per keystroke — that is the granularity people expect */
+/* Safari only got structuredClone in 15.4, and a deck is plain JSON — no dates,
+   no maps, no cycles — so the round-trip is exact. */
+const clone=typeof structuredClone==='function'?structuredClone:(o=>JSON.parse(JSON.stringify(o)));
 function snap(label,figs){
-  UNDO.push({slides:structuredClone(S.slides),cur,label,figs:figs||null});
+  UNDO.push({slides:clone(S.slides),cur,label,figs:figs||null});
   if(UNDO.length>40)UNDO.shift();
   const b=document.getElementById('bUndo');if(b){b.disabled=false;b.title='Undo '+label+' (Ctrl-Z)';}
 }
@@ -1352,7 +1373,11 @@ function inl(s){
     safeUrl(href)?`<a href="${href}" target="_blank" rel="noopener noreferrer">${txt}</a>`:txt);
   s=s.replace(/~~(.+?)~~/g,'<s>$1</s>');
   s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-  s=s.replace(/(^|[^\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/g,'$1<em>$2</em>');
+  /* Written without a negative lookbehind on purpose. A regex literal is parsed
+     with the script, so one here did not make italics wrong on Safari before
+     16.4 — it stopped the file parsing at all, and every button on the page was
+     dead. "Starts and ends with a non-space" says the same in plain syntax. */
+  s=s.replace(/(^|[^\w*])\*(\S|\S.*?\S)\*(?![\w*])/g,'$1<em>$2</em>');
   s=s.replace(/`([^`]+)`/g,'<code>$1</code>');
   /* A url written out is a url someone means to follow. Linked after the
      markdown links are built and with those put aside, so an href is never
@@ -1664,7 +1689,7 @@ function figsOf(list){
   return out;
 }
 async function copySlides(){
-  const ix=picked(),list=ix.map(i=>structuredClone(S.slides[i]));
+  const ix=picked(),list=ix.map(i=>clone(S.slides[i]));
   if(!list.length)return;
   const md=list.map(slideMd).join('\n');
   const payload={kind:'slaidy/slides',at:Date.now(),from:S.title||S.id,
@@ -1713,7 +1738,7 @@ async function pasteSlides(){
   const useHeld=held&&held.slides&&held.slides.length&&
     (!text.trim()||text.trim()===String(held.md||'').trim());
   let list=null,figs={};
-  if(useHeld){list=structuredClone(held.slides);figs=held.figs||{};}
+  if(useHeld){list=clone(held.slides);figs=held.figs||{};}
   else if(text.trim()){
     const base=S.slides[cur]||{n:1,tag:'S'};
     try{list=mdParse(text,base);}catch(e){list=null;}
@@ -1872,7 +1897,7 @@ function duplicateSlide(i){
   i=i??cur;
   if(!S.slides[i])return;
   snap('duplicate slide');
-  const c=structuredClone(S.slides[i]);c.title=(c.title||'')+' (copy)';
+  const c=clone(S.slides[i]);c.title=(c.title||'')+' (copy)';
   S.slides.splice(i+1,0,c);cur=i+1;normalise();touch();paint();
 }
 
@@ -3055,7 +3080,12 @@ function srcEditor(opts){
   }
   const shut=()=>{closeDialog();opts.onClose&&opts.onClose();};
   document.getElementById('seNo').onclick=shut;
-  document.getElementById('seCopy').onclick=()=>{navigator.clipboard.writeText(src.value);toast('Copied');};
+  document.getElementById('seCopy').onclick=()=>{
+    /* No clipboard API outside a secure context, and none at all in some
+       browsers — selecting the text is the fallback everyone understands. */
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(src.value).then(()=>toast('Copied'),()=>{src.select();toast('Press ⌘C');});
+    else {src.select();toast('Press ⌘C to copy');}};
   const go=()=>{ if(opts.apply(src.value,msg))shut(); };
   document.getElementById('seOk').onclick=go;
   src.onkeydown=e=>{
@@ -3602,7 +3632,7 @@ If a change needs a different title, make the FIRST line exactly "TITLE: <the ne
         if(/^\s*notes?\b/i.test(instr)||instr.startsWith('Write speaker notes')){s.notes=t;}
         else if(t.includes('\n---\n')){
           const[a,b]=t.split(/\n---\n/);s.body=a.trim();
-          const c=structuredClone(s);c.body=b.trim();c.title=s.title+' (cont.)';c.fig=null;c.layout='text';
+          const c=clone(s);c.body=b.trim();c.title=s.title+' (cont.)';c.fig=null;c.layout='text';
           S.slides.splice(cur+1,0,c);normalise();
         } else s.body=t;
         touch();paint();
@@ -5340,9 +5370,12 @@ addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTM
 /* ---------- present ---------- */
 function fit(){
   const d=document.getElementById('deck');
-  const h=window.innerHeight-(notesOn?document.getElementById('notes').offsetHeight:0);
-  d.style.transform=`scale(${Math.min(window.innerWidth/1280,h/720)*.94})`;
-  document.getElementById('show').style.alignItems=notesOn?'flex-start':'center';
+  /* innerWidth/innerHeight can both be 0 for a moment while a browser enters
+     full screen; a scale of 0 is an invisible slide with no way back. */
+  const vw=Math.max(window.innerWidth||0,320);
+  const vh=Math.max((window.innerHeight||0)-(notesOn?document.getElementById('notes').offsetHeight:0),240);
+  const k=Math.min(vw/1280,vh/720)*.94;
+  d.style.transform=`translate(${Math.round((vw-1280*k)/2)}px,${Math.round((vh-720*k)/2)}px) scale(${k})`;
 }
 function paintDeck(){
   const s=S.slides[cur];if(!s)return;
@@ -5364,6 +5397,11 @@ async function present(on){
   if(on){ try{ await document.documentElement.requestFullscreen({navigationUI:'hide'}); }catch(e){} }
   else if(document.fullscreenElement){ fsGuard=true; try{ await document.exitFullscreen(); }catch(e){} fsGuard=false; }
   document.getElementById('show').classList.toggle('on',on);
+  document.body.classList.toggle('presenting',on);
+  if(on&&window.innerHeight>window.innerWidth*1.2){
+    const t=document.getElementById('turn');
+    t.classList.remove('on');void t.offsetWidth;t.classList.add('on');
+  }
   document.getElementById('work').classList.toggle('hidden',on);
   document.getElementById('prog').style.display=on?'block':'none';
   document.getElementById('count').style.display=on?'block':'none';
@@ -5434,7 +5472,13 @@ document.addEventListener('keydown',e=>{
     else if(e.key==='h'||e.key==='H'){e.preventDefault();toggleSkip(cur);}
   }
 });
-window.addEventListener('resize',()=>{showing?fit():scaleStage();});
+const reflow=()=>{showing?fit():scaleStage();};
+window.addEventListener('resize',reflow);
+/* A phone hides its address bar as you scroll and rotates without always firing
+   resize; the visual viewport is the one that tells the truth on iOS. */
+window.addEventListener('orientationchange',()=>setTimeout(reflow,120));
+window.visualViewport&&window.visualViewport.addEventListener('resize',reflow);
+document.addEventListener('fullscreenchange',()=>setTimeout(reflow,60));
 /* leaving fullscreen by any route leaves the presentation too */
 /* Following a link while presenting looked like nothing happening: the page is
    full screen, target=_blank puts the page in a tab behind it, and the room
@@ -5443,7 +5487,7 @@ window.addEventListener('resize',()=>{showing?fit():scaleStage();});
 document.getElementById('deck').addEventListener('click',async e=>{
   const a=e.target.closest('a[href]');
   if(!a||!showing)return;
-  e.preventDefault();
+  e.preventDefault();e.stopPropagation();
   if(document.fullscreenElement){
     fsGuard=true;
     try{await document.exitFullscreen();}catch(x){}
@@ -5587,7 +5631,19 @@ swipes(document.getElementById('board'),{
   onLeft:()=>{step(1);hintSwipe();},
   onRight:()=>{step(-1);hintSwipe();},
   fromEdge:()=>document.body.classList.add('shownav')});
-swipes(document.getElementById('show'),{onLeft:()=>step(1),onRight:()=>step(-1)});
+let swiped=0;
+swipes(document.getElementById('show'),{onLeft:()=>{swiped=Date.now();step(1);},
+                                        onRight:()=>{swiped=Date.now();step(-1);}});
+/* A phone has no arrow keys and no space bar. Tap the right of the slide to go
+   on, the left third to go back — the way every other presenter on a phone
+   works. A tap that was the end of a swipe is not a tap, and a tap on a link is
+   the link's. */
+document.getElementById('show').addEventListener('click',e=>{
+  if(!showing||Date.now()-swiped<500)return;
+  if(e.target.closest('a[href]'))return;
+  if(gridOn||notesOn)return;
+  step(e.clientX<window.innerWidth/3?-1:1);
+});
 /* choosing a slide on a phone means you want to look at it, not at the list */
 document.getElementById('nav').addEventListener('click',e=>{
   if(e.target.closest('.item')&&matchMedia('(max-width:1000px)').matches)

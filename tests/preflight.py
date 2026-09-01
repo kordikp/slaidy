@@ -26,3 +26,42 @@ if missing:
 # the app calls but never defines. It cannot tell a call from a parameter name,
 # a CSS string or a word inside a prompt, so it cried wolf about two dozen
 # innocent names. A check that has to be ignored is worse than no check.
+
+
+# ---------------------------------------------------------------------------
+# The browser floor.
+#
+# A regex literal is parsed with the script, so one (?<!\s) in a markdown rule
+# did not make italics wrong on Safari before 16.4 — it stopped the file
+# parsing, and every button on the page was dead. Nothing in the test suite
+# could catch that: the suite runs in Chrome, where it parses fine.
+#
+# So the syntax and APIs that arrived late are listed here and refused. Raise
+# the floor deliberately, by editing this list, not by accident.
+BROWSER_FLOOR = [
+    (r"\(\?<[=!]",            "regex lookbehind — Safari 16.4; a parse error, not a bug"),
+    (r"\bstructuredClone\(",  "structuredClone — Safari 15.4; use clone()"),
+    (r"\bObject\.groupBy\(",  "Object.groupBy — Safari 17.4"),
+    (r"\.toSorted\(|\.toReversed\(|\.toSpliced\(", "change-by-copy arrays — Safari 16.4"),
+    (r"\.findLast\(|\.findLastIndex\(", "findLast — Safari 15.4"),
+    (r"\bObject\.hasOwn\(",   "Object.hasOwn — Safari 15.4"),
+    (r":has\(",               "CSS :has() — Safari 15.4"),
+    (r"\bat\(-\d",            "Array.at(-1) — Safari 15.4; use [len-1]"),
+]
+
+
+def check_browser_floor(src):
+    bad = []
+    for pat, why in BROWSER_FLOOR:
+        for m in re.finditer(pat, src):
+            line = src.count("\n", 0, m.start()) + 1
+            bad.append(f"line {line}: {m.group(0)!r} — {why}")
+    return bad
+
+
+bad = check_browser_floor(app)
+if bad:
+    print("  syntax or APIs newer than the browser floor:")
+    for b in bad:
+        print("    " + b)
+    sys.exit(1)

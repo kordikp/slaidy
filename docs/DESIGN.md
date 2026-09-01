@@ -395,6 +395,41 @@ rejects anything unreadable at projection size.
 
 ---
 
+### Which browsers
+
+Chrome, Edge, Firefox and Safari 15.4 upward, on a desktop or a phone. `tests/preflight.py`
+holds that floor with a list of syntax and APIs that arrived late, and refuses the file if
+one appears.
+
+That check exists because of a single character class. One `(?<!\s)` in the italics rule —
+a negative lookbehind, which Safari only understood from 16.4 — is inside a regex *literal*,
+and a literal is parsed with the script. So it did not make italics wrong on an older
+Safari: it stopped the whole file parsing, and every button on the page was dead. Nothing
+in the suite could have caught it, because the suite runs in Chrome.
+
+The other guarded edges: `structuredClone` (Safari 15.4) is wrapped as `clone()`, which
+falls back to a JSON round-trip — a deck is plain JSON, so it is exact; `indexedDB.databases()`
+(absent in Firefox before 126) is checked before it is called, and adoption is skipped
+without it; `navigator.clipboard` is checked and falls back to selecting the text;
+container queries have a plain `width` in front of them, so a figure without them is sized
+by its column instead of not at all.
+
+### Presenting on a phone
+
+The projector is a 1280×720 box that `fit()` scales to the viewport. It used to be centred
+by the layout — `place-items:center` on the full-screen grid — and that is fine until the
+viewport is *narrower than the slide*, which is every phone: a grid puts an oversized item
+against the start edge rather than overflowing both ways, and the slide, scaled about its
+own centre, lands mostly off the right of the screen. A black page with a sliver of slide
+on it. `fit()` now positions from the top left by arithmetic, which is the same answer at
+every size and needs nothing from the layout.
+
+The viewport itself moves on a phone without always saying so, so `orientationchange`,
+`visualViewport.resize` and `fullscreenchange` all re-fit alongside `resize`. Navigation is
+by swipe or by tap — right of the slide goes on, the left third goes back, a tap that was
+the end of a swipe does not count, and a tap on a link belongs to the link. The editor's
+own furniture is hidden while presenting; it used to cover a third of a phone screen.
+
 ### Figures carry their own CSS
 
 An inlined `<svg>` brings its `<style>` with it, and those rules are global — a `.brand`

@@ -104,8 +104,12 @@ addEventListener('load',async()=>{
   // is open — so the copy that could undo an accident was unreachable.
   await w.persist();await wait(300);
   await w.recentDecks();await wait(400);
-  ok('the menu opens a list of them',d.getElementById('veil').classList.contains('on')&&
-     /Decks in this browser/.test(d.getElementById('dlg').textContent));
+  ok('Open lists them',d.getElementById('veil').classList.contains('on')&&
+     /Open a deck/.test(d.getElementById('dlg').textContent),
+     (d.getElementById('dlg').textContent||'').slice(0,40));
+  ok('and offers the disk in the same breath',
+     !!d.getElementById('rdFile')&&!!d.getElementById('rdMd'),
+     'one question, two kinds of answer');
   const rows=d.querySelectorAll('.recentlist button[data-id]');
   ok('with at least the deck we are in',rows.length>=1,rows.length+' listed');
   ok('each says how big it is and when it was touched',

@@ -133,7 +133,7 @@ button{cursor:pointer;background:none;border:none}
    out. A hairline between them so the boundary is visible while editing —
    projected there is nothing to see, which is the point. */
 .stage .txin.cols,.stage .bdy.cols{display:flex;flex-direction:row;gap:0;align-items:stretch;min-height:0;flex:1}
-.stage .area{flex:1 1 0;min-width:0;display:flex;flex-direction:column;padding:0 22px}
+.stage .area{flex:1 1 0;min-width:0;display:flex;flex-direction:column;padding:0 16px}
 .stage .area:first-child{padding-left:0}
 .stage .area:last-child{padding-right:0}
 #sheet .stage .area+.area{border-left:1px solid var(--hair)}
@@ -225,14 +225,30 @@ button{cursor:pointer;background:none;border:none}
    setting it back to flex:0 and the column stopped stretching — which left the
    figure inside it holding a thumbnail with the slack sitting underneath */
 .stage .txin,.stage .bdy{flex:1 1 auto}
-.stage .inlinefig,.stage .bk.isfig{flex:1 1 auto;min-height:64px}
-.stage .bk.isfig{display:flex;flex-direction:column}
-.stage .bk.isfig>.inlinefig{min-height:0;margin:0}
-.stage .tx .inlinefig{margin:12px 0;--fs:100%;--fsn:1;display:flex;justify-content:center;
+/* A figure is exactly as tall as its own drawing at the size asked for: the
+   block carries the aspect ratio, so it takes the width of its column and the
+   height that shape needs, and nothing else. It used to grow to fill whatever
+   the column had left — and a drawing cannot use height its shape has no room
+   for, so the slack came out as a band of empty canvas above and below the
+   picture, with whatever followed it shoved to the bottom of the slide. */
+/* One box carries the drawing's shape, and it is always a direct child of the
+   column: .inlinefig where the stage is drawn straight, .bk.isfig in the editor
+   where every block is wrapped. Being a child of the column is what lets the
+   percentage below resolve — against a height the column actually has. */
+.stage .tx .inlinefig,.stage .tx .bk.isfig{
+ flex:0 0 auto;width:100%;min-height:0;
+ aspect-ratio:calc(var(--arw,16)/var(--arh,9)/var(--fsn,1));
+ max-height:calc(64% * var(--fsn,1))}
+.stage .tx .inlinefig.solo,.stage .tx .bk.isfig.solo{max-height:calc(100% * var(--fsn,1))}
+.stage .tx .inlinefig{margin:10px 0;--fsn:1;display:flex;justify-content:center;
  container-type:size}
+/* inside the editor's wrapper it is no longer the shape-carrying box */
+.stage .tx .bk.isfig{display:flex;flex-direction:column;margin:10px 0}
+.stage .tx .bk.isfig>.inlinefig{aspect-ratio:auto;max-height:none;margin:0;flex:1 1 auto}
+/* the drawing then fills that box — the size asked for is already in its shape */
 .stage .tx .inlinefig .figbox{
- width:calc(min(100%,100cqh*var(--arw)/var(--arh))*var(--fsn));   /* before container queries */
- width:calc(min(100cqw,100cqh*var(--arw)/var(--arh))*var(--fsn));
+ width:min(100%,100cqh*var(--arw)/var(--arh));   /* before container queries */
+ width:min(100cqw,100cqh*var(--arw)/var(--arh));
  aspect-ratio:var(--arw)/var(--arh);position:relative}
 .stage .tx .inlinefig svg{width:100%;height:100%;display:block}
 .stage .tx .undrawn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:26px 20px;
@@ -1262,15 +1278,20 @@ function scopeSvg(svg,uid){
   });
 }
 let uidN=0;
+/* The drawing's own shape, from its viewBox — every box around it is sized by
+   this, so none of them is taller than the picture inside. */
+function figAR(id){
+  const m=String(S.figs[id]||'').match(/viewBox="\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
+  return m?{w:+m[1],h:+m[2]}:{w:16,h:9};
+}
 function fig(id){
   const svg=S.figs[id];
   if(!svg)return '';
   /* The drawing gets a box of its own size. Left to fill its column the element
      is wider than the picture inside it, so an outline or a grip on its corner
      lands in empty space rather than on the thing you are pointing at. */
-  const m=svg.match(/viewBox="\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
-  const ar=m?`--arw:${m[1]};--arh:${m[2]}`:'--arw:16;--arh:9';
-  return `<div class="figbox" style="${ar}">${scopeSvg(svg,'f'+(++uidN))}</div>`;
+  const a=figAR(id);
+  return `<div class="figbox" style="--arw:${a.w};--arh:${a.h}">${scopeSvg(svg,'f'+(++uidN))}</div>`;
 }
 
 /* ---------- markdown ---------- */
@@ -1557,7 +1578,17 @@ function blocks(md){
    attribute, never a wrapper: a wrapper would change the layout, and the whole
    promise here is that the editor and the projector draw the same stage. */
 let BLOCKIX=null;
-function block(b,ix){
+/* A figure with nothing else in its column may have the whole of it. One that
+   shares a column takes at most two thirds, so the words it belongs to are
+   still on the slide — the alternative is a picture that pushes its own caption
+   off the bottom, which is what happens when "as large as fits" is the only
+   rule. Worked out here rather than with :only-child, because the editor adds
+   a button to every column and the two surfaces have to agree. */
+const soloFig=list=>{
+  const real=list.filter(b=>b.kind!=='col');
+  return real.length===1&&real[0].kind==='fig'?real[0]:null;
+};
+function block(b,ix,solo){
   const at=(ix==null||BLOCKIX===null)?'':` data-b="${ix}"`;
   if(b.kind==='gap')return `<div class="gap"${at}></div>`;
   if(b.kind==='col')return `<div class="colbrk"${at}><span>column break</span></div>`;
@@ -1578,7 +1609,10 @@ function block(b,ix){
   }
   if(b.kind==='fig'){
     const{id,size}=figRef(b.src);
-    return `<div class="inlinefig"${at}${size!==100?` style="--fsn:${size/100}"`:''}>${
+    /* the block is the shape of the drawing at the size asked for, so there is
+       no band of empty canvas above and below it */
+    const a=figAR(id);
+    return `<div class="inlinefig${solo?' solo':''}"${at} style="--fsn:${size/100};--arw:${a.w};--arh:${a.h}">${
       fig(id)||`<div class="undrawn"><b>${esc(id)}</b><span>not drawn yet</span>
         <span class="ubtns"><button data-a="draw">Draw it</button><button data-a="pick">Pick one</button
           ><button data-a="drop">Remove</button></span></div>`}</div>`;}
@@ -1647,9 +1681,10 @@ function splitBody(s,n){
    move blocks around; the index has to survive that. */
 function areasHtml(list,L,ix){
   const at=b=>ix?ix.get(b):null;
-  if(L.areas.length<2)return list.map(b=>block(b,at(b))).join('');
+  const draw=g=>{const only=soloFig(g);return g.map(b=>block(b,at(b),b===only)).join('');};
+  if(L.areas.length<2)return draw(list);
   return areaGroups(list,L.areas.length).map((g,i)=>
-    `<div class="area" style="flex:${(L.areas[i]||{}).w||1} 1 0">${g.map(b=>block(b,at(b))).join('')}</div>`
+    `<div class="area" style="flex:${(L.areas[i]||{}).w||1} 1 0">${draw(g)}</div>`
   ).join('');
 }
 /* "Behind" takes the first figure out of the flow and paints it under
@@ -2360,8 +2395,12 @@ function figChrome(box,api){
       const w=Math.max(24,w0+(ev.clientX-x0)/k);
       const n=Math.min(200,Math.max(20,Math.round(p0*w/w0/5)*5));
       pct.textContent=n+' %';
-      (box.parentElement||box).style.setProperty('--fsn',n/100);
-      box.style.setProperty('--fsn',n/100);
+      /* --fsn is read by the wrapper, whose shape is the drawing's at that
+         size; setting it on the box alone moved nothing once the box stopped
+         doing the scaling itself */
+      /* whichever box carries the shape on this surface, and the one inside it */
+      [box,box.closest('.inlinefig'),box.closest('.bk.isfig'),box.parentElement]
+        .forEach(x=>x&&x.style.setProperty('--fsn',n/100));
       grip.dataset.n=n;
     };
     const up=()=>{
@@ -2458,6 +2497,10 @@ function paintBody(s){
      other — so inserting, moving and deleting need to know nothing about this,
      and dragging a block past a separator moves it to the next column. */
   const L=layOf(s),n=L.areas.length;
+  /* one list, used for both — two calls to blocks() return equal objects that
+     are not the same objects, and a Set does not care what a block says */
+  const list=blocks(s.body);
+  const solos=new Set(areaGroups(list,n).map(soloFig).filter(Boolean));
   let ai=0,cells=[host];
   if(n>1){
     cells=L.areas.map((a,i)=>{const c=document.createElement('div');
@@ -2516,9 +2559,15 @@ function paintBody(s){
       c.appendChild(z);
     });
   };
-  blocks(s.body).forEach((b,bi)=>{
+  list.forEach((b,bi)=>{
     const d=document.createElement('div');
     d.className='bk'+(b.kind==='col'?' iscol':'')+(b.kind==='fig'?' isfig':'');
+    if(b.kind==='fig'){                  /* the wrapper is the shape-carrying box here */
+      if(solos.has(b))d.classList.add('solo');
+      const r=figRef(b.src),a=figAR(r.id);
+      d.style.setProperty('--arw',a.w);d.style.setProperty('--arh',a.h);
+      d.style.setProperty('--fsn',r.size/100);
+    }
     const isFig=b.kind==='fig';
     d.innerHTML=block(b)+`<div class="bkt">
       <button class="grip" data-m="grip" title="Drag to reorder">⠿</button>
@@ -2785,6 +2834,51 @@ function blankSlide(s){
 
 const FIGREF=/!\[\[([a-zA-Z0-9._-]+)(?:\|\d{2,3}%)?\]\]/g;
 
+/* Trim a drawing's canvas to what is drawn on it, without opening the editor.
+   A model asked for a 250-tall drawing will hand back an 800x450 canvas often
+   enough that leaving it to a button means most figures keep the margin, and
+   the slide gives a figure exactly the shape its viewBox asks for — so empty
+   canvas is empty slide. Measured, not guessed: the svg is put in the document,
+   off-screen, and every top-level child is asked where it actually is. */
+function trimSvg(svg,pad){
+  pad=pad==null?6:pad;
+  let host=document.getElementById('trimbox');
+  if(!host){host=document.createElement('div');host.id='trimbox';
+    host.style.cssText='position:fixed;left:-9999px;top:0;width:1600px;height:900px;opacity:0;pointer-events:none';
+    document.body.appendChild(host);}
+  host.innerHTML=disarmSvg(svg)||'';
+  const el=host.querySelector('svg');
+  if(!el)return svg;
+  const vb=(el.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+  if(vb.length!==4||vb.some(n=>!isFinite(n))||!vb[2]||!vb[3]){host.innerHTML='';return svg;}
+  const skip=/^(style|defs|title|desc|metadata|script)$/i;
+  const kids=[...el.children].filter(x=>!skip.test(x.tagName));
+  const bg=kids.find(x=>x.tagName.toLowerCase()==='rect'&&
+    Math.abs((+x.getAttribute('width')||0)-vb[2])<2&&
+    Math.abs((+x.getAttribute('height')||0)-vb[3])<2);
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  kids.forEach(x=>{
+    if(x===bg)return;
+    let b;try{b=x.getBBox();}catch(e){return;}
+    if(!b||(!b.width&&!b.height))return;
+    x0=Math.min(x0,b.x);y0=Math.min(y0,b.y);x1=Math.max(x1,b.x+b.width);y1=Math.max(y1,b.y+b.height);
+  });
+  if(!isFinite(x0)){host.innerHTML='';return svg;}
+  const x=Math.round(x0-pad),y=Math.round(y0-pad),
+        w=Math.round(x1-x0+pad*2),h=Math.round(y1-y0+pad*2);
+  if(w<40||h<30){host.innerHTML='';return svg;}
+  if(w>=vb[2]-2&&h>=vb[3]-2){host.innerHTML='';return svg;}   /* it already hugs */
+  el.setAttribute('viewBox',`${x} ${y} ${w} ${h}`);
+  if(bg){                                               /* the paper follows the canvas */
+    bg.setAttribute('x',x);bg.setAttribute('y',y);
+    bg.setAttribute('width',w);bg.setAttribute('height',h);
+  }
+  /* written back from the document rather than by patching the text: the one
+     place the new numbers exist is the element they were just measured on */
+  const out=el.outerHTML;
+  host.innerHTML='';
+  return out;
+}
 async function drawFigure(id,s,brief){
   let t=(await llm(figSys(),
     `Draw a NEW figure from scratch. It is referenced from the slide as ![[${id}]].\n\n`+
@@ -2799,7 +2893,7 @@ async function drawFigure(id,s,brief){
   t=t.slice(a,b+6);
   const bad=checkSvg(t).filter(x=>x==='invalid XML'||x==='unparseable');
   if(bad.length)throw new Error(bad.join('; '));
-  return t;
+  return trimSvg(t);              /* arrive hugging the drawing, not the canvas */
 }
 
 /* Every ![[id]] the slide names but the deck does not have. */
@@ -4215,7 +4309,7 @@ function feCropToSelection(){
 function feTrimCanvas(){
   const c=feContentBox();
   if(!c)return toast('Nothing on the canvas to trim to');
-  const pad=14;
+  const pad=6;                       /* enough to not clip a stroke, and no more */
   const x=Math.round(c.x-pad),y=Math.round(c.y-pad),
         w=Math.round(c.w+pad*2),h=Math.round(c.h+pad*2);
   if(w<40||h<30)return toast('That would leave almost nothing');
@@ -4872,7 +4966,9 @@ a reason. Height is whatever the drawing needs and no more: a timeline is about 
 left-to-right flow 800×300, a matrix or a stack 800×450. The slide gives the figure exactly the
 shape its viewBox asks for, so empty margin inside the viewBox is empty margin on the slide.
 Set viewBox="0 0 <w> <h>" to what you actually drew, and make the first child a background rect
-of the same size.
+of the same size. Hug it: no more than 10 units of empty margin on any side. A figure that
+starts drawing at y=60 on a 450-tall canvas is a figure with a sixth of the slide wasted on
+nothing, and the slide has no way to take that back.
 
 NO FURNITURE. A title across the top and a conclusion across the bottom are what most figures
 waste their room on, and the slide has already said both — it has a title, and usually a line of
@@ -5999,14 +6095,10 @@ document.getElementById('bUndo').onclick=undo;
 document.getElementById('bSaveNow').onclick=()=>{
   const b=document.getElementById('bSaveNow');b.disabled=true;
   persist().then(()=>{b.disabled=false;toast(saveErr?'Could not save — '+saveErr:'Saved');});};
-document.getElementById('bOpen').onclick=openDeckFile;
-document.getElementById('bOpenNow').onclick=openDeckFile;
+document.getElementById('bOpen').onclick=recentDecks;
+document.getElementById('bOpenNow').onclick=recentDecks;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
 document.getElementById('bNewDeck').onclick=newDeck;
-/* The browser keeps every deck it has held, and until now the only way back to
-   one was the welcome screen, which you only see before a deck is open. So the
-   copy that could undo an accident was there and unreachable. */
-document.getElementById('bRecent').onclick=recentDecks;
 document.getElementById('bImport').onclick=()=>importWizard(null);
 document.getElementById('bBrief').onclick=briefWizard;
 document.getElementById('wBrief').onclick=briefWizard;
@@ -6073,19 +6165,30 @@ async function heldDecks(){
   rows.sort((a,b)=>(b.at||0)-(a.at||0));
   return rows;
 }
+/* One Open, because there is one question — which deck — and it has two kinds
+   of answer: one this browser is already holding, or a file. They used to be
+   two menu entries, and the one that could rescue an afternoon was the one
+   nobody knew was there. */
 async function recentDecks(){
   const rows=await heldDecks();
-  dialog(`<h3>Decks in this browser</h3>
-    <p class="tip">Every deck this browser has held, newest first — its own copy, kept apart
-     from any file. Opening one replaces what is in the window; what you have now is asked
-     about first.</p>
-    ${rows.length?`<div class="recentlist">${rows.map(r=>
+  dialog(`<h3>Open a deck</h3>
+    ${rows.length?`<p class="tip">In this browser — its own copy of each deck it has held,
+       newest first, kept apart from any file.</p>
+      <div class="recentlist">${rows.map(r=>
       `<button data-id="${esc(r.id)}"><b>${esc(r.title||r.id)}</b>
         <span>${r.n} slide${r.n===1?'':'s'} · last edited ${esc(new Date(r.at).toLocaleString())}</span>
        </button>`).join('')}</div>`
-     :'<p class="tip">Nothing yet — this is the first deck this browser has held.</p>'}
-    <div class="rw" style="margin-top:14px"><button class="b" id="rdNo">Close</button></div>`,'tall');
+     :'<p class="tip">This browser is not holding any deck yet.</p>'}
+    <p class="tip" style="margin-top:14px">Or from the disk — a <code>.json</code> bundle, or
+     markdown files and figures to build one from. Dropping them anywhere in the window works too.</p>
+    <div class="rw" style="margin-top:8px">
+      <button class="b p" id="rdFile">Open a file…</button>
+      <button class="b" id="rdMd">Import markdown…</button>
+      <span style="flex:1"></span>
+      <button class="b" id="rdNo">Close</button></div>`,'tall');
   document.getElementById('rdNo').onclick=closeDialog;
+  document.getElementById('rdFile').onclick=()=>{closeDialog();openDeckFile();};
+  document.getElementById('rdMd').onclick=()=>{closeDialog();document.getElementById('picker').click();};
   document.querySelectorAll('.recentlist button[data-id]').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;
     if(await askReplace('Open “'+(b.querySelector('b').textContent)+'”')!=='go')return;
@@ -6184,12 +6287,26 @@ async function boot(){
     },900);
     return;
   }
-  load(file);
-  /* A deck someone published is a link they sent you, not a file you are
-     keeping — so it opens ready to watch rather than nagging about where to
-     save. #present goes straight to the projector, which is what a link to a
-     talk should do. */
+  /* A deck published as a link is the thing that link is for, so it opens as
+     sent — ready to watch, and #present goes straight to the projector. */
   const shared=!!(file&&file.meta&&file.meta.shared);
+  /* Otherwise: what you were last working on. The browser keeps a copy of every
+     deck it has held, and the newest of those is the one you would reach for.
+     The file beside the page wins only when it is newer, which means someone
+     changed it where you meant them to. */
+  if(!shared){
+    const held=(await heldDecks())[0];
+    if(held&&held.at>fileAt+1000&&held.id!==(file&&file.id)){
+      const mine2=await get('deck:'+held.id);
+      if(mine2&&mine2.slides&&mine2.slides.length){
+        load(mine2);dirty=false;
+        setTimeout(()=>banner(`Carried on with “${esc(mine2.title||held.id)}”, the deck you had open last.`,
+          'Open another',()=>recentDecks()),900);
+        return;
+      }
+    }
+  }
+  load(file);
   if(location.hash.replace('#','')==='present'){setTimeout(()=>present(true),300);return;}
   if(shared){
     setTimeout(()=>banner(`${esc(S.title||'This deck')} — press P to present, N for the notes.`,

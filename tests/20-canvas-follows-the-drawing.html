@@ -37,8 +37,9 @@ addEventListener('load',async()=>{
   // ---------- trimming ----------
   d.getElementById('feTrim').click();await wait(500);
   const vb=w.FE.svg.getAttribute('viewBox').trim().split(/\s+/).map(Number);
-  ok('the canvas becomes the drawing plus a margin',
-     Math.abs(vb[2]-(c0.w+28))<2&&Math.abs(vb[3]-(c0.h+28))<2,
+  // 6 a side: enough not to clip a stroke, and no more — empty canvas is empty slide
+  ok('the canvas becomes the drawing plus a hair',
+     Math.abs(vb[2]-(c0.w+12))<2&&Math.abs(vb[3]-(c0.h+12))<2,
      Math.round(vb[2])+'×'+Math.round(vb[3])+' around '+Math.round(c0.w)+'×'+Math.round(c0.h));
   ok('so it is narrower than the shared canvas',vb[2]<790,vb[2]+' wide');
   ok('the height stays because the title and the takeaway reach top and bottom',vb[3]>400,
@@ -202,6 +203,32 @@ addEventListener('load',async()=>{
      JSON.stringify(d.getElementById('feAiIn')?.value));
   W.fetch=realFetch;
   d.getElementById('feCancel').click();await wait(200);
+
+  // ---------- a drawing arrives hugging its canvas ----------
+  // The slide gives a figure exactly the shape its viewBox asks for, so empty
+  // canvas is empty slide. A model asked for a 250-tall drawing hands back an
+  // 800×450 canvas often enough that leaving this to a button means most
+  // figures keep the margin.
+  const loose=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">`+
+    `<rect width="800" height="450" rx="14" fill="#FAFAF7"/>`+
+    `<rect x="100" y="180" width="240" height="90" rx="6" fill="#6366F1"/>`+
+    `<rect x="420" y="190" width="200" height="70" rx="6" fill="#14B8A6"/></svg>`;
+  const tight=w.trimSvg(loose);
+  const tvb=(tight.match(/viewBox="([^"]+)"/)||[])[1].split(/\s+/).map(Number);
+  ok('the canvas comes back the size of the drawing',
+     Math.abs(tvb[2]-(620-100+12))<3&&Math.abs(tvb[3]-(270-180+12))<3,tvb.join(' '));
+  ok('and starts where the drawing does',
+     Math.abs(tvb[0]-(100-6))<3&&Math.abs(tvb[1]-(180-6))<3,tvb.join(' '));
+  ok('the background follows it, so there is no paper hanging off the edge',
+     /<rect[^>]*width="\d+"[^>]*height="\d+"[^>]*rx="14"/.test(tight)&&
+     /x="94"/.test(tight)&&/y="174"/.test(tight),
+     (tight.match(/<rect[^>]*rx="14"[^>]*>/)||[''])[0].slice(0,80));
+  ok('everything drawn is still there',
+     /#6366F1/.test(tight)&&/#14B8A6/.test(tight));
+  const already=w.trimSvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">`+
+    `<rect x="4" y="4" width="192" height="92" fill="#000"/></svg>`);
+  ok('one that already hugs is left alone',/viewBox="0 0 200 100"/.test(already),
+     (already.match(/viewBox="[^"]*"/)||[''])[0]);
 
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  clearTimeout(__watchdog);

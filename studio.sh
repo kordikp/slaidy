@@ -11,7 +11,17 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-DECK="${1:-decks/example.json}"
+# Which deck: the one you name, else the one you had last, else the example.
+# The application should come back where you left it — a launcher icon that
+# always opens the sample deck is a launcher icon you stop pressing.
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/slaidy"
+LAST="$STATE/last-deck"
+DECK="${1:-}"
+if [ -z "$DECK" ] && [ -r "$LAST" ]; then
+  want=$(cat "$LAST" 2>/dev/null || true)
+  [ -n "$want" ] && [ -f "$want" ] && DECK="$want"
+fi
+DECK="${DECK:-decks/example.json}"
 PORT="${PORT:-8080}"
 
 [ -f "$DECK" ] || { echo "No such deck: $DECK"; echo "Available:"; ls -1 decks/*.json 2>/dev/null || echo "  (none — run scripts/build_bundle.py)"; exit 1; }
@@ -24,6 +34,9 @@ trap 'rm -rf "$WORK"' EXIT
 # the browser — and the edits lost. The server owns the real file instead: it
 # streams it at /deck.json and writes it back at /api/deck.
 cp slaidy.html "$WORK/index.html"
+
+mkdir -p "$STATE" 2>/dev/null || true
+( cd "$(dirname "$DECK")" && printf '%s\n' "$(pwd)/$(basename "$DECK")" ) > "$LAST" 2>/dev/null || true
 
 PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
 

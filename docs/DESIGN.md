@@ -513,6 +513,31 @@ What a reader does on a published page is theirs: the deck they edit is the brow
 and there is nothing there that could write back. AI on that page goes through the demo's
 function, with its daily limits, because it is the same origin.
 
+### One codebase, two ways of running it
+
+There is one SlAIdy: this repository. The web page and the desktop application are two ways
+of running the same `slaidy.html`, not two copies of it.
+
+The keynote next door used to hold its own copy of the file, its own `serve.py` and its own
+`build_bundle.py`. That is how you end up with an application that is a version behind:
+columns, the deck list and everything else landed in one place and not the other, and the
+launcher icon opened the old one. Those are symlinks into this repository now, and the
+keynote's `studio.sh` is a wrapper that runs this one with a deck of its own.
+
+### Opening what you had open
+
+A launcher icon that always opens the sample deck is a launcher icon you stop pressing. So:
+
+- **The application** writes the deck it opened to `~/.local/state/slaidy/last-deck`, and
+  `./studio.sh` with no argument opens that. Name a deck and it opens that one instead, and
+  remembers it for next time.
+- **The browser** opens the newest deck it is holding, whatever it is called, unless the file
+  beside the page is newer — which means somebody changed it where you meant them to. The
+  exception is a published deck: a link to a talk is the thing that link is for.
+- **Open** is one dialog with both kinds of answer in it — the decks this browser holds, and
+  a file on the disk. They were two menu entries, and the one that could rescue an afternoon
+  was the one nobody knew was there.
+
 ### Where a deck actually is
 
 Three places, and the pill in the bar says which. **A file on disk**, when the browser holds

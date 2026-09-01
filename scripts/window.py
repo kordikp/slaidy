@@ -92,7 +92,10 @@ class Slaidy(Gtk.Application):
         st.set_enable_developer_extras(True)
         st.set_enable_fullscreen(True)
         st.set_javascript_can_access_clipboard(True)
-        st.set_enable_write_console_messages_to_stdout(False)
+        # Console and errors go to the log studio.sh keeps. A window that
+        # swallows what the page says about itself is a window in which a fault
+        # is invisible, and the first anyone hears of it is "it is broken".
+        st.set_enable_write_console_messages_to_stdout(True)
         # a cache that answers for the application is how you end up looking at
         # last week's; there is nothing here worth keeping anyway
         view.get_network_session().get_website_data_manager()

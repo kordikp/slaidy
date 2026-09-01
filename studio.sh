@@ -130,7 +130,10 @@ open_window() {
   # nothing else — and if that fails too, a browser is opened, which is what
   # this did before and is no worse than it was.
   local wurl="http://localhost:$PORT/?v=$STAMP" wlog=/tmp/slaidy-window.log wp
-  if "$PY" -c 'import gi;gi.require_version("Gtk","4.0");gi.require_version("WebKit","6.0")' 2>/dev/null; then
+  # SLAIDY_BROWSER=1 asks for the browser instead, which is the escape hatch
+  # when something works there and not here.
+  if [ -z "${SLAIDY_BROWSER:-}" ] &&
+     "$PY" -c 'import gi;gi.require_version("Gtk","4.0");gi.require_version("WebKit","6.0")' 2>/dev/null; then
     : > "$wlog"
     "$PY" scripts/window.py "$wurl" >>"$wlog" 2>&1 & wp=$!
     sleep 2; kill -0 "$wp" 2>/dev/null && return

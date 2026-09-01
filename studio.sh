@@ -116,9 +116,19 @@ open_window() {
   local b
   for b in google-chrome chromium chromium-browser brave-browser microsoft-edge; do
     if command -v "$b" >/dev/null 2>&1; then
-      mkdir -p "$prof"
-      "$b" --app="$url" --class=SlAIdy --user-data-dir="$prof" \
-           --no-first-run --no-default-browser-check >/dev/null 2>&1 &
+      # Your ordinary browser profile by default, because that is where the decks
+      # this browser is holding actually are — an isolated profile is a window
+      # that cannot see your own work. SLAIDY_OWN_PROFILE=1 gives it one anyway,
+      # which is what makes the window file under its own icon rather than under
+      # the browser: a Chrome already running opens the window itself otherwise,
+      # and the window is then that Chrome's.
+      if [ -n "${SLAIDY_OWN_PROFILE:-}" ]; then
+        mkdir -p "$prof"
+        "$b" --app="$url" --class=SlAIdy --user-data-dir="$prof" \
+             --no-first-run --no-default-browser-check >/dev/null 2>&1 &
+      else
+        "$b" --app="$url" --class=SlAIdy >/dev/null 2>&1 &
+      fi
       return
     fi
   done

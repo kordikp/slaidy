@@ -17,6 +17,9 @@ python3 tests/preflight.py || fail=1
 step "The markdown round trip"
 python3 scripts/test_roundtrip.py | tail -3 || fail=1
 
+step "The local server and the deck file"
+python3 scripts/test_server.py | tail -3 || fail=1
+
 step "Publishing a deck to the web"
 python3 scripts/test_publish.py | tail -3 || fail=1
 

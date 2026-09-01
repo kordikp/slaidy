@@ -36,8 +36,9 @@ trap 'rm -rf "$WORK"' EXIT
 # streams it at /deck.json and writes it back at /api/deck.
 cp slaidy.html "$WORK/index.html"
 
-mkdir -p "$STATE" 2>/dev/null || true
-( cd "$(dirname "$DECK")" && printf '%s\n' "$(pwd)/$(basename "$DECK")" ) > "$LAST" 2>/dev/null || true
+# serve.py writes $LAST, not this script: the deck can change while it is
+# running — Save As and Open both move it — and a note taken once here would
+# then say the wrong thing.
 
 PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
 

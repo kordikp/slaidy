@@ -56,6 +56,56 @@ def budget(model, asked):
 DECK = None
 
 
+def remember(path):
+    """Which deck this was, for the next time the application is opened.
+
+    Written here rather than by studio.sh, because the deck can change while it
+    is running: Save As and Open both move it, and a note taken once at startup
+    then says the wrong thing — which is how a renamed file kept opening under
+    its old name, and the old name kept receiving the edits."""
+    try:
+        d = os.path.join(os.environ.get("XDG_STATE_HOME") or
+                         os.path.expanduser("~/.local/state"), "slaidy")
+        os.makedirs(d, exist_ok=True)
+        p = os.path.abspath(path)
+        with open(os.path.join(d, "last-deck"), "w", encoding="utf-8") as f:
+            f.write(p + "\n")
+        # and the few before it, so "open something else" is a list rather than
+        # a file dialog and a memory
+        rec = os.path.join(d, "recent-decks")
+        was = []
+        if os.path.isfile(rec):
+            try:
+                was = [x for x in json.load(open(rec, encoding="utf-8")) if isinstance(x, str)]
+            except Exception:
+                was = []
+        was = [p] + [x for x in was if x != p]
+        json.dump(was[:6], open(rec, "w", encoding="utf-8"))
+    except Exception:
+        pass
+
+
+def recent():
+    """The decks opened lately that are still there, newest first."""
+    try:
+        d = os.path.join(os.environ.get("XDG_STATE_HOME") or
+                         os.path.expanduser("~/.local/state"), "slaidy")
+        was = json.load(open(os.path.join(d, "recent-decks"), encoding="utf-8"))
+        out = []
+        for p in was:
+            if not (isinstance(p, str) and os.path.isfile(p)):
+                continue
+            try:
+                n = len(json.load(open(p, encoding="utf-8")).get("slides") or [])
+            except Exception:
+                continue
+            out.append({"abs": p, "path": shown(p), "n": n,
+                        "at": int(os.stat(p).st_mtime * 1000)})
+        return out
+    except Exception:
+        return []
+
+
 def shown(p):
     """A path as it is worth showing: relative while that is shorter and does
     not climb out of the tree, ~ for the home directory, absolute otherwise."""
@@ -139,6 +189,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not os.path.isfile(wantp):
                     return self._json(404, {"error": "no such file: %s" % shown(wantp)})
                 globals()["DECK"] = wantp
+                remember(wantp)
             if self.path.split("?")[0].rstrip("/") == "/api/deck":
                 st = os.stat(DECK) if os.path.exists(DECK) else None
                 # what the AI actually is, so the page can say so rather than
@@ -151,7 +202,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "size": st.st_size if st else 0,
                     "ai": ({"model": MODEL, "host": host, "local": LOCAL}
                            if (KEY or LOCAL) else None),
-                    "app": app_stamp()})
+                    "app": app_stamp(), "recent": recent()})
             try:
                 with open(DECK, "rb") as f:
                     b = f.read()
@@ -212,6 +263,7 @@ class Handler(SimpleHTTPRequestHandler):
         # worth failing a save over.
         if want:                      # a new file: nothing to conflict with
             DECK = want
+            remember(want)
             seen = None
         else:
             seen = self.headers.get("X-Deck-Mtime")
@@ -360,8 +412,8 @@ def main():
                       else "off — no key and no local model, so the AI panels will say so plainly"),
           flush=True)   # stdout is a pipe when started detached; without this it is never seen
     if DECK:
-        print("  deck: %s  (the app saves straight to it)" % os.path.relpath(DECK, os.getcwd()),
-              flush=True)
+        remember(DECK)
+        print("  deck: %s  (the app saves straight to it)" % shown(DECK), flush=True)
     # 127.0.0.1, not every interface: this now writes a file on request, and
     # that is not something to offer the local network.
     ROOT_DIR[0] = root

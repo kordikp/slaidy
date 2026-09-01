@@ -6412,9 +6412,21 @@ document.addEventListener('drop',async e=>{
   if(fs.length)ingest(fs);
 });
 document.getElementById('status').onclick=()=>{
-  if(document.getElementById('status').className==='bad'){
+  const el=document.getElementById('status');
+  if(el.className==='bad'){
     downloadDeck(S.id+'-backup');
-    toast('Backup downloaded — reopen it with Open… to continue');}};
+    toast('Backup downloaded — reopen it with Open… to continue');
+    return;
+  }
+  /* the pill names the file; clicking it hands you that name, because the one
+     thing anyone wants from a path on screen is the path */
+  const where=fileName||'';
+  if(!where)return toast('This deck is in this browser only — ⋯ → Save to a file');
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(where).then(()=>toast('Copied '+where),
+      ()=>toast(where));
+  else toast(where);
+};
 document.getElementById('bHist').onclick=history_;
 /* A row saying "237 slides" is no help when what you are hunting for is one
    edited figure. Say what this version has that the deck in front of you does
@@ -6662,6 +6674,12 @@ async function recentDecks(){
         <span>${r.n} slide${r.n===1?'':'s'} · last edited ${esc(new Date(r.at).toLocaleString())}</span>
        </button>`).join('')}</div>`
      :'<p class="tip">This browser is not holding any deck yet.</p>'}
+    ${(srvDeck&&(srvDeck.recent||[]).filter(r=>r.abs!==srvDeck.abs).length)?
+      `<p class="tip" style="margin-top:14px">On this machine — opened lately, newest first.</p>
+       <div class="recentlist">${srvDeck.recent.filter(r=>r.abs!==srvDeck.abs).map(r=>
+         `<button data-path="${esc(r.abs)}"><b>${esc(r.path)}</b>
+           <span>${r.n} slide${r.n===1?'':'s'} · ${esc(new Date(r.at).toLocaleString())}</span>
+          </button>`).join('')}</div>`:''}
     <p class="tip" style="margin-top:14px">Or from the disk — a <code>.json</code> bundle, or
      markdown files and figures to build one from. Dropping them anywhere in the window works too.</p>
     <div class="rw" style="margin-top:8px">
@@ -6671,6 +6689,23 @@ async function recentDecks(){
       <button class="b" id="rdNo">Close</button></div>`,'tall');
   document.getElementById('rdNo').onclick=closeDialog;
   document.getElementById('rdFile').onclick=()=>{closeDialog();openDeckFile();};
+  document.querySelectorAll('.recentlist button[data-path]').forEach(b=>b.onclick=async()=>{
+    const path=b.dataset.path;
+    if(await askReplace('Open “'+b.querySelector('b').textContent+'”')!=='go')return;
+    if(dirty)await persist();
+    try{
+      const r=await fetch('deck.json?path='+encodeURIComponent(path),{cache:'no-store'});
+      const bdy=await r.json();
+      if(!r.ok||!bdy.slides)throw new Error(bdy.error||'that file is not a deck');
+      S={id:bdy.id||'deck',title:bdy.title||'Deck',slides:bdy.slides||[],figs:bdy.figs||{},
+         meta:bdy.meta||{},style:bdy.style||{}};
+      normalise();cur=0;dirty=false;unbanner();
+      srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
+      lastSaved=new Date();setStatus('ok');closeDialog();
+      document.getElementById('welcome').classList.add('hidden');
+      paint();toast('Opened '+path);
+    }catch(e){toast('Could not open it: '+e.message);}
+  });
   document.getElementById('rdMd').onclick=()=>{closeDialog();document.getElementById('picker').click();};
   document.querySelectorAll('.recentlist button[data-id]').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;

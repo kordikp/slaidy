@@ -11,6 +11,9 @@ What it has to carry over from a browser window, and does:
   · full screen, which is the whole point of a presenter (F, or the page asking)
   · printing, which is how a PDF is made — the GTK dialog has Print to File
   · downloads, which is how markdown and bundles leave, into ~/Downloads
+  · a real file dialog, because "save to a file" has to mean the file you point
+    at. The File System Access API is Chrome's; this is the same thing done
+    natively and handed to the page through a message channel.
   · the page's title, so the window and the dock say which deck this is
 
 It falls back to the browser if any of this is missing; see studio.sh.
@@ -36,7 +39,55 @@ class Slaidy(Gtk.Application):
         win.set_title("SlAIdy")
         win.set_icon_name("slaidy")
 
-        view = WebKit.WebView()
+        # ── the file dialog the page cannot open for itself ──────────────
+        # The page asks through a message channel; the answer goes back as a
+        # path, and the server writes it. That is the whole of Save As here:
+        # the deck is a file the server owns, so the page never needs a handle.
+        ucm = WebKit.UserContentManager()
+        view = WebKit.WebView(user_content_manager=ucm)
+
+        def reply(token, path):
+            js = "window.__nativeFile && window.__nativeFile(%s, %s)" % (
+                GLib.Variant("s", token).print_(False),
+                GLib.Variant("s", path or "").print_(False))
+            view.evaluate_javascript(js, -1, None, None, None, None, None)
+
+        def on_message(_m, value):
+            try:
+                req = value.to_json(0)
+            except Exception:
+                return
+            import json as _j
+            try:
+                req = _j.loads(req)
+            except Exception:
+                return
+            token = req.get("token") or ""
+            dlg = Gtk.FileDialog()
+            dlg.set_title(req.get("title") or "Choose a file")
+            if req.get("name"):
+                dlg.set_initial_name(req["name"])
+            filt = Gtk.FileFilter()
+            filt.set_name("Deck (*.json)")
+            filt.add_pattern("*.json")
+            store = Gio.ListStore.new(Gtk.FileFilter)
+            store.append(filt)
+            dlg.set_filters(store)
+
+            def done(d, res):
+                try:
+                    f = (d.save_finish(res) if req.get("mode") == "save"
+                         else d.open_finish(res))
+                    reply(token, f.get_path() if f else "")
+                except Exception:
+                    reply(token, "")
+            if req.get("mode") == "save":
+                dlg.save(win, None, done)
+            else:
+                dlg.open(win, None, done)
+
+        ucm.register_script_message_handler("slaidy", None)
+        ucm.connect("script-message-received::slaidy", on_message)
         st = view.get_settings()
         st.set_enable_developer_extras(True)
         st.set_enable_fullscreen(True)

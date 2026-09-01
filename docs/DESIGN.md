@@ -610,6 +610,38 @@ A launcher icon that always opens the sample deck is a launcher icon you stop pr
   a file on the disk. They were two menu entries, and the one that could rescue an afternoon
   was the one nobody knew was there.
 
+### Save has to mean the file
+
+The most important button in the application, and in the application *window* it was the
+weakest: the File System Access API is Chrome's, so `canFile()` was false, so "Save to a
+file…" fell through to a download. A download is not a file you chose.
+
+So the window lends the page a real one. `scripts/window.py` registers a message channel;
+the page asks through it, GTK opens its own chooser, and the answer comes back as a path.
+The server writes it — `PUT /api/deck?as=<path>` — and from then on that file is the deck.
+Opening works the same way: `GET /deck.json?path=<path>`. Both check that the path is
+absolute, ends `.json`, and sits in a directory that exists; a local server doing what a page
+asks is fine, doing it anywhere at all is not.
+
+And the icon that says Save now asks where, when there is nowhere: no server file and no
+handle means the deck lives only in this browser, and answering "Saved" to that is how work
+is lost.
+
+### Opening what you had open
+
+Under `studio.sh` the served file wins, because it is the file you asked for. Two exceptions,
+both about not throwing you back a session:
+
+- the browser holds a **newer copy of the same deck** — unsaved edits, so they load and the
+  pill says so;
+- the browser was last working on a **different deck entirely**, more recently than the
+  served file was written. That loads too, and it is deliberately *not* linked to the served
+  file: saving it there would put one deck's contents in another deck's file. The banner
+  names both and offers the served one back, and Save asks where it should go.
+
+On the web there is no server, so the newest deck the browser holds simply opens — unless
+the page is a published talk, which is the thing its link is for.
+
 ### Where a deck actually is
 
 Three places, and the pill in the bar says which. **A file on disk**, when the browser holds

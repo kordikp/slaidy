@@ -1072,6 +1072,32 @@ async function writeServer(){
   return true;
 }
 const canFile=()=>typeof window.showOpenFilePicker==='function';
+/* The application window has no File System Access API — that is Chrome's — so
+   it lends the page a real file dialog instead. The page asks, the window opens
+   GTK's chooser, and the answer comes back as a path the local server writes.
+   Same question, same answer, a different way of asking it. */
+const nativeFile=()=>!!(window.webkit&&window.webkit.messageHandlers&&
+                        window.webkit.messageHandlers.slaidy);
+const NATIVE={};
+window.__nativeFile=(token,path)=>{const f=NATIVE[token];delete NATIVE[token];f&&f(path||'');};
+function askForPath(mode,title,name){
+  return new Promise(resolve=>{
+    const token='f'+Date.now()+Math.random().toString(36).slice(2,7);
+    NATIVE[token]=resolve;
+    setTimeout(()=>{if(NATIVE[token]){delete NATIVE[token];resolve('');}},120000);
+    window.webkit.messageHandlers.slaidy.postMessage({token,mode,title,name});
+  });
+}
+/* Write the deck to a path the server has never seen, and make that the deck. */
+async function writeServerAs(path){
+  const r=await fetch('api/deck?as='+encodeURIComponent(path),{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(S)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||('the server refused it ('+r.status+')'));
+  srvDeck=srvDeck||{};srvDeck.path=j.path||path;srvDeck.abs=j.abs||path;
+  srvDeck.mtime=j.mtime||0;srvLinked=true;fileName=srvDeck.path;
+  return srvDeck.path;
+}
 async function handleOK(h,ask){
   if(!h)return false;
   try{
@@ -1101,6 +1127,25 @@ async function writeFile(){
   return true;
 }
 async function openDeckFile(){
+  if(!canFile()&&nativeFile()&&srvDeck){
+    const path=await askForPath('open','Open a deck','');
+    if(!path)return;
+    if(dirty)await persist();
+    try{
+      const r=await fetch('deck.json?path='+encodeURIComponent(path),{cache:'no-store'});
+      if(!r.ok)throw new Error('could not read it');
+      const b=await r.json();
+      if(!b.slides)throw new Error('that file is not a deck');
+      S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
+         meta:b.meta||{},style:b.style||{}};
+      normalise();cur=0;dirty=false;unbanner();
+      srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
+      lastSaved=new Date();setStatus('ok');
+      document.getElementById('welcome').classList.add('hidden');
+      paint();toast('Opened '+path);
+    }catch(e){toast('Could not open it: '+e.message);}
+    return;
+  }
   if(!canFile()){document.getElementById('picker2').click();return;}
   let h;
   try{[h]=await window.showOpenFilePicker({
@@ -1125,6 +1170,25 @@ async function openDeckFile(){
   }catch(e){toast('Could not open it: '+e.message);}
 }
 async function saveDeckAs(){
+  /* In the application window: a real dialog, and the server writes where you
+     point. This used to fall through to a download, which is not what "save to
+     a file" means and is the one place it must mean exactly what it says. */
+  if(!canFile()&&nativeFile()&&srvDeck){
+    const suggested=(S.id||'deck')+'.json';
+    const path=await askForPath('save','Save this deck',suggested);
+    if(!path)return;
+    try{
+      const where=await writeServerAs(path);
+      lastSaved=new Date();dirty=false;setStatus('ok');unbanner();
+      const stem=where.replace(/\.[^.]+$/,'').split('/').pop();
+      if(stem&&/^(untitled|untitled deck|deck)$/i.test((S.title||'').trim())){
+        S.title=stem.replace(/[-_]+/g,' ').trim();
+        S.id=stem.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||S.id;
+      }
+      paint();toast('Saved to '+where);
+    }catch(e){banner('Not saved — '+e.message,'Download a copy',()=>downloadDeck());}
+    return;
+  }
   if(!canFile()){downloadDeck();return;}
   try{
     const h=await window.showSaveFilePicker({
@@ -6178,9 +6242,13 @@ document.getElementById('nav').addEventListener('click',e=>{
     setTimeout(()=>document.body.classList.remove('shownav'),120);
 });
 document.getElementById('bUndo').onclick=undo;
-document.getElementById('bSaveNow').onclick=()=>{
+document.getElementById('bSaveNow').onclick=async()=>{
+  /* If there is nowhere for it to go, the button that says Save asks where.
+     Saving into the browser and reporting "Saved" is how work is lost. */
+  if(!(srvDeck&&srvLinked)&&!fileHandle)return saveDeckAs();
   const b=document.getElementById('bSaveNow');b.disabled=true;
-  persist().then(()=>{b.disabled=false;toast(saveErr?'Could not save — '+saveErr:'Saved');});};
+  await persist();b.disabled=false;
+  toast(saveErr?'Could not save — '+saveErr:'Saved to '+(fileName||'this browser'));};
 document.getElementById('bOpen').onclick=recentDecks;
 document.getElementById('bOpenNow').onclick=recentDecks;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
@@ -6355,6 +6423,24 @@ async function boot(){
           banner(`Unsaved edits from ${new Date(mineAt).toTimeString().slice(0,5)} — `+
                  `newer than ${srvDeck.path}.`,'Save them',()=>persist());
           return;
+        }
+        /* A deck of a different name that this browser was working on more
+           recently than the file was written is the thing you had open, and
+           opening the served file instead is throwing you back a session. It
+           is NOT linked to that file, though: saving it there would put one
+           deck's contents in another deck's file. Save asks where instead. */
+        const held=(await heldDecks())[0];
+        if(held&&held.id!==(b.id||'deck')&&held.at>(srvDeck.mtime||0)+1000){
+          const other=await get('deck:'+held.id);
+          if(other&&other.slides&&other.slides.length){
+            srvLinked=false;load(other);
+            setTimeout(()=>banner(
+              `Carried on with “${esc(other.title||held.id)}”, which you had open last. `+
+              `${srvDeck.path} is untouched.`,`Open ${srvDeck.path}`,
+              async()=>{const rr=await fetch('deck.json',{cache:'no-store'});
+                        const bb=await rr.json();srvLinked=true;load(bb);unbanner();}),900);
+            return;
+          }
         }
         srvLinked=true;load(b);return;
       }

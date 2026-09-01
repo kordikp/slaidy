@@ -56,6 +56,32 @@ def budget(model, asked):
 DECK = None
 
 
+def shown(p):
+    """A path as it is worth showing: relative while that is shorter and does
+    not climb out of the tree, ~ for the home directory, absolute otherwise."""
+    try:
+        rel = os.path.relpath(p, os.getcwd())
+        if not rel.startswith(".."):
+            return rel
+    except Exception:
+        pass
+    home = os.path.expanduser("~")
+    return ("~" + p[len(home):]) if p.startswith(home + "/") else p
+
+
+def ok_deck_path(want):
+    """A path this server may read or write: absolute, .json, in a directory
+    that exists. A local server doing what a page asks is fine; doing it
+    anywhere at all is not."""
+    want = os.path.abspath(os.path.expanduser(want))
+    if not want.endswith(".json"):
+        return None, "a deck is a .json file"
+    d = os.path.dirname(want)
+    if not os.path.isdir(d):
+        return None, "no such directory: %s" % d
+    return want, None
+
+
 def app_stamp():
     """Which copy of the application is being served — the question behind
     every "this looks like an old version". A hash of the file and when it was
@@ -102,13 +128,24 @@ class Handler(SimpleHTTPRequestHandler):
     # could then never fire.
     def do_GET(self):
         if DECK and self.path.split("?")[0].rstrip("/") in ("/deck.json", "/api/deck"):
+            # Open: a path the window's file dialog gave the page. From here on
+            # that file is the deck, the same as if studio.sh had been given it.
+            import urllib.parse as _up
+            wantp = _up.parse_qs(_up.urlparse(self.path).query).get("path", [None])[0]
+            if wantp and self.path.split("?")[0].rstrip("/") == "/deck.json":
+                wantp, why = ok_deck_path(wantp)
+                if why:
+                    return self._json(400, {"error": why})
+                if not os.path.isfile(wantp):
+                    return self._json(404, {"error": "no such file: %s" % shown(wantp)})
+                globals()["DECK"] = wantp
             if self.path.split("?")[0].rstrip("/") == "/api/deck":
                 st = os.stat(DECK) if os.path.exists(DECK) else None
                 # what the AI actually is, so the page can say so rather than
                 # repeating what is true of the public demo and nowhere else
                 host = BASE.split("//")[-1].split("/")[0]
                 return self._json(200, {
-                    "path": os.path.relpath(DECK, os.getcwd()), "abs": DECK,
+                    "path": shown(DECK), "abs": DECK,
                     "writable": os.access(os.path.dirname(DECK) or ".", os.W_OK),
                     "mtime": int(st.st_mtime * 1000) if st else 0,
                     "size": st.st_size if st else 0,
@@ -138,8 +175,24 @@ class Handler(SimpleHTTPRequestHandler):
         return SimpleHTTPRequestHandler.do_HEAD(self)
 
     def do_PUT(self):
-        if not DECK or self.path.rstrip("/") != "/api/deck":
+        global DECK
+        base = self.path.split("?")[0].rstrip("/")
+        if base != "/api/deck":
             return self._json(404, {"error": "no such endpoint"})
+        # Save As: the page has been given a path by the window's file dialog,
+        # and from here on that path is the deck. Absolute, inside a directory
+        # that exists and can be written, and ending .json — a local server
+        # writing wherever a page asks is not a thing to be casual about.
+        import urllib.parse as _up
+        want = _up.parse_qs(_up.urlparse(self.path).query).get("as", [None])[0]
+        if want:
+            want, why = ok_deck_path(want)
+            if why:
+                return self._json(400, {"error": why})
+            if not os.access(os.path.dirname(want), os.W_OK):
+                return self._json(400, {"error": "cannot write into %s" % os.path.dirname(want)})
+        if not DECK and not want:
+            return self._json(404, {"error": "no deck to write"})
         try:
             n = int(self.headers.get("Content-Length") or 0)
             # a deck is a megabyte or two; anything near a hundred is not one, and
@@ -157,7 +210,11 @@ class Handler(SimpleHTTPRequestHandler):
         # moved since, something else wrote it — another tab, or a script. Say
         # so instead of overwriting; losing work silently is the one outcome
         # worth failing a save over.
-        seen = self.headers.get("X-Deck-Mtime")
+        if want:                      # a new file: nothing to conflict with
+            DECK = want
+            seen = None
+        else:
+            seen = self.headers.get("X-Deck-Mtime")
         if seen and os.path.exists(DECK):
             now = int(os.stat(DECK).st_mtime * 1000)
             if abs(now - int(seen)) > 1000:
@@ -201,7 +258,8 @@ class Handler(SimpleHTTPRequestHandler):
         sys.stderr.write("  saved %s  (%d slides, %.1f MB)\n"
                          % (os.path.relpath(DECK, os.getcwd()), len(d["slides"]), len(raw) / 1e6))
         sys.stderr.flush()
-        return self._json(200, {"ok": True, "mtime": int(os.stat(DECK).st_mtime * 1000)})
+        return self._json(200, {"ok": True, "mtime": int(os.stat(DECK).st_mtime * 1000),
+                                "path": shown(DECK), "abs": DECK})
 
     def do_POST(self):
         if self.path.rstrip("/") != "/api/generate":

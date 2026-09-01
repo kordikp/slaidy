@@ -1,6 +1,9 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SlAIdy</title>
+<!-- The tab is how you tell two decks apart, so it carries a mark of its own
+     and the deck name goes in front of it. Inline, like everything else. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%234B3FCF%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%2216%22%20width%3D%2240%22%20height%3D%2224%22%20rx%3D%223%22%20fill%3D%22%23fff%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2220%22%20width%3D%2218%22%20height%3D%223.4%22%20rx%3D%221.7%22%20fill%3D%22%234B3FCF%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2227%22%20width%3D%2224%22%20height%3D%222.6%22%20rx%3D%221.3%22%20fill%3D%22%23C9C3F6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2232%22%20width%3D%2219%22%20height%3D%222.6%22%20rx%3D%221.3%22%20fill%3D%22%23C9C3F6%22%2F%3E%3Cpath%20d%3D%22M46%2044l2.2%204.8L53%2051l-4.8%202.2L46%2058l-2.2-4.8L39%2051l4.8-2.2z%22%20fill%3D%22%23F59E0B%22%2F%3E%3C%2Fsvg%3E">
 <style>
 :root{
  /* the desk is cool and quiet so the figures carry every colour */
@@ -729,6 +732,10 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bCfg2">AI usage…</button>
     </div>
   </div>
+  <button class="ic" id="bOpenNow" title="Open a deck…"><svg viewBox="0 0 14 14" width="15" height="15"
+    fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><path d="M1.4 11.2V3.4a1 1 0 0 1 1-1h3l1.4 1.6h4.8a1 1 0 0 1 1 1v1"/><path
+    d="M1.4 11.2l1.7-4.6h10.2l-1.7 4.6a1 1 0 0 1-.94.66H2.4a1 1 0 0 1-1-.66z"/></svg></button>
   <button class="ic" id="bSaveNow" title="Save now (Ctrl-S)"><svg viewBox="0 0 14 14" width="15" height="15"
     fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"
     aria-hidden="true"><path d="M2.6 2.4h6.2l2.6 2.6v6.6a1 1 0 0 1-1 1H2.6a1 1 0 0 1-1-1V3.4a1 1 0 0 1 1-1z"/><path
@@ -1998,6 +2005,13 @@ function slideMenu(e,i){
     m.remove();document.removeEventListener('click',off);},{once:true}),0);
 }
 
+/* Every window was called SlAIdy, so two decks open side by side were two tabs
+   you could not tell apart. The deck goes first, because that is the thing that
+   differs; the mark in front of it is what says which application it is. */
+function titleTab(){
+  const t=(S.title||'').trim();
+  document.title=(t?t+' · ':'')+'SlAIdy';
+}
 function paintNav(){
   const el=document.getElementById('nav');el.innerHTML='';let g=null,sb=null;
   S.slides.forEach((s,i)=>{
@@ -2034,8 +2048,17 @@ function paintNav(){
       }
       PICKED.clear();anchor=i;cur=i;paint();};
     d.oncontextmenu=e=>slideMenu(e,i);
-    d.ondragstart=e=>{e.dataTransfer.setData('i',i);e.dataTransfer.effectAllowed='move';d.classList.add('dragging');};
-    d.ondragend=()=>{d.classList.remove('dragging');dragOff.call(d);};
+    d.ondragstart=e=>{
+      /* Dragging one of a selection drags the selection. It used to send a
+         single index, so picking up three slides moved the one under the
+         cursor and left the other two behind. */
+      if(!PICKED.has(i)){PICKED.clear();PICKED.add(i);anchor=i;}
+      e.dataTransfer.setData('i',picked().join(','));
+      e.dataTransfer.effectAllowed='move';
+      el.querySelectorAll('.item').forEach((x,k)=>x.classList.toggle('dragging',PICKED.has(k)));
+    };
+    d.ondragend=()=>{el.querySelectorAll('.item.dragging').forEach(x=>x.classList.remove('dragging'));
+      dragOff.call(d);};
     d.ondragover=dragOver;d.ondragleave=dragOff;d.ondrop=dropAt;
     el.appendChild(d);
   });
@@ -2141,17 +2164,28 @@ function dragOver(e){
 function dragOff(){this.style.boxShadow='';}
 function dropAt(e){
   e.preventDefault();e.stopPropagation();dragOff.call(this);
-  const from=+e.dataTransfer.getData('i');if(isNaN(from))return;
+  const from=String(e.dataTransfer.getData('i')||'').split(',')
+    .map(Number).filter(n=>!isNaN(n)&&S.slides[n]).sort((a,b)=>a-b);
+  if(!from.length)return;
   let to=+this.dataset.i+(this.dataset.below?1:0);
-  if(from===to)return;
-  snap('move slide');
-  const[m]=S.slides.splice(from,1);
-  if(from<to)to--;
-  S.slides.splice(to,0,m);
-  /* adopt the section it landed in — otherwise the list grows a stray header mid-act */
-  const nb=S.slides[to-1]||S.slides[to+1];
-  if(nb&&nb.group&&nb.group!==m.group){m.group=nb.group;toast('Moved into '+nb.group);}
-  if(nb)m.sub=nb.sub||null;
+  if(from.length===1&&from[0]===to)return;
+  if(from.indexOf(to)>=0||from.indexOf(to-1)>=0&&from.length===1)return;
+  snap(from.length>1?'move slides':'move slide');
+  /* Lift them all out first, then count how many came from above the target —
+     taking them one at a time would shift the target under our feet. */
+  const moved=from.map(i=>S.slides[i]);
+  const above=from.filter(i=>i<to).length;
+  from.slice().reverse().forEach(i=>S.slides.splice(i,1));
+  to-=above;
+  S.slides.splice(to,0,...moved);
+  /* adopt the section they landed in — otherwise the list grows a stray header mid-act */
+  const nb=S.slides[to-1]||S.slides[to+moved.length];
+  if(nb&&nb.group&&nb.group!==moved[0].group){
+    moved.forEach(m=>{m.group=nb.group;m.sub=nb.sub||null;});
+    toast(`Moved ${moved.length>1?moved.length+' slides':''} into ${nb.group}`.replace('  ',' '));
+  }else if(nb)moved.forEach(m=>{m.sub=nb.sub||null;});
+  PICKED.clear();
+  moved.forEach((_,k)=>PICKED.add(to+k));
   cur=to;normalise();touch();paint();
 }
 function moveSlide(d){
@@ -5947,6 +5981,7 @@ document.getElementById('bSaveNow').onclick=()=>{
   const b=document.getElementById('bSaveNow');b.disabled=true;
   persist().then(()=>{b.disabled=false;toast(saveErr?'Could not save — '+saveErr:'Saved');});};
 document.getElementById('bOpen').onclick=openDeckFile;
+document.getElementById('bOpenNow').onclick=openDeckFile;
 document.getElementById('bSaveAs').onclick=saveDeckAs;
 document.getElementById('bNewDeck').onclick=newDeck;
 /* The browser keeps every deck it has held, and until now the only way back to
@@ -5973,6 +6008,7 @@ document.getElementById('bDel').onclick=()=>deleteSlide(cur);
 
 function paint(){
   applyStyle();
+  titleTab();
   document.getElementById('deckInfo').textContent=
     S.slides.length?`${S.title} · ${S.slides.length} slides · ${Object.keys(S.figs).length} figures`:'no deck';
   paintNav();paintBoard();paintSide();
@@ -6133,6 +6169,22 @@ async function boot(){
   if(!srvDeck&&!fileHandle&&canFile())setTimeout(()=>banner(
     'Editing a copy in this browser. Point it at the file to save straight to disk.',
     'Choose the file',()=>saveDeckAs()),1200);
+  offerNewer(file&&file.id);
+}
+/* The browser keeps a copy of every deck it has held, but boot only ever looked
+   for one under the id of the deck.json beside the page. Open somebody's file
+   on a static page, edit it, come back — and the page loads the example again
+   with your work sitting in storage under another name, unmentioned. Say it. */
+async function offerNewer(loadedId){
+  try{
+    const rows=(await heldDecks()).filter(r=>r.id!==loadedId&&r.n&&r.at);
+    if(!rows.length)return;
+    const r=rows[0];
+    if(Date.now()-r.at>60*24*3600e3)return;            /* a deck from months ago is not news */
+    setTimeout(()=>banner(
+      `This browser also holds “${r.title||r.id}” — ${r.n} slide${r.n===1?'':'s'}, `+
+      `last edited ${new Date(r.at).toLocaleString()}.`,'Open it',()=>recentDecks()),2400);
+  }catch(e){}
 }
 function banner(text,label,fn){
   let el=document.getElementById('nudge');

@@ -474,6 +474,25 @@ losing what someone wrote is worse than an untidy column.
 Tidy rearranges the five hero layouts and leaves the rest alone: it measures type and
 figures, and a named layout is a decision.
 
+### Where a deck actually is
+
+Three places, and the pill in the bar says which. **A file on disk**, when the browser holds
+a handle to it (Chrome's File System Access) or when `studio.sh` is serving it — then Save
+writes the file and there is one copy of the work. **This browser**, always, as the safety
+net: IndexedDB with localStorage behind it. **Nowhere else** — nothing is uploaded.
+
+The trap is a page with no file: on `kordikp.github.io/slaidy/` there is no server, so unless
+you pressed *Choose the file* the deck lives only in that browser, under that origin. Save
+then means "saved in this browser", which is what the pill says and what the banner offers to
+change — but it is not what a file on your disk does, and the file does not move.
+
+Boot used to make that worse. It looked in storage only for a deck under the **id of the
+`deck.json` beside the page**, so a deck of your own, opened on a static page and edited,
+came back to a page showing the example with your work sitting in storage under another
+name and nothing said about it. Now `offerNewer()` looks at everything the browser holds and
+puts up a line naming the newest deck that is not the one just loaded, with one button to
+open it. `⋯ → Decks in this browser…` is the same list, on demand.
+
 ### Which deck the served file belongs to
 
 `studio.sh` serves one deck and writes it back at `PUT /api/deck`. `srvDeck` is that file;

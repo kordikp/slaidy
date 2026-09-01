@@ -121,6 +121,17 @@ addEventListener('load',async()=>{
   ok('opened safely, like every other outbound link',
      /noopener/.test(logo.getAttribute('rel'))&&logo.target==='_blank',logo.getAttribute('rel'));
   ok('the document is titled that too',/SlAIdy/.test(d.title),d.title);
+  // two decks open side by side were two tabs you could not tell apart
+  ok('and the deck comes first, because that is what differs',
+     d.title.indexOf(w.S.title)===0&&/· SlAIdy$/.test(d.title),d.title);
+  ok('the tab carries a mark of its own',
+     !!d.querySelector('link[rel="icon"][href^="data:image/svg+xml"]'));
+  // open sits next to save, since they are the two things you do to a file
+  const bar=[...d.querySelectorAll('#bar .ic')].map(b=>b.id);
+  ok('open is on the bar, beside save',
+     bar.indexOf('bOpenNow')>=0&&bar.indexOf('bOpenNow')===bar.indexOf('bSaveNow')-1,bar.join(' '));
+  ok('and it is the same action as the one in the menu',
+     d.getElementById('bOpenNow').onclick===d.getElementById('bOpen').onclick);
 
   w.configure();await wait(200);
   const pres=[...d.querySelectorAll('#cPre button')].map(b=>b.textContent);

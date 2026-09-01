@@ -157,6 +157,40 @@ addEventListener('load',async()=>{
      m2.textContent.replace(/\s+/g,' ').slice(0,60));
   m2.remove();
 
+  // ---------- dragging a selection drags the selection ----------
+  // Reported: pick three slides in the list, drag them somewhere else, and only
+  // the one under the cursor moved. It sent a single index.
+  const titles=()=>w.S.slides.map(x=>x.title);
+  const t0=titles();
+  const items=()=>d.querySelectorAll('#nav .item');
+  ok('the deck has enough slides to drag within',t0.length>=4,t0.length+' slides');
+  w.PICKED.clear();[0,1].forEach(i=>w.PICKED.add(i));w.paint();await wait(250);
+  const want=[t0[0],t0[1]];
+  const dt=new W.DataTransfer();
+  items()[0].dispatchEvent(new W.DragEvent('dragstart',{bubbles:true,dataTransfer:dt}));
+  ok('the drag carries every selected slide',dt.getData('i')==='0,1',dt.getData('i'));
+  ok('and both are marked as moving',
+     [...items()].filter(x=>x.classList.contains('dragging')).length===2,
+     String([...items()].filter(x=>x.classList.contains('dragging')).length));
+  const list=[...items()];
+  const target=list[list.length-1];
+  target.dataset.below='1';
+  target.dispatchEvent(new W.DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:dt}));
+  await wait(350);
+  const t1=titles();
+  ok('the deck is the same length',t1.length===t0.length,t1.length+' of '+t0.length);
+  const at=t1.indexOf(want[0]);
+  ok('both landed, in order, together',
+     at>=0&&t1[at+1]===want[1],
+     t1.map(x=>x.slice(0,10)).join(' | '));
+  ok('and they moved to the end, where they were dropped',at===t1.length-2,
+     'now at '+at+' of '+t1.length);
+  ok('they stay selected where they landed',
+     [...w.PICKED].sort((a,b)=>a-b).join()===[at,at+1].join(),[...w.PICKED].join());
+  w.undo();await wait(250);
+  ok('one undo puts the order back',titles().join('|')===t0.join('|'));
+  w.PICKED.clear();
+
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

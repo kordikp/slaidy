@@ -27,6 +27,7 @@ PORT="${PORT:-8080}"
 [ -f "$DECK" ] || { echo "No such deck: $DECK"; echo "Available:"; ls -1 decks/*.json 2>/dev/null || echo "  (none — run scripts/build_bundle.py)"; exit 1; }
 [ -f slaidy.html ] || { echo "slaidy.html is missing"; exit 1; }
 
+STAMP=$(sha1sum slaidy.html | cut -c1-7)
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 # The DECK is deliberately not copied in. `cp` stamps the copy with the current
@@ -94,7 +95,7 @@ case "${OPENAI_BASE_URL:-}" in
   *)                       AI_VIA="${OPENAI_BASE_URL}";;
 esac
 
-echo "SlAIdy  ·  $(basename "$DECK")${AI_VIA:+  ·  AI via $AI_VIA}"
+echo "SlAIdy $STAMP  ·  $(basename "$DECK")${AI_VIA:+  ·  AI via $AI_VIA}"
 echo "  http://localhost:$PORT"
 echo "  Ctrl-C to stop. Your edits are stored by the browser under that address,"
 echo "  so always start it the same way — or keep a copy with Export."
@@ -111,7 +112,10 @@ echo
 # the dock. Its own profile means its own process, which owns its own window.
 open_window() {
   sleep 1
-  local url="http://localhost:$PORT"
+  # The address carries the hash of the file being served. A cache cannot
+  # answer for a url it has never seen, so a window opened this way is the
+  # application that was just installed and not a copy of last week's.
+  local url="http://localhost:$PORT/?v=$STAMP"
   local prof="${XDG_DATA_HOME:-$HOME/.local/share}/slaidy/browser"
   local b
   for b in google-chrome chromium chromium-browser brave-browser microsoft-edge; do

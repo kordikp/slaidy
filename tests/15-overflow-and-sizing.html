@@ -43,7 +43,8 @@ addEventListener('load',async()=>{
   // ---------- the warning does something ----------
   const flag=d.getElementById('overflag');
   const acts=[...flag.querySelectorAll('button')].map(b=>b.dataset.fix);
-  ok('the warning offers fixes',acts.join(',')==='tidy,small,notes',acts.join(','));
+  ok('the warning offers fixes, and a way to leave it alone',
+     acts.join(',')==='tidy,small,notes,hide',acts.join(','));
 
   flag.querySelector('[data-fix="small"]').click();await wait(250);
   ok('smaller picture shrinks the last figure',/!\[\[fig-panel-1\|85%\]\]/.test(w.S.slides[i].body),
@@ -180,6 +181,26 @@ addEventListener('load',async()=>{
   ok('the backdrop is the same size in the editor and on the projector',
      Math.abs(asShown-inEditor)<8,inEditor+' vs '+asShown);
   w.S.slides[bi2].layout='text';w.setFigSize(w.S.slides[bi2],0,100);w.paint();await wait(200);
+
+  // ---------- the warning can be sent away ----------
+  // A warning you cannot dismiss is not advice, it is nagging — and this one is
+  // about a slide you may have meant to leave exactly as it is.
+  const ovIx=w.S.slides.length-1, ovSlide=w.S.slides[ovIx];
+  ovSlide.layout='text'; ovSlide.flags=[]; ovSlide.textScale=130;
+  ovSlide.body=Array.from({length:14},(_,i)=>'A paragraph, the '+(i+1)+'th of them, long enough that fourteen of them cannot fit.').join('\n\n');
+  w.cur=ovIx; w.paint(); await wait(400);
+  const ovf=d.getElementById('overflag');
+  ok('a slide that spills says so',ovf.classList.contains('on'),ovf.className);
+  ok('and offers a way to leave it alone',!!ovf.querySelector('[data-fix="hide"]'));
+  ovf.querySelector('[data-fix="hide"]').click(); await wait(200);
+  ok('which takes it down',!ovf.classList.contains('on'),ovf.className);
+  w.checkFit();
+  ok('and it stays down while the slide is what it was',!ovf.classList.contains('on'));
+  ovSlide.body+='\n\nOne more, which changes the slide.';
+  w.paint(); await wait(300);
+  ok('but comes back when the slide changes, because then it is news again',
+     d.getElementById('overflag').classList.contains('on'));
+  ovSlide.textScale=100; ovSlide.body='Short again.'; w.paint(); await wait(250);
 
   // ---------- Tidy places the room as well as measuring it ----------
   // A short slide sat glued to the top with the whole of the rest empty under

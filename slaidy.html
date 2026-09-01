@@ -340,6 +340,7 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
  border:1px solid #F0B4B7;border-radius:20px;padding:3px 5px 3px 13px;display:none;
  align-items:center;gap:5px}
 #overflag.on{display:flex}
+#overflag button.x{border-color:transparent;background:transparent;padding:2px 6px;font-size:12px}
 #overflag button{font-size:11px;color:#B4232A;background:#fff;border:1px solid #F0B4B7;
  border-radius:20px;padding:2px 9px;transition:.12s}
 #overflag button:hover{background:#B4232A;color:#fff;border-color:#B4232A}
@@ -2394,7 +2395,8 @@ function paintBoard(){
     <div id="overflag"><span>past the edge of the slide</span>
       <button data-fix="tidy">Fit it</button>
       <button data-fix="small">Smaller picture</button>
-      <button data-fix="notes">Move the tail to the notes</button></div>
+      <button data-fix="notes">Move the tail to the notes</button>
+      <button data-fix="hide" class="x" title="Leave it as it is">✕</button></div>
     <div class="offstage notes"><div class="lbl">Speaker notes · not projected</div>
       <div class="noteview" id="noteView">${(s.notes||'').trim()
         ? notesHtml(s.notes)
@@ -2425,6 +2427,13 @@ function paintBoard(){
   };
   document.getElementById('overflag').onclick=e=>{
     const f=e.target.dataset?.fix;if(!f)return;
+    if(f==='hide'){
+      const sl=S.slides[cur];
+      fitOff=cur+':'+(sl.body||'').length+':'+(sl.textScale||100)+':'+(sl.flags||[]).join();
+      document.getElementById('overflag').classList.remove('on');
+      document.querySelector('#sheet .stagewrap')?.classList.remove('over');
+      return;
+    }
     if(f==='tidy'){snap('tidy');tidyDeck([cur]);touch();paint();
       setTimeout(()=>{
         const still=document.getElementById('overflag')?.classList.contains('on');
@@ -2469,11 +2478,19 @@ function scaleStage(){
   w.style.height=(720*k+(w.offsetHeight-w.clientHeight))+'px';   /* the border is not part of the stage */
 }
 
+/* Told once, and then left alone. A warning you cannot dismiss is not advice,
+   it is nagging — and this one is about a slide you may have meant to leave
+   exactly as it is. Dismissing lasts until the slide changes, because then it
+   is news again. */
+let fitOff='';
 function checkFit(){
   const f=document.getElementById('overflag');if(!f)return;
   const b=document.querySelector('#sheet .stage .tx');
   let over=false;
   if(b)over=b.scrollHeight>b.clientHeight+3;
+  const s=S.slides[cur];
+  const key=s?cur+':'+(s.body||'').length+':'+(s.textScale||100)+':'+(s.flags||[]).join():'';
+  if(over&&fitOff===key)over=false;
   f.classList.toggle('on',over);
   document.querySelector('#sheet .stagewrap')?.classList.toggle('over',over);
 }
@@ -3681,7 +3698,7 @@ async function newDeck(){
   }else{
     dirty=true;setStatus('warn');
     banner('This browser cannot pick a file, so the deck lives here until you export it.',
-      'Export a copy',()=>downloadDeck());
+      'Export a copy',()=>downloadDeck(),'no-file');
   }
 }
 
@@ -6483,7 +6500,7 @@ async function boot(){
     toast('Continuing with your edits — newer than the file on disk');
     setTimeout(()=>{
       if(!fileHandle)banner('These edits live in this browser only.',
-        'Save to a file',()=>saveDeckAs());
+        'Save to a file',()=>saveDeckAs(),'no-file');
     },900);
     return;
   }
@@ -6515,7 +6532,7 @@ async function boot(){
   }
   if(!srvDeck&&!fileHandle&&canFile())setTimeout(()=>banner(
     'Editing a copy in this browser. Point it at the file to save straight to disk.',
-    'Choose the file',()=>saveDeckAs()),1200);
+    'Choose the file',()=>saveDeckAs(),'no-file'),1200);
   offerNewer(file&&file.id);
 }
 /* The browser keeps a copy of every deck it has held, but boot only ever looked
@@ -6537,14 +6554,21 @@ async function offerNewer(loadedId){
    "Editing a copy in this browser" is a fair thing to say until you point it at
    a file, and an infuriating thing to keep saying afterwards. */
 function unbanner(){document.getElementById('nudge')?.classList.remove('on');}
-function banner(text,label,fn){
+/* A banner with a key is one that would otherwise appear every time the
+   application starts. Dismissing that kind means it, and stays meant. */
+const HUSH='slaidy:hushed';
+const hushed=k=>{try{return (JSON.parse(localStorage.getItem(HUSH)||'[]')).indexOf(k)>=0;}catch(e){return false;}};
+function hush(k){try{const l=JSON.parse(localStorage.getItem(HUSH)||'[]');
+  if(l.indexOf(k)<0){l.push(k);localStorage.setItem(HUSH,JSON.stringify(l));}}catch(e){}}
+function banner(text,label,fn,key){
+  if(key&&hushed(key))return;
   let el=document.getElementById('nudge');
   if(!el){el=document.createElement('div');el.id='nudge';document.body.appendChild(el);}
   el.innerHTML=`<span>${esc(text)}</span><button id="nudgeGo">${esc(label)}</button>`+
-    `<button id="nudgeNo" title="Dismiss">✕</button>`;
+    `<button id="nudgeNo" title="${key?'Do not tell me this again':'Dismiss'}">✕</button>`;
   el.classList.add('on');
   document.getElementById('nudgeGo').onclick=()=>{el.classList.remove('on');fn();};
-  document.getElementById('nudgeNo').onclick=()=>el.classList.remove('on');
+  document.getElementById('nudgeNo').onclick=()=>{el.classList.remove('on');if(key)hush(key);};
 }
 boot();
 </script></body></html>

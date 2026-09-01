@@ -610,6 +610,20 @@ A launcher icon that always opens the sample deck is a launcher icon you stop pr
   a file on the disk. They were two menu entries, and the one that could rescue an afternoon
   was the one nobody knew was there.
 
+### Told once
+
+A warning you cannot dismiss is not advice, it is nagging. Two of them were.
+
+**"Past the edge of the slide"** now carries an ✕. Dismissing it lasts as long as the slide
+does — the key is the slide's body length, type size and flags — so it comes back when the
+slide changes, because then it is news again, and stays away while you are looking at a
+slide you meant to leave exactly as it is.
+
+**Banners that appear at startup** take a key. Dismissing one of those means it, and keeps
+meaning it: `banner(text, label, fn, 'no-file')` is not shown again once its ✕ has been
+pressed, remembered in `localStorage`. The ones without a key are answers to something you
+just did, and those are supposed to appear every time.
+
 ### Starting up
 
 The window is opened when the server answers, not a second after it was asked to start.

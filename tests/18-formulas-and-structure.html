@@ -49,7 +49,9 @@ addEventListener('load',async()=>{
   // ---------- blocks the editor now understands ----------
   const B=w.blocks;
   ok('#### is a heading, not a paragraph',B('#### A head')[0].kind==='head');
-  ok('### is left alone — it starts a slide',B('### Not a head')[0].kind!=='head');
+  /* ### used to be left alone because it starts a slide in a file. A slide start
+     is a numbered line, so a bare ### is free to be the biggest heading. */
+  ok('### is the big heading inside a slide',B('### A big head')[0].kind==='head');
   const cb=B('```python\nx = 1\ny = 2\n```');
   ok('a fenced block is one block',cb.length===1&&cb[0].kind==='code',JSON.stringify(cb.map(x=>x.kind)));
   ok('and keeps its lines',/x = 1\ny = 2/.test(cb[0].src));
@@ -62,6 +64,32 @@ addEventListener('load',async()=>{
 
   ok('a heading renders as a heading',/<h3 class="bh/.test(w.block(B('#### Head')[0])));
   ok('##### is the smaller one',/<h4 class="bh/.test(w.block(B('##### Small')[0])));
+  ok('### renders as the largest',/<h2 class="bh h3/.test(w.block(B('### Big')[0])));
+  // ---------- ### on a slide, and in the markdown editor ----------
+  {
+    const s0=w.S.slides[0], keep=s0.body;
+    s0.body='### Subtitle on the slide\n\nA line under it.\n\n1. first\n2. second\n3. third';
+    w.cur=0;w.paint();await wait(150);
+    const h2=d.querySelector('#sheet .stage .tx h2.bh'),h3p=d.querySelector('#sheet .stage .tx p');
+    ok('a ### line is drawn as a big subheading',!!h2&&/Subtitle/.test(h2.textContent));
+    ok('and it is larger than the body',!!h2&&!!h3p&&parseFloat(getComputedStyle(h2).fontSize)>1.2*parseFloat(getComputedStyle(h3p).fontSize),
+       h2&&h3p?getComputedStyle(h2).fontSize+' vs '+getComputedStyle(h3p).fontSize:'missing');
+    // the numbered list's markers were cut off at the left edge of the column
+    const ol=d.querySelector('#sheet .stage .tx ol'),txin=d.querySelector('#sheet .stage .txin')||d.querySelector('#sheet .stage .tx');
+    const fs=ol?parseFloat(getComputedStyle(ol).fontSize):16;
+    ok('a numbered list leaves room for its markers',!!ol&&ol.getBoundingClientRect().left-txin.getBoundingClientRect().left>=1.6*fs*(txin.getBoundingClientRect().width/txin.offsetWidth||1)/ (1),
+       ol?Math.round(ol.getBoundingClientRect().left-txin.getBoundingClientRect().left)+'px for '+Math.round(fs)+'px type':'no list');
+    // the round trip through the file keeps it a heading, not a second slide
+    const md=w.slideMd(s0), back=w.mdParse(md,s0);
+    ok('exported and read back, a bare ### stays inside the slide',back.length===1&&/^### Subtitle/m.test(back[0].body),
+       back.length+' slides · '+(back[0]?back[0].body.slice(0,30):''));
+    // in the markdown editor a numbered ### starts another slide, a bare one does not
+    const two=w.mdParse('### First\n\nOne.\n\n### 2. Second\n\nTwo.',s0);
+    ok('"### 2. Title" in the editor splits the slide',two.length===2&&two[1].title==='Second',two.length+' slides');
+    const one=w.mdParse('### First\n\nOne.\n\n### A subheading\n\nMore.',s0);
+    ok('a bare second ### is a subheading, not a split',one.length===1&&/### A subheading/.test(one[0].body),one.length+' slides');
+    s0.body=keep;w.paint();await wait(60);
+  }
   ok('code renders as pre',/<pre class="cb"/.test(w.block(cb[0])));
   ok('and names its language',/data-lang="python"/.test(w.block(cb[0])));
   ok('a display formula centres',/mathblock/.test(w.block(mb[0]))&&/display="block"/.test(w.block(mb[0])));

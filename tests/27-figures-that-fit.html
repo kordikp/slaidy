@@ -1,0 +1,68 @@
+<!doctype html><meta charset=utf-8><body style="margin:0">
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,90000);
+addEventListener('load',async()=>{
+ try{
+  // ---------- figures that fit ----------
+  // Generated figures fail in two ways a prompt alone never fixes: fat arrows,
+  // and labels that run out of their boxes or across a neighbour. The validator
+  // measures both with the browser's own layout, so the drawing loop can send a
+  // faulty figure back with the measurements.
+  const f=document.createElement('iframe');
+  f.style.cssText='width:1000px;height:640px;border:0;position:absolute;left:-9999px;top:0';
+  f.src='/index.html?27'; document.body.appendChild(f);
+  await new Promise(r=>{f.onload=r;setTimeout(r,9000);});
+  const W=f.contentWindow; await W.__ready; await wait(300);
+  const chk=W.__api.checkSvg;
+  const KF='<style>@keyframes a{to{opacity:.9}}.p{animation:a 6s infinite}</style>';
+  const wrap=b=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#FAFAF7"/>${KF}${b}</svg>`;
+
+  // a clean figure: thin arrow, small marker, label inside a wide box
+  const good=wrap(`<defs><marker id="m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M1 1L9 5L1 9Z" fill="#6B7280"/></marker></defs>
+    <rect x="20" y="60" width="160" height="50" rx="8" fill="#E0F2FE"/><text x="100" y="90" font-size="14" text-anchor="middle" fill="#075985">candidates</text>
+    <line x1="190" y1="85" x2="260" y2="85" stroke="#6B7280" stroke-width="1.5" marker-end="url(#m)"/>
+    <rect x="270" y="60" width="110" height="50" rx="8" fill="#D1FAE5"/><text x="325" y="90" font-size="14" text-anchor="middle" fill="#065F46">ranker</text>`);
+  const g=chk(good);
+  ok('a clean figure passes the geometry checks', !g.some(x=>/thick|arrowheads|spill|overlap/.test(x)), g.join('; ')||'no complaints');
+
+  // fat strokes and a huge marker
+  const fat=wrap(`<defs><marker id="m2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="14" markerHeight="14" orient="auto"><path d="M1 1L9 5L1 9Z" fill="#6B7280"/></marker></defs>
+    <line x1="40" y1="100" x2="300" y2="100" stroke="#6B7280" stroke-width="6" marker-end="url(#m2)"/>`);
+  const r1=chk(fat);
+  ok('a 6-unit stroke is called thick', r1.some(x=>/thick/.test(x)), r1.join('; '));
+  ok('a 14-unit marker is called fat', r1.some(x=>/arrowheads/.test(x)), r1.join('; '));
+
+  // a label too long for its box
+  const spilt=wrap(`<rect x="20" y="60" width="90" height="40" rx="8" fill="#E0F2FE"/>
+    <text x="65" y="85" font-size="14" text-anchor="middle" fill="#075985">interaction-conditioned attention fusion</text>`);
+  const r2=chk(spilt);
+  ok('a label wider than its box spills', r2.some(x=>/spill/.test(x)), r2.join('; '));
+
+  // a label sitting across a neighbouring box
+  const across=wrap(`<rect x="20" y="60" width="120" height="40" rx="8" fill="#E0F2FE"/>
+    <rect x="150" y="60" width="120" height="40" rx="8" fill="#EDE9FE"/>
+    <text x="150" y="85" font-size="14" text-anchor="middle" fill="#1E1B4B">candidates and rankers</text>`);
+  const r3=chk(across);
+  ok('a label lying across two boxes overlaps', r3.some(x=>/overlap/.test(x)), r3.join('; '));
+
+  // two labels on top of each other
+  const piled=wrap(`<text x="200" y="100" font-size="14" text-anchor="middle">first label</text>
+    <text x="205" y="104" font-size="14" text-anchor="middle">second label</text>`);
+  const r4=chk(piled);
+  ok('two labels on top of each other are reported', r4.some(x=>/labels overlap each other/.test(x)), r4.join('; '));
+
+  // the measuring leaves nothing behind
+  ok('measuring leaves no stray svg in the page', !f.contentDocument.querySelector('#chkbox svg'));
+  ok('and the old checks still run', chk('<svg viewBox="0 0 10 10"><animate/></svg>').some(x=>/SMIL/.test(x)));
+  f.remove();
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

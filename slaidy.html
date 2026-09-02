@@ -3214,6 +3214,27 @@ async function drawFigure(id,s,brief,signal){
   t=t.slice(a,b+6);
   const bad=checkSvg(t).filter(x=>x==='invalid XML'||x==='unparseable');
   if(bad.length)throw new Error(bad.join('; '));
+  /* Thick arrows and labels running out of their boxes are what the validator
+     measures, and one round of "here is what is wrong, fix it" removes most of
+     them. The second attempt is taken as it comes: a figure with a fault beats
+     no figure, and the editor still shows the complaint. */
+  const faults=checkSvg(t).filter(x=>GEOMETRY.test(x));
+  if(faults.length){
+    try{
+      let u=(await llm2(signal,figSys(),
+        `Here is a figure you drew for the slide "${s.title}". The validator measured these faults:\n`+
+        faults.map(f=>' · '+f).join('\n')+
+        `\n\nRedraw it fixing every one of them — thinner strokes, small markers, boxes wide enough for `+
+        `their labels, nothing overlapping — keeping the idea, the labels and the animation.\n\n${t}`,
+        20000,'figure')).trim();
+      u=u.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+      const a2=u.indexOf('<svg'),b2=u.lastIndexOf('</svg>');
+      if(a2>=0&&b2>=0){
+        u=u.slice(a2,b2+6);
+        if(!checkSvg(u).some(x=>x==='invalid XML'||x==='unparseable'))t=u;
+      }
+    }catch(e){ if(e&&e.stopped)throw e; }
+  }
   return trimSvg(t);              /* arrive hugging the drawing, not the canvas */
 }
 
@@ -5433,6 +5454,17 @@ Palette only: #1E1B4B #6B7280 #FFFFFF #FAFAF7 #E5E7EB #0EA5E9 #E0F2FE #075985 #7
 Animation: CSS @keyframes inside one <style>, 6s ease-in-out infinite, transform/opacity only, never SMIL,
 and the figure must read fully in its unanimated state. No gradients, filters, <image> or <foreignObject>.
 Text never below 11px and never within 14px of the canvas edge.
+LINES AND ARROWS ARE THIN. A connector is stroke-width 1.5 to 2, never above 2.5; a box outline
+is 1 to 1.5. Arrowheads are one small <marker> reused by every arrow — viewBox 0 0 10 10,
+markerWidth and markerHeight 5 or 6 — never a hand-drawn polygon per arrow and never bigger
+than the text it points at. Thick strokes and fat arrowheads are the commonest fault in
+generated figures; the validator measures them.
+TEXT FITS. A label sits inside the shape it names, centred (text-anchor="middle"), and the
+shape is drawn wide enough for it: at least 0.6 × font-size × characters, plus 16 units of
+padding. If it does not fit, widen the box or break the label into two <tspan> lines — never
+shrink below 11px and never let it spill past the edge. Labels beside a shape keep 6 units of
+clear space from it. Nothing sits on top of anything else: every box, arrow and label has
+its own room, and the validator checks the boxes against the labels.
 A figure has to read with the animation off — a print takes one frame, so nothing may be
 invisible at rest.
 Return ONLY the complete <svg> element. No fences, no commentary.`;
@@ -5833,6 +5865,68 @@ function shortcuts(){
         text-transform:uppercase;color:var(--faint)">${esc(k.slice(1))}</td></tr>`).join('')+
     '</table>');
 }
+/* The two faults a prompt alone never removes are thick strokes and labels that
+   run out of their boxes or across their neighbours. Both can be measured, so
+   they are: the figure is mounted out of sight with its animation off, and the
+   browser's own layout says where every label and box actually is. */
+function measureSvg(svg){
+  const p=[];
+  if(typeof document==='undefined'||!document.body)return p;
+  let box=document.getElementById('chkbox');
+  if(!box){box=document.createElement('div');box.id='chkbox';
+    box.style.cssText='position:absolute;left:-9999px;top:0;width:800px;visibility:hidden;pointer-events:none';
+    document.body.appendChild(box);}
+  try{
+    box.innerHTML=scopeSvg(svg,'chk'+(++CHK_N));
+    const st=document.createElement('style');
+    st.textContent='#chkbox *{animation:none!important;transition:none!important}';
+    box.appendChild(st);
+    const root=box.querySelector('svg');if(!root)return p;
+    const vb=(root.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+    const W=vb.length===4&&vb[2]>0?vb[2]:800, k=root.getBoundingClientRect().width/W||1;  /* px per unit */
+    /* strokes: the attribute or the computed style, in user units */
+    let thick=0;
+    root.querySelectorAll('line,path,polyline').forEach(el=>{
+      const sw=parseFloat(getComputedStyle(el).strokeWidth)||0;
+      if(getComputedStyle(el).stroke!=='none'&&sw>3)thick=Math.max(thick,sw);});
+    if(thick)p.push(`lines ${Math.round(thick*10)/10} thick (keep connectors under 2.5)`);
+    let fat=0;
+    root.querySelectorAll('marker').forEach(m=>{
+      const w=parseFloat(m.getAttribute('markerWidth')||3),h=parseFloat(m.getAttribute('markerHeight')||3);
+      if(Math.max(w,h)>8)fat=Math.max(fat,w,h);});
+    if(fat)p.push(`arrowheads ${fat} wide (keep markers at 5 or 6)`);
+    /* boxes and labels, in screen px, background excluded */
+    const R=root.getBoundingClientRect(), area=R.width*R.height;
+    const rects=[...root.querySelectorAll('rect')].map(r=>r.getBoundingClientRect())
+      .filter(r=>r.width*r.height<0.8*area&&r.width>0&&r.height>0);
+    const texts=[...root.querySelectorAll('text')].map(t=>t.getBoundingClientRect()).filter(t=>t.width>0);
+    const inside=(a,b,pad)=>a.left>=b.left-pad&&a.right<=b.right+pad&&a.top>=b.top-pad&&a.bottom<=b.bottom+pad;
+    const overlap=(a,b)=>Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))*
+                         Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+    let spill=0,cross=0,pile=0;
+    texts.forEach(t=>{
+      const cx=(t.left+t.right)/2,cy=(t.top+t.bottom)/2;
+      const holders=rects.filter(r=>cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom);
+      if(holders.length){
+        const h=holders.reduce((m,r)=>r.width*r.height<m.width*m.height?r:m);
+        if(!inside(t,h,2*k))spill++;
+      }
+      rects.forEach(r=>{
+        if(cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom)return;
+        if(overlap(t,r)>0.15*t.width*t.height)cross++;
+      });
+    });
+    for(let i=0;i<texts.length;i++)for(let j=i+1;j<texts.length;j++)
+      if(overlap(texts[i],texts[j])>0.2*Math.min(texts[i].width*texts[i].height,texts[j].width*texts[j].height))pile++;
+    if(spill)p.push(`${spill} label${spill>1?'s':''} spill out of the box (widen the box or wrap the label)`);
+    if(cross)p.push(`${cross} label${cross>1?'s':''} overlap another shape`);
+    if(pile)p.push(`${pile} pair${pile>1?'s':''} of labels overlap each other`);
+  }catch(e){}
+  finally{box.innerHTML='';}
+  return p;
+}
+let CHK_N=0;
+const GEOMETRY=/thick|arrowheads|spill|overlap/;
 function checkSvg(svg){
   const p=[];
   try{const doc=new DOMParser().parseFromString(svg,'image/svg+xml');
@@ -5844,6 +5938,7 @@ function checkSvg(svg){
   }catch(e){p.push('unparseable');}
   if(/<animate|SMIL/.test(svg))p.push('uses SMIL');
   if(!/@keyframes/.test(svg))p.push('no animation');
+  if(!p.some(x=>/invalid|unparseable/.test(x)))p.push(...measureSvg(svg));
   return p;
 }
 

@@ -150,7 +150,9 @@ addEventListener('load',async()=>{
   const dt=new W.DataTransfer(); dt.setData('text/plain','### 9. `[S]` From the event\n\nBy event.\n');
   d.body.focus();
   d.dispatchEvent(new W.ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
-  await wait(200);
+  /* the paste goes through the browser's storage first; under a loaded suite that
+     is not instant, so wait for the slide rather than for a fixed time */
+  for(let i=0;i<40&&!w.S.slides.some(x=>x.title==='From the event');i++)await wait(100);
   ok('the paste event pastes what is on the clipboard',w.S.slides.some(x=>x.title==='From the event'));
   Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:realClip});
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}

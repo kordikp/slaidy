@@ -45,6 +45,12 @@ jobs:
               mkdir -p "_site/$n/notes"
               cp "$d/notes/index.html" "_site/$n/notes/index.html"
             fi
+            # the commented deck — every slide as it projects, read beside
+            if [ -f "$d/commentary/index.html" ]; then
+              mkdir -p "_site/$n/commentary" "_site/$n/slides"
+              cp "$d/commentary/index.html" "_site/$n/commentary/index.html"
+              cp "$d"/slides/*.png "_site/$n/slides/" 2>/dev/null || true
+            fi
             echo "  published /$n  ($(du -h "$d/deck.json" | cut -f1))"
           done
       - uses: actions/configure-pages@v5

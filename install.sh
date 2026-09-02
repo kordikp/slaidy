@@ -67,20 +67,33 @@ fi
 mkdir -p "$(dirname "$BIN")" "$(dirname "$APP")" "$(dirname "$ICON")"
 
 # ── the launcher ─────────────────────────────────────────────────────────────
-# It stops whatever SlAIdy was already serving that port first. Leaving an old
-# server up and opening a new window is how you end up looking at last week's
-# application and swearing at the person who wrote it.
+# A SlAIdy already on the port is one of two things. With a window open on it,
+# it is somebody's work — a second launch takes the next port, so two decks can
+# sit side by side and slides can be carried between them. Without a window it
+# is a leftover, and leaving that up while opening a new window is how you end
+# up looking at last week's application and swearing at the person who wrote it.
 cat > "$BIN" <<SH
 #!/usr/bin/env bash
 # SlAIdy — written by install.sh, points at the folder it was run from
 set -uo pipefail
 HERE="$HERE"
 PORT="\${PORT:-8080}"
-for pid in \$(ss -ltnp 2>/dev/null | grep ":\$PORT " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u); do
-  if tr '\0' ' ' < "/proc/\$pid/cmdline" 2>/dev/null | grep -q 'serve\.py'; then
-    kill "\$pid" 2>/dev/null && echo "  stopped the SlAIdy already on port \$PORT"
+busy(){ ss -ltnp 2>/dev/null | grep -q ":\$1 "; }
+serving(){ ss -ltnp 2>/dev/null | grep ":\$1 " | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u; }
+while busy "\$PORT"; do
+  stale=1
+  for pid in \$(serving "\$PORT"); do
+    tr '\0' ' ' < "/proc/\$pid/cmdline" 2>/dev/null | grep -q 'serve\.py' || { stale=0; continue; }
+    pgrep -f "window.py http://localhost:\$PORT/" >/dev/null 2>&1 && stale=0
+  done
+  if [ "\$stale" = 1 ]; then
+    for pid in \$(serving "\$PORT"); do kill "\$pid" 2>/dev/null && echo "  stopped a SlAIdy left on port \$PORT with no window"; done
+    sleep 0.3; break
   fi
+  echo "  port \$PORT has a SlAIdy with a window open — taking the next one"
+  PORT=\$((PORT+1))
 done
+export PORT
 exec "\$HERE/studio.sh" "\$@"
 SH
 chmod +x "$BIN"

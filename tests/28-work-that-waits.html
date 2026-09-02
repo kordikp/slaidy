@@ -117,6 +117,41 @@ addEventListener('load',async()=>{
   await w.pasteSlides(); await wait(200);
   ok('pasting from the clipboard alone brings the slide',w.S.slides.some(x=>x.title===fs.title));
   ok('and the figure with it',w.S.figs[fid]===svg,w.S.figs[fid]?'present':'missing');
+  // ---------- what a paste must never do: swap the figure for another ----------
+  // Pasting into the application window, where the clipboard could not be read,
+  // used to fall back on the last copy made THERE — a different slide with a
+  // different drawing under the same name. And a slide naming a figure it did
+  // not bring silently shows whatever this deck has under that name.
+  const fid2=fid, mine=w.S.figs[fid2];
+  const otherSvg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#EF4444"/><style>@keyframes z{to{opacity:.9}}</style></svg>';
+  const mdOther='### 9. `[S]` Another deck\'s slide\n\n![['+fid2+']]\n\nWords.\n'+w.figTrailer({[fid2]:otherSvg});
+  const nBefore=w.S.slides.length;
+  await w.pasteSlides(mdOther); await wait(200);
+  ok('a slide with a different drawing under a known name is pasted',w.S.slides.length===nBefore+1);
+  ok('the drawing this deck had is untouched',w.S.figs[fid2]===mine);
+  const pasted=w.S.slides[w.cur];
+  ok('and the newcomer was renamed rather than swapped',/!\[\[.*-2\]\]/.test(pasted.body)&&w.S.figs[fid2+'-2']===w.disarmSvg(otherSvg),pasted.body.slice(0,40));
+  // markdown that names a figure it did not bring
+  let said='';const realToast=W.toast;
+  try{ W.__api.pasteSlides; }catch(e){}
+  const mdBare='### 9. `[S]` Bare\n\n![['+fid2+']]\n\nNo figure came.\n';
+  const t0=d.querySelector('#toast');
+  await w.pasteSlides(mdBare); await wait(150);
+  const t1=d.querySelector('#toast');
+  ok('a figure that did not come along is said so, not swapped in silence',
+     !!t1&&/did not come along/.test(t1.textContent||''),(t1&&t1.textContent||'').slice(0,80));
+  // the clipboard cannot be read: a stale copy held here must not be used
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:{writeText:async()=>{},readText:async()=>{throw new Error('denied');}}});
+  await w.put('clip:slides',{kind:'slaidy/slides',at:Date.now()-2*3600*1000,from:'long ago',md:'### 1. `[S]` Old\n\nOld.',slides:[{n:1,tag:'S',title:'Old',body:'Old.',group:'x'}],figs:{}});
+  const n2=w.S.slides.length;
+  await w.pasteSlides(); await wait(150);
+  ok('an unreadable clipboard does not paste a two-hour-old copy',w.S.slides.length===n2&&!w.S.slides.some(x=>x.title==='Old'));
+  // ...but Ctrl-V's own paste event carries the clipboard, and that is used
+  const dt=new W.DataTransfer(); dt.setData('text/plain','### 9. `[S]` From the event\n\nBy event.\n');
+  d.body.focus();
+  d.dispatchEvent(new W.ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
+  await wait(200);
+  ok('the paste event pastes what is on the clipboard',w.S.slides.some(x=>x.title==='From the event'));
   Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:realClip});
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  clearTimeout(__watchdog);

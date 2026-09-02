@@ -2108,16 +2108,34 @@ function mergeFigs(figs){
   }
   return map;
 }
-async function pasteSlides(){
+/* Ctrl-V arrives here as the browser's own paste event, with the clipboard on
+   it. Reading the clipboard that way needs no permission and works in the
+   application window, where navigator.clipboard.readText() may answer nothing
+   — and a paste that could not read the clipboard used to fall back on the
+   last copy THIS app had made, which is how a slide came in with somebody
+   else's figure. */
+document.addEventListener('paste',e=>{
+  const typing=/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||'')||
+               (document.activeElement&&document.activeElement.isContentEditable);
+  if(typing||document.getElementById('fefr')||document.querySelector('.dlg.on'))return;
+  const text=e.clipboardData?e.clipboardData.getData('text/plain'):'';
+  if(!text)return;
+  e.preventDefault();
+  pasteSlides(text);
+});
+async function pasteSlides(text){
   let held=null;
   try{held=await get('clip:slides');}catch(e){}
-  let text='';
-  try{text=await navigator.clipboard.readText();}catch(e){}
+  let readable=typeof text==='string';
+  if(!readable){ try{text=await navigator.clipboard.readText();readable=true;}catch(e){text='';} }
   /* the browser copy is only used when it is the same thing on the clipboard —
-     otherwise you copied something else since, and that is what you meant */
-  const split=splitTrailer(text);
-  const useHeld=held&&held.slides&&held.slides.length&&
-    (!text.trim()||split.md.trim()===String(held.md||'').trim());
+     otherwise you copied something else since, and that is what you meant. When
+     the clipboard could not be read at all, the copy this app holds is a guess,
+     and it is only taken while it is fresh — and said so. */
+  const split=splitTrailer(text||'');
+  const same=held&&held.slides&&held.slides.length&&split.md.trim()===String(held.md||'').trim();
+  const fresh=held&&held.slides&&held.slides.length&&!readable&&(Date.now()-(held.at||0))<30*60*1000;
+  const useHeld=!!(same||fresh);
   let list=null,figs={};
   if(useHeld){list=clone(held.slides);figs=held.figs||{};}
   else if(split.md.trim()){
@@ -2126,8 +2144,14 @@ async function pasteSlides(){
     /* figures that came on the clipboard, disarmed like anything else pasted */
     for(const id in split.figs)if(typeof split.figs[id]==='string'&&/<svg/i.test(split.figs[id]))figs[id]=disarmSvg(split.figs[id]);
   }
-  if(!list||!list.length)return toast('Nothing on the clipboard that reads as slides');
+  if(!list||!list.length)return toast(readable?'Nothing on the clipboard that reads as slides'
+                                               :'The clipboard could not be read here — copy again, or paste with Ctrl-V');
   const map=mergeFigs(figs);
+  /* a figure the slides name but did not bring: if this deck has one of that
+     name it will be shown, and that is worth saying, because it may be a
+     different drawing */
+  const borrowed=[...new Set(list.flatMap(x=>[...String(x.body||'').matchAll(FIGREF)].map(m=>m[1])))]
+    .filter(id=>!figs[id]&&S.figs[id]);
   const rename=t=>String(t||'').replace(FIGREF,(m,id)=>map[id]&&map[id]!==id?`![[${map[id]}]]`:m);
   const at=S.slides[cur];
   list.forEach(x=>{
@@ -2143,8 +2167,9 @@ async function pasteSlides(){
   cur=cur+1;normalise();touch();paint();
   const nf=Object.values(map).filter((v,i)=>v!==Object.keys(map)[i]).length;
   toast(`Pasted ${list.length} slide${list.length>1?'s':''}`+
-        (useHeld?` from ${esc(held.from||'another deck')}`:' from the clipboard')+
-        (nf?` · ${nf} figure${nf>1?'s':''} renamed to avoid a clash`:''));
+        (useHeld?` from ${esc(held.from||'another deck')}${fresh&&!same?' — the clipboard could not be read, so this is the last copy made here':''}`:' from the clipboard')+
+        (nf?` · ${nf} figure${nf>1?'s':''} renamed to avoid a clash`:'')+
+        (borrowed.length?` · ${borrowed.join(', ')} did not come along — showing this deck's own`:''));
 }
 
 /* Copy and paste were in the ⋯ menu, which is the wrong place: the thing you
@@ -6528,7 +6553,7 @@ document.addEventListener('keydown',e=>{
     if(e.altKey&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();moveSlide(e.key==='ArrowDown'?1:-1);}
     else if(mod&&e.key==='c'){e.preventDefault();copySlides();}
     else if(mod&&e.key==='x'){e.preventDefault();cutSlides();}
-    else if(mod&&e.key==='v'){e.preventDefault();pasteSlides();}
+    else if(mod&&e.key==='v'){ /* handled by the paste event below, which carries the clipboard itself */ }
     else if(mod&&e.key==='a'){e.preventDefault();
       PICKED.clear();S.slides.forEach((_,i)=>PICKED.add(i));paint();
       toast(`${S.slides.length} slides selected — Ctrl-C carries them to another deck`);}

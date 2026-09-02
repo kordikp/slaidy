@@ -56,6 +56,39 @@ def budget(model, asked):
 DECK = None
 
 
+def state_dir():
+    """Where the application keeps what it remembers between launches.
+
+    SLAIDY_STATE points it elsewhere — the test suite and the installer's
+    check both start a server, and neither may write into the state of the
+    person whose machine this is."""
+    return os.environ.get("SLAIDY_STATE") or os.path.join(
+        os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "slaidy")
+
+
+def worth_remembering(p):
+    """A deck opened on purpose — not the bundled example the launcher falls
+    back on, and not a copy in a temporary directory that will be gone by the
+    next launch. Remembering either is how the application opened a fresh
+    example.json in front of someone who had been working on their own deck
+    the evening before: the test suite's temporary decks pushed the real one
+    out of the list, the path stopped existing, and the fallback took over."""
+    try:
+        p = os.path.abspath(p)
+        if os.path.basename(p) == "example.json":
+            return False
+        # a deck in a temporary directory is a test's, unless the state itself
+        # was pointed somewhere on purpose — then whoever did that knows
+        if not os.environ.get("SLAIDY_STATE") and not os.environ.get("XDG_STATE_HOME"):
+            tmp = os.path.realpath(tempfile.gettempdir())
+            rp = os.path.realpath(p)
+            if rp == tmp or rp.startswith(tmp + os.sep):
+                return False
+        return True
+    except Exception:
+        return False
+
+
 def remember(path):
     """Which deck this was, for the next time the application is opened.
 
@@ -64,14 +97,16 @@ def remember(path):
     then says the wrong thing — which is how a renamed file kept opening under
     its old name, and the old name kept receiving the edits."""
     try:
-        d = os.path.join(os.environ.get("XDG_STATE_HOME") or
-                         os.path.expanduser("~/.local/state"), "slaidy")
+        if not worth_remembering(path):
+            return
+        d = state_dir()
         os.makedirs(d, exist_ok=True)
         p = os.path.abspath(path)
         with open(os.path.join(d, "last-deck"), "w", encoding="utf-8") as f:
             f.write(p + "\n")
         # and the few before it, so "open something else" is a list rather than
-        # a file dialog and a memory
+        # a file dialog and a memory — decks that are gone, or were never worth
+        # remembering, fall out of it here
         rec = os.path.join(d, "recent-decks")
         was = []
         if os.path.isfile(rec):
@@ -79,7 +114,7 @@ def remember(path):
                 was = [x for x in json.load(open(rec, encoding="utf-8")) if isinstance(x, str)]
             except Exception:
                 was = []
-        was = [p] + [x for x in was if x != p]
+        was = [p] + [x for x in was if x != p and os.path.isfile(x) and worth_remembering(x)]
         json.dump(was[:6], open(rec, "w", encoding="utf-8"))
     except Exception:
         pass
@@ -88,8 +123,7 @@ def remember(path):
 def recent():
     """The decks opened lately that are still there, newest first."""
     try:
-        d = os.path.join(os.environ.get("XDG_STATE_HOME") or
-                         os.path.expanduser("~/.local/state"), "slaidy")
+        d = state_dir()
         was = json.load(open(os.path.join(d, "recent-decks"), encoding="utf-8"))
         out = []
         for p in was:

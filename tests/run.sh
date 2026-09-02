@@ -68,7 +68,7 @@ python3 tests/preflight.py || { echo "  preflight failed — the suite would rep
 # the real server, so the tests exercise the save path the app actually uses
 cp tests/fixture.json "$WORK/real-deck.json"
 SERVE="$PWD/scripts/serve.py"
-(cd "$WORK" && exec python3 "$SERVE" . "$PORT" real-deck.json >/dev/null 2>&1) & SRV=$!
+(cd "$WORK" && SLAIDY_STATE="$WORK/state" exec python3 "$SERVE" . "$PORT" real-deck.json >/dev/null 2>&1) & SRV=$!
 sleep 1
 
 FILES=("$@")

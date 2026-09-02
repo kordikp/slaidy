@@ -14,12 +14,20 @@ cd "$(dirname "$0")"
 # Which deck: the one you name, else the one you had last, else the example.
 # The application should come back where you left it — a launcher icon that
 # always opens the sample deck is a launcher icon you stop pressing.
-STATE="${XDG_STATE_HOME:-$HOME/.local/state}/slaidy"
+STATE="${SLAIDY_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/slaidy}"
 LAST="$STATE/last-deck"
 DECK="${1:-}"
 if [ -z "$DECK" ] && [ -r "$LAST" ]; then
   want=$(cat "$LAST" 2>/dev/null || true)
-  [ -n "$want" ] && [ -f "$want" ] && DECK="$want"
+  if [ -n "$want" ] && [ -f "$want" ]; then DECK="$want"
+  elif [ -n "$want" ]; then
+    # the deck you had open is gone from that path: take the newest one that is
+    # still there rather than a fresh example nobody asked for
+    echo "  $want is no longer there"
+    for cand in $(python3 -c 'import json,sys;[print(x) for x in json.load(open(sys.argv[1])) if isinstance(x,str)]' "$STATE/recent-decks" 2>/dev/null); do
+      if [ -f "$cand" ]; then DECK="$cand"; echo "  opening the most recent deck that is: $cand"; break; fi
+    done
+  fi
 fi
 DECK="${DECK:-decks/example.json}"
 PORT="${PORT:-8080}"

@@ -105,6 +105,36 @@ try:
           call("PUT", "/api/deck?as=" + urllib.parse.quote("/nope/nowhere/x.json"), deck())[0] == 400)
     check("and something with no slides in it",
           call("PUT", "/api/deck", {"id": "x", "slides": []})[0] == 400)
+    # ── what is not worth remembering ───────────────────────────────────
+    # the bundled example is the launcher's fallback, not a choice; and a deck
+    # that has since vanished must drop out of the list rather than stand in
+    # front of the real one. Both are how a fresh example.json opened in front
+    # of someone who had been working on their own deck the evening before.
+    import importlib.util as _iu
+    spec = _iu.spec_from_file_location("srv", os.path.join(ROOT, "scripts", "serve.py"))
+    srvmod = _iu.module_from_spec(spec); spec.loader.exec_module(srvmod)
+    ex = os.path.join(tmp, "example.json")
+    json.dump(deck(2, "Example", "example"), open(ex, "w", encoding="utf-8"))
+    before = open(os.path.join(state, "slaidy", "last-deck"), encoding="utf-8").read().strip()
+    srvmod.remember(ex)
+    after = open(os.path.join(state, "slaidy", "last-deck"), encoding="utf-8").read().strip()
+    check("the bundled example is never remembered as the last deck", before == after and not after.endswith("example.json"), after)
+    gone = os.path.join(tmp, "gone.json")
+    json.dump(deck(2, "Gone", "gone"), open(gone, "w", encoding="utf-8"))
+    srvmod.remember(gone)
+    os.remove(gone)
+    srvmod.remember(first)
+    rec = json.load(open(os.path.join(state, "slaidy", "recent-decks"), encoding="utf-8"))
+    check("a deck that no longer exists drops out of the recent list", gone not in rec and rec[0] == os.path.abspath(first), str(rec))
+    env2 = dict(os.environ); env2.pop("SLAIDY_STATE", None); env2.pop("XDG_STATE_HOME", None)
+    tmpdeck = os.path.join(tempfile.gettempdir(), "slaidy-probe-%d.json" % os.getpid())
+    json.dump(deck(2, "Probe", "probe"), open(tmpdeck, "w", encoding="utf-8"))
+    r = subprocess.run([sys.executable, "-c",
+        "import importlib.util,sys;s=importlib.util.spec_from_file_location('srv',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.worth_remembering(sys.argv[2]))",
+        os.path.join(ROOT, "scripts", "serve.py"), tmpdeck], env=env2, capture_output=True, text=True)
+    os.remove(tmpdeck)
+    check("with the real state, a deck in a temporary directory is a test's and is not remembered", r.stdout.strip() == "False", r.stdout.strip() or r.stderr[-200:])
+
 finally:
     srv.terminate()
     shutil.rmtree(tmp, ignore_errors=True)

@@ -156,7 +156,7 @@ addEventListener('load',async()=>{
     {title:'What IR Means In 2026',question:'What is IR in 2026?',spec:'· a definition the field argues about'},
     {title:'Where GenAI Actually Sits',question:'Is generative AI used in IR, or only talked about?',
      spec:'· the stack, with the generative box marked'}])];
-  d.getElementById('bMore').click();await wait(500);
+  d.querySelector('#dsOut [data-job="more"]').click();await wait(500);
   ok('a second round asks the model again',calls.length===1,calls.length+' calls');
   ok('and tells it where it has already been',
      /ALREADY PROPOSED/.test(calls[0].user||'')&&/Why The Walls Came Down/.test(calls[0].user||''),
@@ -293,7 +293,9 @@ addEventListener('load',async()=>{
   d.getElementById('aiIn').value='tighten it';
   askBtn.click();
   await wait(60);
-  ok('the Ask button goes busy',askBtn.disabled&&/Working/.test(askBtn.textContent),askBtn.textContent);
+  /* the work is a job on the slide now, so the panel says so where the answer
+     will land rather than by disabling the button */
+  ok('the Changes box says it is working',!!d.querySelector('#aiout .wlab'),(d.getElementById('aiout')||{}).textContent);
   ok('and a bar appears under it',!!d.querySelector('#aiout .prog'));
   await wait(700);lag=0;
   ok('the button comes back',!d.getElementById('bAsk').disabled);

@@ -44,7 +44,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   deleteSlide,duplicateSlide,sectionMenu,newSection,runOf,srcEditor,feEditText,scalePreview,tex2mml,slideRanges,block,inl,
   get BLOCKIX(){return BLOCKIX},set BLOCKIX(v){BLOCKIX=v},SNIP,analyseSlide,briefWizard,
   splitBody,trimSvg,feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,
-  copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,
+  copySlides,cutSlides,pasteSlides,mergeFigs,figsOf,picked,PICKED,slideStyle,sstyle,styleVars,queueEdit,editSlide,splitTrailer,figTrailer,bindIdeas,
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,renameDeck,unbanner,hush,hushed,checkFit,useLoad,useNote,useReset,usageHtml,
   KIND_LABEL,nfmt,safeUrl,askReplace,writeServer,writeServerAs,aiSays,nativeFile,canFile,saveDeckAs,openDeckFile,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,llm2,transient,RETRY,swipes,step};"""
 ready = """

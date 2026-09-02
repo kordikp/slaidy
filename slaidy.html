@@ -2049,17 +2049,36 @@ async function copySlides(){
   const md=list.map(slideMd).join('\n');
   const payload={kind:'slaidy/slides',at:Date.now(),from:S.title||S.id,
                  md,slides:list,figs:figsOf(list)};
+  /* The figures ride along on the clipboard too, as a trailer the markdown
+     does not see: a comment, with the drawings as JSON and no ">" in it so the
+     comment cannot be closed early. Ten kilobytes a figure is nothing to a
+     clipboard, and it is the difference between a paste on another machine
+     arriving whole and arriving with holes where the pictures were. */
+  const clipText=md+figTrailer(payload.figs);
   /* Two places, and it used to claim success if neither worked. The browser copy
      is what carries the figures; the clipboard is what carries them off this
      machine. Say which of the two actually happened. */
   let held=false,clip=false;
   try{await put('clip:slides',payload);held=true;}catch(e){}
-  try{await navigator.clipboard.writeText(md);clip=true;}catch(e){}
+  try{await navigator.clipboard.writeText(clipText);clip=true;}catch(e){}
   const n=list.length,f=Object.keys(payload.figs).length;
   if(!held&&!clip)return toast('Could not copy — this browser allowed neither the clipboard nor its own storage');
-  toast(`Copied ${n} slide${n>1?'s':''}${f&&held?` and ${f} figure${f>1?'s':''}`:''} — `+
-        (clip?(held?'paste in any deck':'paste as markdown; the figures did not come'):
-              'paste into another deck in this browser'));
+  toast(`Copied ${n} slide${n>1?'s':''}${f?` and ${f} figure${f>1?'s':''}`:''} — `+
+        (clip?'paste in any deck, on any machine':'paste into another deck in this browser'));
+}
+const FIG_TRAILER=/\n*<!-- slaidy:figs\n([\s\S]*?)\n-->\s*$/;
+function figTrailer(figs){
+  if(!figs||!Object.keys(figs).length)return '';
+  return '\n\n<!-- slaidy:figs\n'+JSON.stringify(figs).replace(/>/g,'\\u003e')+'\n-->\n';
+}
+/* Split a clipboard text into the markdown and the figures that rode with it. */
+function splitTrailer(text){
+  const m=FIG_TRAILER.exec(text||'');
+  if(!m)return {md:text||'',figs:{}};
+  let figs={};
+  try{figs=JSON.parse(m[1]);}catch(e){figs={};}
+  if(!figs||typeof figs!=='object')figs={};
+  return {md:text.slice(0,m.index),figs};
 }
 async function cutSlides(){
   const ix=picked();
@@ -2090,13 +2109,16 @@ async function pasteSlides(){
   try{text=await navigator.clipboard.readText();}catch(e){}
   /* the browser copy is only used when it is the same thing on the clipboard —
      otherwise you copied something else since, and that is what you meant */
+  const split=splitTrailer(text);
   const useHeld=held&&held.slides&&held.slides.length&&
-    (!text.trim()||text.trim()===String(held.md||'').trim());
+    (!text.trim()||split.md.trim()===String(held.md||'').trim());
   let list=null,figs={};
   if(useHeld){list=clone(held.slides);figs=held.figs||{};}
-  else if(text.trim()){
+  else if(split.md.trim()){
     const base=S.slides[cur]||{n:1,tag:'S'};
-    try{list=mdParse(text,base);}catch(e){list=null;}
+    try{list=mdParse(split.md,base);}catch(e){list=null;}
+    /* figures that came on the clipboard, disarmed like anything else pasted */
+    for(const id in split.figs)if(typeof split.figs[id]==='string'&&/<svg/i.test(split.figs[id]))figs[id]=disarmSvg(split.figs[id]);
   }
   if(!list||!list.length)return toast('Nothing on the clipboard that reads as slides');
   const map=mergeFigs(figs);
@@ -3125,9 +3147,26 @@ function jobBox(s){
     return `<div class="bad">${esc(j.err||'it did not work')}</div>
       <div class="rw" style="margin-top:7px"><button class="b" data-job="retry">Try again</button>
       <button class="b" data-job="drop">Forget it</button></div>`;
+  if(j.state==='ideas')
+    return `<div class="tip" style="margin:0 0 7px">Edit before you build — this is what gets built.</div>`+
+      (j.ideas||[]).map((x,i)=>`<div class="idea">
+        <input class="ih" data-i="${i}" value="${esc(x.title||'')}" spellcheck="false">
+        <div class="ia">${esc(x.question||'')}</div>
+        <textarea class="is" data-i="${i}" rows="1">${esc((x.spec||'').trim())}</textarea>
+        <button class="b p" data-job="idea" data-i="${i}">Design this one</button></div>`).join('')+
+      `<div class="rw" style="margin-top:8px"><button class="b" data-job="more" style="flex:1">Three more ideas</button>
+       <button class="b" data-job="drop">Clear</button></div>`;
   return `<div class="pv">${esc(j.text||'')}</div><div class="rw" style="margin-top:7px">
     <button class="b p" data-job="apply">Use this</button>
     <button class="b" data-job="drop">Discard</button></div>`;
+}
+/* The idea cards are editable, and what you type has to live on the job — the
+   panel that shows them is thrown away on every click. */
+function bindIdeas(el,s){
+  const j=jobOf(s);if(!j||j.state!=='ideas')return;
+  const grow=t=>{t.style.height='auto';t.style.height=Math.min(340,t.scrollHeight+2)+'px';};
+  el.querySelectorAll('textarea.is').forEach(t=>{grow(t);t.oninput=()=>{j.ideas[+t.dataset.i].spec=t.value;grow(t);};});
+  el.querySelectorAll('input.ih').forEach(t=>t.oninput=()=>{j.ideas[+t.dataset.i].title=t.value;});
 }
 /* A proposal is never applied behind your back — it is shown, then you take it. */
 function propose(host,text,onApply,verb){
@@ -3282,17 +3321,22 @@ let SUGG=null,SUGG_AT=-1,SUGG_SEEN=[];
 /* "Three more ideas" sent the identical prompt and got the identical three
    back. A second round has to say where it has already been. */
 async function suggestSlides(btn,more){
-  const s=S.slides[cur],host=document.getElementById('dsOut');
+  const s=S.slides[cur];
   if(SUGG_AT!==cur){SUGG_SEEN=[];SUGG_AT=cur;}
+  if(JOBS.get(s)&&/queued|running/.test(JOBS.get(s).state))return toast('That one is already going');
   const label=btn&&btn.isConnected?btn.textContent:null;
   if(btn&&btn.isConnected){btn.disabled=true;btn.textContent='Thinking…';}
-  const prog=progress(host,more?'looking somewhere else':'reading where this slide sits','');
+  /* not queued behind the slow jobs — ideas are quick and you are waiting — but
+     kept on the slide like one, so walking away does not lose them */
+  const stop=new AbortController();
+  jobSet(s,{kind:'ideas',state:'running',stop,brief:'',label:more?'looking somewhere else':'reading where this slide sits',note:'',text:null,err:null});
+  const prog=jobProgress(s);
   const near=S.slides.map((x,i)=>[i,x])
     .filter(([i])=>i!==cur&&Math.abs(i-cur)<=4)
     .map(([i,x])=>`${String(i+1).padStart(3)} ${i<cur?'◀':'▶'} ${x.title}${
        x.summary?' — '+x.summary:''}`).join('\n');
   try{
-    const raw=await llm(
+    const raw=await llm2(stop.signal,
 `You propose what a slide could be, at the level a speaker thinks in: a MOVE in the talk, not a
 paragraph. "A short history of information retrieval." "What IR means in 2026." "Where generative
 models actually sit in the stack."
@@ -3320,31 +3364,14 @@ Return ONLY a JSON array of three objects with keys title, question, spec. No fe
       .map(x=>({title:x.title,question:x.question||x.angle||'',spec:x.spec||''}));
     if(!SUGG.length)throw new Error('no suggestions came back');
     SUGG_SEEN.push(...SUGG.map(x=>x.title));
-    prog.done();
-    host.classList.remove('hidden');
-    /* the title and the specification are both editable here. A proposal you
+    /* the title and the specification are both editable — a proposal you
        cannot adjust is one you either take whole or throw away, and the useful
-       case is almost always "yes, but" */
-    host.classList.add('ideas');
-    host.innerHTML=`<div class="tip" style="margin:0 0 7px">Edit before you build — this is what gets built.</div>`+
-      SUGG.map((x,i)=>`<div class="idea">
-        <input class="ih" data-i="${i}" value="${esc(x.title)}" spellcheck="false">
-        <div class="ia">${esc(x.question||'')}</div>
-        <textarea class="is" data-i="${i}" rows="1">${esc((x.spec||'').trim())}</textarea>
-        <button class="b p" data-i="${i}">Design this one</button></div>`).join('')+
-      `<button class="b" id="bMore" style="width:100%;margin-top:8px">Three more ideas</button>`;
-    const grow=t=>{t.style.height='auto';t.style.height=Math.min(340,t.scrollHeight+2)+'px';};
-    host.querySelectorAll('textarea.is').forEach(t=>{grow(t);t.oninput=()=>{
-      SUGG[+t.dataset.i].spec=t.value;grow(t);};});
-    host.querySelectorAll('input.ih').forEach(t=>t.oninput=()=>{SUGG[+t.dataset.i].title=t.value;});
-    host.querySelectorAll('.idea button').forEach(bt=>bt.onclick=()=>{
-      const x=SUGG[+bt.dataset.i];
-      if(!(x.spec||'').trim()){toast('Say what the slide should contain');return;}
-      queueDesign(S.slides[cur],
-        `${x.question?'It answers: '+x.question+'\n':''}${x.spec||''}`.trim(),
-        (x.title||'').trim()||null);});
-    document.getElementById('bMore').onclick=e=>suggestSlides(e.target,true);
-  }catch(e){prog.fail('Failed: '+e.message);}
+       case is almost always "yes, but". They are drawn by jobBox from the job. */
+    jobSet(s,{state:'ideas',ideas:SUGG,stop:null});
+  }catch(e){
+    if(e&&(e.stopped||stop.signal.aborted))jobDrop(s);
+    else prog.fail('Failed: '+e.message);
+  }
   finally{if(btn&&btn.isConnected&&label!==null){btn.disabled=false;btn.textContent=label;}}
 }
 
@@ -3410,7 +3437,19 @@ function jobDrop(s){ JOBS.delete(s); if(S.slides[cur]===s)paintSide(); paintNav(
 function queueDesign(s,brief,fixedTitle){
   if(!brief){toast('Say what the slide should say');return;}
   if(JOBS.get(s)&&/queued|running/.test(JOBS.get(s).state))return toast('That one is already going');
-  jobSet(s,{state:'queued',brief,fixedTitle,label:'waiting',text:null,err:null});
+  jobSet(s,{kind:'design',state:'queued',brief,fixedTitle,label:'waiting',text:null,err:null,ideas:null});
+  QUEUE.push(s);
+  jobPump();
+}
+/* "Make these changes" and the chips beside it used to draw their answer into
+   the box they were pressed in — and that box is rebuilt every time you click
+   another slide, so the answer arrived in a box nobody could see. An edit is a
+   job on the slide now, the same as writing it: it queues, it survives walking
+   away, and the proposal waits where the slide is. */
+function queueEdit(s,instr){
+  if(!instr){toast('Type an instruction');return;}
+  if(JOBS.get(s)&&/queued|running/.test(JOBS.get(s).state))return toast('That one is already going');
+  jobSet(s,{kind:'edit',state:'queued',brief:instr,label:'waiting',text:null,err:null,ideas:null});
   QUEUE.push(s);
   jobPump();
 }
@@ -3422,7 +3461,11 @@ async function jobPump(){
   JOBRUN=true;
   const stop=new AbortController();
   jobSet(s,{state:'running',stop});
-  try{ await designSlide(s,JOBS.get(s).brief,JOBS.get(s).fixedTitle,stop.signal); }
+  try{
+    const j=JOBS.get(s);
+    if(j.kind==='edit')await editSlide(s,j.brief,stop.signal);
+    else await designSlide(s,j.brief,j.fixedTitle,stop.signal);
+  }
   catch(e){
     if(e&&(e.stopped||stop.signal.aborted))jobDrop(s);   /* you asked; nothing to report */
     else jobSet(s,{state:'failed',err:e.message||String(e),stop:null});
@@ -3552,7 +3595,7 @@ function paintSide(){
         seeded?'Write this slide':empty?'Design this slide':'Rewrite it to do this'}</button>
       ${empty?'':`<button class="b" id="bSum" title="Have AI read the slide and fill this in">↻</button>`}
     </div>
-    <div class="aiout${jobOf(s)?'':' hidden'}" id="dsOut">${jobBox(s)}</div>
+    <div class="aiout${jobOf(s)&&jobOf(s).kind!=='edit'?'':' hidden'}${jobOf(s)&&jobOf(s).state==='ideas'?' ideas':''}" id="dsOut">${jobOf(s)&&jobOf(s).kind!=='edit'?jobBox(s):''}</div>
   </div>
 
   <div class="sec"><div class="sect">Layout</div>
@@ -3585,7 +3628,7 @@ function paintSide(){
     </div>
     <textarea id="aiIn" rows="3" placeholder="…or say exactly what to change"></textarea>
     <button class="b p" id="bAsk" style="width:100%;margin-top:6px">Make these changes</button>
-    <div class="aiout hidden" id="aiout"></div>
+    <div class="aiout${jobOf(s)&&jobOf(s).kind==='edit'?'':' hidden'}" id="aiout">${jobOf(s)&&jobOf(s).kind==='edit'?jobBox(s):''}</div>
   </div>`}
 
   <div class="sec">
@@ -3638,6 +3681,7 @@ function paintSide(){
     if(n>1&&splitBody(s,n))toast(`Split across ${n} columns — drag the break to move it`);
     touch();paint();});
   el.querySelector('#bSugg')?.addEventListener('click',e=>suggestSlides(e.target));
+  bindIdeas(el,s);
   const de=el.querySelector('#deIn');
   el.querySelectorAll('#seeds button').forEach(b=>b.onclick=()=>{
     const p=DESIGN_SEEDS[+b.dataset.i].p;
@@ -3646,11 +3690,21 @@ function paintSide(){
     if(de.value.trim()!==(s.summary||'')){s.summary=de.value.trim();touch();}
     queueDesign(s,de.value.trim());});
   /* the job's own buttons, wherever it is in its life */
-  el.querySelector('#dsOut')?.addEventListener('click',ev=>{
+  const onJob=ev=>{
     const a=ev.target.dataset&&ev.target.dataset.job;if(!a)return;
     const j=jobOf(s);if(!j)return;
+    ev.stopPropagation();
     if(a==='apply'){const f=j.apply;jobDrop(s);f&&f();return;}
-    if(a==='retry'){const b=j.brief;jobDrop(s);queueDesign(s,b);return;}
+    if(a==='retry'){const b=j.brief,k=j.kind;jobDrop(s);
+      if(k==='edit')queueEdit(s,b);else if(k==='ideas')suggestSlides(null,false);else queueDesign(s,b);return;}
+    if(a==='more'){suggestSlides(ev.target,true);return;}
+    if(a==='idea'){
+      const x=(j.ideas||[])[+ev.target.dataset.i];if(!x)return;
+      if(!(x.spec||'').trim()){toast('Say what the slide should contain');return;}
+      jobDrop(s);
+      queueDesign(s,`${x.question?'It answers: '+x.question+'\n':''}${x.spec||''}`.trim(),(x.title||'').trim()||null);
+      return;
+    }
     if(a==='stop'){
       /* the fetch is cancelled, the queue moves on, and nothing is left behind */
       try{j.stop&&j.stop.abort();}catch(e){}
@@ -3658,14 +3712,16 @@ function paintSide(){
       return;
     }
     if(a==='drop'){QUEUE=QUEUE.filter(x=>x!==s);jobDrop(s);}
-  });
+  };
+  el.querySelector('#dsOut')?.addEventListener('click',onJob);
+  el.querySelector('#aiout')?.addEventListener('click',onJob);
   if(de)de.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))
     queueDesign(s,de.value.trim());};
   el.querySelector('#bSum')?.addEventListener('click',askSummary);
   el.querySelector('#bScan')?.addEventListener('click',e=>analyseSlide(e.target));
-  el.querySelectorAll('#acts button').forEach(b=>b.onclick=e=>ask(AI_ACTS[+b.dataset.i].p,null,e.target));
-  el.querySelector('#bAsk')?.addEventListener('click',e=>
-    ask(document.getElementById('aiIn').value.trim(),null,e.target));
+  el.querySelectorAll('#acts button').forEach(b=>b.onclick=()=>queueEdit(s,AI_ACTS[+b.dataset.i].p));
+  el.querySelector('#bAsk')?.addEventListener('click',()=>
+    queueEdit(s,document.getElementById('aiIn').value.trim()));
   el.querySelector('#bMd').onclick=editMarkdown;
   el.querySelector('#bSlideStyle').onclick=()=>slideStyle(cur);
   el.querySelector('#bTidy').onclick=()=>{
@@ -4436,24 +4492,25 @@ async function llmOnce(system,user,maxTok,kind,signal){
           j.usage||j.choices?.[0]?.usage,j.model||c.model);
   return out;
 }
-async function ask(instr,host,btn){
-  if(!instr){toast('Type an instruction');return;}
-  const s=S.slides[cur];
-  host=host||document.getElementById('aiout')||document.getElementById('dsOut');
-  const label=btn?btn.textContent:null;
-  if(btn){btn.disabled=true;btn.textContent='Working…';}
-  const prog=progress(host,'rewriting the slide','');
+/* Kept for the keyboard and for callers that still say ask(): it queues. */
+async function ask(instr){ queueEdit(S.slides[cur],instr); }
+async function editSlide(s,instr,signal){
+  const prog=jobProgress(s);
+  prog.step('rewriting the slide');
   const sys=`You edit one slide of a technical presentation. House style: plain, precise, no marketing adjectives; every claim carries a number, a named system or a citation, or it is cut; honest about limits. Where the instruction and the house style disagree, the instruction wins — do not hand back what was already there.
 Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.
 If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.
 If a change needs a different title, make the FIRST line exactly "TITLE: <the new title>" and put the body after it. Otherwise do not mention the title.`;
   const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
   try{
-    let t=(await llm(sys,usr,null,'edit')).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
+    let t=(await llm2(signal,sys,usr,null,'edit')).replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
     prog.done();
     const news=[...new Set([...t.matchAll(FIGREF)].map(m=>m[1]))].filter(id=>!S.figs[id]);
-    propose(host,t+(news.length?`\n\n— and ${news.length===1?'a figure':news.length+' figures'} to draw: ${news.join(', ')}`:''),
-      async()=>{
+    jobSet(s,{state:'done',stop:null,
+      text:t+(news.length?`\n\n— and ${news.length===1?'a figure':news.length+' figures'} to draw: ${news.join(', ')}`:''),
+      apply:async()=>{
+        /* the slide the job belongs to, wherever you are looking now */
+        const at=S.slides.indexOf(s);if(at<0)return;
         snap('AI edit');
         const tm=/^TITLE:[ \t]*(.+)\n?/.exec(t);
         if(tm){s.title=tm[1].trim();t=t.slice(tm[0].length).trim();}
@@ -4467,13 +4524,15 @@ If a change needs a different title, make the FIRST line exactly "TITLE: <the ne
           const kf=keepFigures(s.body,a.trim()+'\n\n'+c.body);
           back=kf.back;
           s.body=kf.back?a.trim()+'\n\n'+kf.body.slice(kf.body.lastIndexOf('\n\n')+2):a.trim();
-          S.slides.splice(cur+1,0,c);normalise();
+          S.slides.splice(at+1,0,c);normalise();
         } else { const kf=keepFigures(s.body,t); s.body=kf.body; back=kf.back; }
         touch();paint();
-        await fulfilFigures(S.slides[cur],instr);
-        toast(back?`Applied — the ${back===1?'figure is':'figures are'} still there`:'Applied');});
-  }catch(e){prog.fail('Failed: '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent=label;}}
+        await fulfilFigures(s,instr);
+        toast(back?`Applied — the ${back===1?'figure is':'figures are'} still there`:'Applied');}});
+  }catch(e){
+    if(e&&e.stopped)throw e;
+    prog.fail('Failed: '+e.message);
+  }
 }
 /* ---------------------------------------------------------------------------
    Direct editing of a figure.

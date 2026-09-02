@@ -1,0 +1,125 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const f=document.getElementById('f');
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'\nERROR the file stopped here</pre>');};
+const __watchdog=setTimeout(spill,90000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ const realFetch=W.fetch;
+ let calls=[],replies=[],lag=0;
+ const stub=()=>{const real=W.fetch;W.fetch=async(url,o)=>{
+   if(!/generate|completions/.test(String(url)))return real(url,o);
+   calls.push(JSON.parse(o.body));
+   if(lag)await wait(lag);
+   const t=replies.shift();
+   if(t===undefined)throw new Error('no canned reply left');
+   return {status:200,text:async()=>JSON.stringify({text:t})};};};
+ const unstub=()=>{W.fetch=realFetch;};
+ try{
+  // ---------- an edit is work that waits on the slide ----------
+  // "Make these changes" drew its answer into the box it was pressed in, and
+  // that box is rebuilt on every click — so walking to another slide while it
+  // ran meant the answer arrived in a box nobody could see. It is a job now.
+  const N=w.S.slides.length;
+  const si=[...w.S.slides].findIndex(s=>(s.body||'').trim().length>40);
+  const s=w.S.slides[si]; w.cur=si; w.paint(); await wait(150);
+  const before=s.body;
+  replies=['Tightened body. It carries the argument.\n\n> The line that lands.']; lag=400; stub();
+  const ta=d.getElementById('aiIn'); ta.value='Tighten it';
+  d.getElementById('bAsk').click(); await wait(80);
+  ok('pressing Make these changes makes a job on the slide',!!w.jobOf(s)&&w.jobOf(s).kind==='edit',
+     JSON.stringify((w.jobOf(s)||{}).kind));
+  ok('it shows in the Changes box, not the design box',
+     !!d.querySelector('#aiout .wlab')&&!d.querySelector('#dsOut .wlab'),
+     (d.getElementById('aiout')||{}).textContent);
+  // walk away while it runs, and back
+  w.cur=(si+1)%N; w.paint(); await wait(60);
+  w.cur=si; w.paint(); await wait(60);
+  ok('coming back shows it still running',!!d.querySelector('#aiout .wlab, #aiout .pv'),
+     (d.getElementById('aiout')||{}).textContent.slice(0,40));
+  for(let i=0;i<40&&(w.jobOf(s)||{}).state!=='done';i++)await wait(100);
+  ok('it finishes while you are elsewhere or not',(w.jobOf(s)||{}).state==='done',(w.jobOf(s)||{}).state);
+  ok('nothing was applied behind your back',s.body===before);
+  w.cur=(si+2)%N; w.paint(); await wait(60);
+  w.cur=si; w.paint(); await wait(60);
+  ok('the proposal waited where the slide is',/Tightened body/.test((d.getElementById('aiout')||{}).textContent||''),
+     ((d.getElementById('aiout')||{}).textContent||'').slice(0,50));
+  d.querySelector('#aiout [data-job="apply"]').click(); await wait(400);
+  ok('Use this applies it to that slide',/Tightened body/.test(s.body),s.body.slice(0,40));
+  ok('and the job is finished with',!w.jobOf(s));
+  unstub(); w.undo(); await wait(200);
+
+  // an edit applied from another slide lands on the right one
+  // (undo restored a snapshot, so the slide is a new object: fetch it again)
+  const s2=w.S.slides[si];
+  replies=['Notes for the one you left.']; lag=300; stub();
+  w.cur=si; w.paint(); await wait(60);
+  w.queueEdit(s2,'Write speaker notes for this slide'); await wait(50);
+  w.cur=(si+3)%N; w.paint(); await wait(60);
+  for(let i=0;i<40&&(w.jobOf(s2)||{}).state!=='done';i++)await wait(100);
+  const other=w.S.slides[w.cur];
+  w.cur=si; w.paint(); await wait(60);
+  d.querySelector('#aiout [data-job="apply"]').click(); await wait(300);
+  ok('a notes edit applied later lands on the slide it was asked for',/Notes for the one/.test(s2.notes||''),(s2.notes||'').slice(0,30));
+  ok('and not on the one you were looking at meanwhile',!/Notes for the one/.test(other.notes||''));
+  unstub(); w.undo(); await wait(200);
+
+  // ---------- ideas wait too ----------
+  w.cur=N-1; d.getElementById('bNew').click(); await wait(150);
+  const bi=w.cur, bs=w.S.slides[bi];
+  ok('a new slide is blank and offers ideas',!!d.getElementById('bSugg'));
+  replies=[JSON.stringify([{title:'A history',question:'Where did it start?',spec:'timeline'},
+                           {title:'A definition',question:'What is it?',spec:'one line'},
+                           {title:'A number',question:'How big?',spec:'one figure'}])]; lag=400; stub();
+  d.getElementById('bSugg').click(); await wait(80);
+  ok('asking for ideas is a job on the slide',!!w.jobOf(bs)&&w.jobOf(bs).kind==='ideas',(w.jobOf(bs)||{}).kind);
+  w.cur=0; w.paint(); await wait(60);
+  for(let i=0;i<40&&(w.jobOf(bs)||{}).state!=='ideas';i++)await wait(100);
+  ok('the ideas arrive while you are away',(w.jobOf(bs)||{}).state==='ideas',(w.jobOf(bs)||{}).state);
+  w.cur=bi; w.paint(); await wait(80);
+  const cards=d.querySelectorAll('#dsOut .idea');
+  ok('coming back shows the three ideas',cards.length===3,cards.length+' cards');
+  const inp=d.querySelector('#dsOut input.ih'); inp.value='A better history'; inp.dispatchEvent(new W.Event('input'));
+  w.cur=0; w.paint(); await wait(60); w.cur=bi; w.paint(); await wait(60);
+  ok('an edit to an idea survives walking away',d.querySelector('#dsOut input.ih').value==='A better history',
+     d.querySelector('#dsOut input.ih').value);
+  replies=[JSON.stringify({title:'A better history',body:'Built from the idea.',notes:''})];
+  d.querySelector('#dsOut [data-job="idea"]').click(); await wait(80);
+  ok('Design this one hands the idea to the design queue',!!w.jobOf(bs)&&w.jobOf(bs).kind==='design',(w.jobOf(bs)||{}).kind);
+  for(let i=0;i<40&&(w.jobOf(bs)||{}).state!=='done';i++)await wait(100);
+  ok('and the slide gets written from it',/A better history/.test((w.jobOf(bs)||{}).text||''));
+  unstub();
+
+  // ---------- the clipboard carries the figures ----------
+  // Markdown alone on the clipboard pastes with holes where the pictures were,
+  // on any machine but this one. The figures ride along as a trailer.
+  const fi=[...w.S.slides].findIndex(x=>w.figIds(x).some(id=>w.S.figs[id]));
+  ok('there is a slide with a figure to try',fi>=0);
+  const fs=w.S.slides[fi], fid=w.figIds(fs).find(id=>w.S.figs[id]);
+  let clip='';
+  const realClip=W.navigator.clipboard;
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:{writeText:async t=>{clip=t;},readText:async()=>clip}});
+  w.PICKED.clear(); w.PICKED.add(fi); w.cur=fi;
+  await w.copySlides(); await wait(100);
+  ok('the clipboard text still starts with the markdown',/^###\s/.test(clip.trim()),clip.slice(0,30));
+  ok('and ends with the figures as a trailer',/<!-- slaidy:figs\n[\s\S]*\n-->\s*$/.test(clip));
+  ok('the trailer closes nowhere early',!/\n-->[\s\S]*\n-->/.test(clip));
+  const sp=w.splitTrailer(clip);
+  ok('the trailer splits back into markdown and drawings',!!sp.figs[fid]&&!/slaidy:figs/.test(sp.md),Object.keys(sp.figs).join(','));
+  ok('the drawing came through intact',sp.figs[fid]===w.S.figs[fid]);
+  // paste into a deck that has never seen the figure, with nothing held in this browser
+  try{await w.put('clip:slides',null);}catch(e){}
+  const svg=w.S.figs[fid]; delete w.S.figs[fid]; w.S.slides.splice(fi,1); w.normalise(); w.cur=0; w.paint(); await wait(80);
+  await w.pasteSlides(); await wait(200);
+  ok('pasting from the clipboard alone brings the slide',w.S.slides.some(x=>x.title===fs.title));
+  ok('and the figure with it',w.S.figs[fid]===svg,w.S.figs[fid]?'present':'missing');
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:realClip});
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

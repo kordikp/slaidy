@@ -1,0 +1,77 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const f=document.getElementById('f');
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'\nERROR the file stopped here</pre>');};
+const __watchdog=setTimeout(spill,90000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  // ---------- a figure drawn by hand ----------
+  // Adding a figure offered the library or the model. A drawing of your own —
+  // an empty canvas in the editor, or SVG you already have — needed neither.
+  const si=[...w.S.slides].findIndex(s=>(s.body||'').trim().length>20&&!/!\[\[/.test(s.body));
+  w.cur=si; w.paint(); await wait(120);
+  const s=w.S.slides[si];
+  let picked=null;
+  w.pickFigure(id=>{picked=id;}); await wait(120);
+  const tabs=[...d.querySelectorAll('.dlg .fetabs button')].map(b=>b.textContent.trim());
+  ok('the picker offers drawing by hand and pasting SVG',tabs.includes('Draw by hand')&&tabs.includes('Paste SVG'),tabs.join(' | '));
+  [...d.querySelectorAll('.dlg .fetabs button')].find(b=>b.dataset.t==='hand').click(); await wait(80);
+  d.getElementById('nfId').value='fig-by-hand';
+  [...d.querySelectorAll('#nfSize button')].find(b=>b.dataset.v==='800x300').click();
+  d.getElementById('nfHand').click(); await wait(300);
+  ok('an empty canvas becomes a figure of the deck',!!w.S.figs['fig-by-hand'],Object.keys(w.S.figs).slice(-2).join(','));
+  ok('at the size chosen',/viewBox="0 0 800 300"/.test(w.S.figs['fig-by-hand']||''));
+  ok('the picker handed it back',picked==='fig-by-hand',String(picked));
+  ok('it passes the house checks',!w.checkSvg(w.S.figs['fig-by-hand']).some(x=>/invalid|SMIL|no animation/.test(x)),w.checkSvg(w.S.figs['fig-by-hand']).join('; ')||'clean');
+  ok('and the editor opened on it',!!d.getElementById('fefr')&&!!w.FE&&w.FE.id==='fig-by-hand',w.FE?w.FE.id:'no editor');
+  d.getElementById('feCancel')&&d.getElementById('feCancel').click(); await wait(150);
+
+  // ---------- pasted SVG ----------
+  picked=null;
+  w.pickFigure(id=>{picked=id;}); await wait(120);
+  [...d.querySelectorAll('.dlg .fetabs button')].find(b=>b.dataset.t==='svg').click(); await wait(80);
+  d.getElementById('nfSvg').value='junk before <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" onload="alert(1)"><script>alert(2)<\/script><rect width="400" height="200" fill="#E0F2FE"/><text x="200" y="100" font-size="14" text-anchor="middle">pasted</text></svg> junk after';
+  d.getElementById('nfId').value='my pasted one';
+  d.getElementById('nfPaste').click(); await wait(200);
+  ok('pasted SVG becomes a figure, named as asked',!!w.S.figs['fig-my-pasted-one'],Object.keys(w.S.figs).slice(-2).join(','));
+  ok('trimmed to the svg element',/^<svg/.test(w.S.figs['fig-my-pasted-one']||'')&&/<\/svg>$/.test(w.S.figs['fig-my-pasted-one']||''));
+  ok('and disarmed',!/onload|<script/.test(w.S.figs['fig-my-pasted-one']||''));
+  ok('the picker handed that back too',picked==='fig-my-pasted-one',String(picked));
+  // not an svg at all
+  w.pickFigure(()=>{}); await wait(120);
+  [...d.querySelectorAll('.dlg .fetabs button')].find(b=>b.dataset.t==='svg').click(); await wait(80);
+  d.getElementById('nfSvg').value='<div>not a drawing</div>';
+  const nfigs=Object.keys(w.S.figs).length;
+  d.getElementById('nfPaste').click(); await wait(150);
+  ok('text that is not an svg is refused with a reason',/not an SVG/.test(d.getElementById('nfOut').textContent)&&Object.keys(w.S.figs).length===nfigs);
+  w.closeDialog(); await wait(100);
+
+  // ---------- Ctrl-V with no paste event ----------
+  // The application window raises no paste event outside a text field. A key
+  // press with no event following has to read the clipboard itself.
+  const realClip=W.navigator.clipboard; let reads=0;
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:{writeText:async()=>{},readText:async()=>{reads++;return '### 9. `[S]` Read by the key\n\nNo event came.\n';}}});
+  const n0=w.S.slides.length;
+  w.pasteKey(); await wait(50);
+  ok('the key alone does not paste at once — it waits for the event',w.S.slides.length===n0&&reads===0);
+  for(let i=0;i<30&&w.S.slides.length===n0;i++)await wait(100);
+  ok('and reads the clipboard itself when none comes',w.S.slides.length===n0+1&&w.S.slides.some(x=>x.title==='Read by the key'),reads+' reads');
+  // when the event does come, the key does nothing more
+  reads=0; const n1=w.S.slides.length;
+  w.pasteKey();
+  const dt=new W.DataTransfer(); dt.setData('text/plain','### 9. `[S]` By the event\n\nEvent.\n');
+  d.dispatchEvent(new W.ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
+  for(let i=0;i<30&&w.S.slides.length===n1;i++)await wait(100);
+  await wait(400);
+  ok('with an event, the key does not paste a second time',w.S.slides.length===n1+1&&reads===0,(w.S.slides.length-n1)+' pasted, '+reads+' reads');
+  Object.defineProperty(W.navigator,'clipboard',{configurable:true,value:realClip});
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

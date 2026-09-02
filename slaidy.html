@@ -1094,6 +1094,27 @@ const nativeFile=()=>!!(window.webkit&&window.webkit.messageHandlers&&
                         window.webkit.messageHandlers.slaidy);
 const NATIVE={};
 window.__nativeFile=(token,path)=>{const f=NATIVE[token];delete NATIVE[token];f&&f(path||'');};
+/* The same channel carries the clipboard. In the application window WebKit
+   answers navigator.clipboard with nothing and raises no paste event outside
+   a text field, so the window reads and writes the system clipboard itself. */
+window.__nativeClip=(token,text)=>{const f=NATIVE[token];delete NATIVE[token];f&&f(text||'');};
+function nativeClipAsk(mode,text){
+  return new Promise(resolve=>{
+    const token='c'+Date.now()+Math.random().toString(36).slice(2,7);
+    NATIVE[token]=resolve;
+    setTimeout(()=>{if(NATIVE[token]){delete NATIVE[token];resolve('');}},4000);
+    window.webkit.messageHandlers.slaidy.postMessage({token,mode,text:text||''});
+  });
+}
+async function clipRead(){
+  if(nativeFile()){const t=await nativeClipAsk('clip-read');if(t)return t;}
+  return await navigator.clipboard.readText();
+}
+async function clipWrite(text){
+  let ok=false;
+  if(nativeFile()){ok=(await nativeClipAsk('clip-write',text))==='ok';}
+  if(!ok){await navigator.clipboard.writeText(text);}
+}
 function askForPath(mode,title,name){
   return new Promise(resolve=>{
     const token='f'+Date.now()+Math.random().toString(36).slice(2,7);
@@ -2066,7 +2087,7 @@ async function copySlides(){
      machine. Say which of the two actually happened. */
   let held=false,clip=false;
   try{await put('clip:slides',payload);held=true;}catch(e){}
-  try{await navigator.clipboard.writeText(clipText);clip=true;}catch(e){}
+  try{await clipWrite(clipText);clip=true;}catch(e){}
   const n=list.length,f=Object.keys(payload.figs).length;
   if(!held&&!clip)return toast('Could not copy — this browser allowed neither the clipboard nor its own storage');
   toast(`Copied ${n} slide${n>1?'s':''}${f?` and ${f} figure${f>1?'s':''}`:''} — `+
@@ -2114,20 +2135,30 @@ function mergeFigs(figs){
    — and a paste that could not read the clipboard used to fall back on the
    last copy THIS app had made, which is how a slide came in with somebody
    else's figure. */
+let PASTE_AT=0;
 document.addEventListener('paste',e=>{
   const typing=/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||'')||
                (document.activeElement&&document.activeElement.isContentEditable);
   if(typing||document.getElementById('fefr')||document.querySelector('.dlg.on'))return;
   const text=e.clipboardData?e.clipboardData.getData('text/plain'):'';
   if(!text)return;
+  PASTE_AT=Date.now();
   e.preventDefault();
   pasteSlides(text);
 });
+/* Ctrl-V pressed on the slide list: a browser raises a paste event with the
+   clipboard on it, and that handles it. The application window raises none
+   outside a text field — so if no event has come in a moment, read the
+   clipboard the way the window allows and paste that. */
+function pasteKey(){
+  const pressed=Date.now();
+  setTimeout(()=>{ if(PASTE_AT<pressed)pasteSlides(); },250);
+}
 async function pasteSlides(text){
   let held=null;
   try{held=await get('clip:slides');}catch(e){}
   let readable=typeof text==='string';
-  if(!readable){ try{text=await navigator.clipboard.readText();readable=true;}catch(e){text='';} }
+  if(!readable){ try{text=await clipRead();readable=true;}catch(e){text='';} }
   /* the browser copy is only used when it is the same thing on the clipboard —
      otherwise you copied something else since, and that is what you meant. When
      the clipboard could not be read at all, the copy this app holds is a guess,
@@ -4198,7 +4229,9 @@ function pickFigure(pick){
   dialog(`<div class="fehead">
       <h3>Add a figure</h3>
       <div class="fetabs"><button data-t="lib" class="on">From the library</button>
-        <button data-t="new">Draw a new one</button></div>
+        <button data-t="new">Generate</button>
+        <button data-t="hand">Draw by hand</button>
+        <button data-t="svg">Paste SVG</button></div>
       <span style="flex:1"></span>
       <button class="b" id="pfNo">Cancel</button></div>
     <div id="pfBody" style="padding:14px 16px;overflow:auto;max-height:70vh"></div>`,'wide2');
@@ -4249,9 +4282,54 @@ function pickFigure(pick){
       }catch(e){out.textContent='Failed: '+e.message;}
     };
   };
+  /* a figure of your own: an empty canvas that opens in the editor, or the SVG
+     you already have — pasted, checked and disarmed like any other drawing */
+  const nameFrom=(want,fallback)=>{
+    let id=(want||fallback||'fig-drawing').toLowerCase().replace(/[^a-z0-9.-]+/g,'-').replace(/^-|-$/g,'');
+    if(!/^fig-/.test(id))id='fig-'+id;
+    let n=id;for(let k=2;S.figs[n];k++)n=id+'-'+k;return n;};
+  const hand=()=>{
+    body.innerHTML=`<div class="fld"><label>Name</label><input id="nfId" placeholder="fig-my-drawing"></div>
+     <div class="fld"><label>Canvas</label><div class="seg" id="nfSize">
+       <button data-v="800x450" class="on">800 × 450</button><button data-v="800x300">800 × 300</button>
+       <button data-v="800x220">800 × 220</button></div></div>
+     <div class="rw"><button class="b p" id="nfHand">Open an empty canvas</button></div>
+     <div class="tip">The editor has shapes, text, arrows and the palette. Trim the canvas to the drawing when you are done.</div>`;
+    let size='800x450';
+    body.querySelectorAll('#nfSize button').forEach(b=>b.onclick=()=>{size=b.dataset.v;
+      body.querySelectorAll('#nfSize button').forEach(x=>x.classList.toggle('on',x===b));});
+    document.getElementById('nfHand').onclick=()=>{
+      const [w,h]=size.split('x').map(Number);
+      const n=nameFrom(document.getElementById('nfId').value.trim(),'fig-drawing');
+      const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">\n`+
+        `<style>@keyframes breathe{50%{opacity:.85}}</style>\n<rect width="${w}" height="${h}" fill="#FAFAF7"/>\n</svg>`;
+      snap('new figure');S.figs[n]=svg;touch();closeDialog();pick(n);
+      setTimeout(()=>figEdit(S.slides[cur],n),50);
+    };
+  };
+  const paste=()=>{
+    body.innerHTML=`<div class="fld"><label>SVG</label>
+      <textarea id="nfSvg" rows="10" placeholder="&lt;svg viewBox=&quot;0 0 800 450&quot; …&gt;…&lt;/svg&gt;" spellcheck="false" style="font:12px ui-monospace,monospace"></textarea></div>
+     <div class="fld"><label>Name</label><input id="nfId" placeholder="fig-pasted"></div>
+     <div class="rw"><button class="b p" id="nfPaste">Use it</button></div>
+     <div id="nfOut" class="hidden" style="margin-top:12px"></div>
+     <div class="tip">Scripts, event handlers and external references are stripped; the palette and animation rules are advisory here.</div>`;
+    document.getElementById('nfPaste').onclick=()=>{
+      const raw=document.getElementById('nfSvg').value;
+      const a=raw.indexOf('<svg'),b2=raw.lastIndexOf('</svg>');
+      const out=document.getElementById('nfOut');out.classList.remove('hidden');
+      if(a<0||b2<0){out.innerHTML='<p class="tip" style="color:var(--b)">That is not an SVG — it needs an &lt;svg&gt; … &lt;/svg&gt; element.</p>';return;}
+      const svg=disarmSvg(raw.slice(a,b2+6));
+      const bad=checkSvg(svg);
+      if(bad.some(x=>/invalid|unparseable/.test(x))){out.innerHTML=`<p class="tip" style="color:var(--b)">${esc(bad.join('; '))}</p>`;return;}
+      const n=nameFrom(document.getElementById('nfId').value.trim(),'fig-pasted');
+      snap('new figure');S.figs[n]=svg;touch();closeDialog();pick(n);
+      if(bad.length)toast('Added — '+bad.join('; '));
+    };
+  };
   document.querySelectorAll('.dlg .fetabs button').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('.dlg .fetabs button').forEach(x=>x.classList.toggle('on',x===b));
-    (b.dataset.t==='lib'?lib:make)();});
+    ({lib,new:make,hand,svg:paste}[b.dataset.t]||lib)();});
   document.getElementById('pfNo').onclick=closeDialog;
   lib();
 }
@@ -6553,7 +6631,7 @@ document.addEventListener('keydown',e=>{
     if(e.altKey&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();moveSlide(e.key==='ArrowDown'?1:-1);}
     else if(mod&&e.key==='c'){e.preventDefault();copySlides();}
     else if(mod&&e.key==='x'){e.preventDefault();cutSlides();}
-    else if(mod&&e.key==='v'){ /* handled by the paste event below, which carries the clipboard itself */ }
+    else if(mod&&e.key==='v'){ pasteKey(); }
     else if(mod&&e.key==='a'){e.preventDefault();
       PICKED.clear();S.slides.forEach((_,i)=>PICKED.add(i));paint();
       toast(`${S.slides.length} slides selected — Ctrl-C carries them to another deck`);}

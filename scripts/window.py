@@ -23,7 +23,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("WebKit", "6.0")
-from gi.repository import Gtk, WebKit, GLib, Gio  # noqa: E402
+from gi.repository import Gtk, WebKit, GLib, Gio, Gdk, GObject  # noqa: E402
 
 APP_ID = "io.github.kordikp.slaidy"
 
@@ -52,6 +52,17 @@ class Slaidy(Gtk.Application):
                 GLib.Variant("s", path or "").print_(False))
             view.evaluate_javascript(js, -1, None, None, None, None, None)
 
+        # ── and the clipboard the page cannot always read for itself ─────
+        # WebKit answers navigator.clipboard.readText() with nothing in this
+        # window, and does not raise a paste event outside a text field, so
+        # Ctrl-V on a slide list had no clipboard to read. The window reads
+        # and writes it through GDK and hands the text across the same channel.
+        def clip_reply(token, text):
+            js = "window.__nativeClip && window.__nativeClip(%s, %s)" % (
+                GLib.Variant("s", token).print_(False),
+                GLib.Variant("s", text or "").print_(False))
+            view.evaluate_javascript(js, -1, None, None, None, None, None)
+
         def on_message(_m, value):
             try:
                 req = value.to_json(0)
@@ -63,6 +74,31 @@ class Slaidy(Gtk.Application):
             except Exception:
                 return
             token = req.get("token") or ""
+            mode = req.get("mode") or ""
+            if mode == "clip-read":
+                try:
+                    cb = Gdk.Display.get_default().get_clipboard()
+                    def got(c, res):
+                        try:
+                            clip_reply(token, c.read_text_finish(res) or "")
+                        except Exception:
+                            clip_reply(token, "")
+                    cb.read_text_async(None, got)
+                except Exception:
+                    clip_reply(token, "")
+                return
+            if mode == "clip-write":
+                try:
+                    cb = Gdk.Display.get_default().get_clipboard()
+                    try:
+                        cb.set_text(req.get("text") or "")
+                    except Exception:
+                        cb.set_content(Gdk.ContentProvider.new_for_value(
+                            GObject.Value(str, req.get("text") or "")))
+                    clip_reply(token, "ok")
+                except Exception:
+                    clip_reply(token, "")
+                return
             dlg = Gtk.FileDialog()
             dlg.set_title(req.get("title") or "Choose a file")
             if req.get("name"):

@@ -100,10 +100,10 @@ in their browser and never touch what you published. `#present` on the end opens
 into the projector, and `notes/` is the speaker notes as a document that prints.
 
 `scripts/commentary.py` adds a third page, the deck read for its audience: every slide as
-it projects, with a commentary beside it — what the slide shows, the concepts a reader from
-another field would need, the argument, the evidence with links, and one thing to take
-away. You write the commentary as markdown, one block per slide; the script lays it out.
-`scripts/check_links.py` resolves every DOI and arXiv id in a deck and says which are dead.
+it projects, with a paragraph under it that says what the slide claims and links the
+sources in the text. You write the commentary as markdown, one block per slide; the script
+lays it out. `scripts/check_links.py` resolves every DOI and arXiv id in a deck or a page
+and says which are dead.
 
 The [demo](https://kordikp.github.io/slaidy/) is the same thing with the tour deck in it,
 and a small daily allowance of AI so you can see what the panels do.

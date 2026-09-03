@@ -588,11 +588,13 @@ A published talk has three faces. The page itself, which presents. `notes/`, whi
 `publish.py` writes from the same deck: every slide with its figure and the speaker's note,
 as a plain document with a page break at each section — a presenter wants that on a lectern,
 not in a browser. And `commentary/`, which `commentary.py` writes from a markdown file the
-author keeps beside the deck: one `## N. Title` block per slide, with what the slide shows,
-the concepts a reader from another field would need, the argument, the evidence with links,
-and one thing to take away, laid out next to a picture of each slide as it projects. The
-commentary is for the audience, so nothing addressed to the speaker goes in it — no notes,
-no timings, no remarks about what was checked. The ISD 2026 keynote, `decks/isd2026.json`,
+author keeps beside the deck: one `## N. Title` block per slide, a paragraph that says what
+the slide claims with the sources linked in the text, laid out under a picture of the slide
+as it projects. The first version ran to five labelled sections and eighteen thousand words;
+the one that survived is a paragraph a slide, in the shape of a blog post that walks through
+a talk, because every word in it has to earn its place beside the picture. The commentary is
+for the audience, so nothing addressed to the speaker goes in it — no notes, no timings, no
+remarks about what was checked. The ISD 2026 keynote, `decks/isd2026.json`,
 is the worked example of all three, and `check_links.py` is what keeps its evidence honest:
 every DOI and arXiv id resolved, and a link called dead only when the publisher says so.
 

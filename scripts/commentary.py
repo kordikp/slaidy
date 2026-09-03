@@ -5,18 +5,18 @@
 
 Writes site/<name>/commentary/index.html and copies slides_dir/slide-N.png to
 site/<name>/slides/. The commentary is markdown with one "## N. Title" block per
-slide and, inside it, "### What the slide says", "### The argument",
-"### Evidence and further reading", "### If short on time"; a closing
-"## Sources" block is carried over whole. The speaker's own note comes from the
-deck. Links are the only markdown that matters here, so the converter is small
-and does exactly that much."""
+slide: a paragraph or two with the sources linked in the text. "### " headings,
+bullet lists and a "### Takeaway" box are rendered if a block has them, and a
+closing "## Sources" block is carried over whole, but the page reads best as one
+tight paragraph per slide. Links are the only markdown that matters here, so
+the converter is small and does exactly that much."""
 import html, json, os, re, shutil, sys
 
 CSS = """
 :root{--ink:#1E1B4B;--gray:#6B7280;--line:#E5E7EB;--paper:#FFFFFF;--acc:#7C3AED;--accbg:#EDE9FE;--soft:#FAFAF7}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:1040px;margin:0 auto;padding:40px 28px 80px}
+.wrap{max-width:940px;margin:0 auto;padding:40px 28px 80px}
 h1{font-size:30px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
 .sub{color:var(--gray);margin:0 0 28px}
 .sub a{color:var(--acc);text-decoration:none}
@@ -30,7 +30,7 @@ h1{font-size:30px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
 .slide h2 .n{color:var(--gray);font-weight:500;font-family:ui-monospace,SFMono-Regular,monospace;font-size:13px;margin-right:10px;vertical-align:2px}
 .shot{display:block;width:100%;border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 3px rgba(30,27,75,.06);margin:0 0 16px;background:#111}
 .slide h3{font:650 11px/1.2 system-ui;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);margin:18px 0 6px}
-.slide p{margin:0 0 10px;max-width:72ch}
+.slide p{margin:0 0 12px;max-width:78ch;font-size:17px;line-height:1.6}
 .slide ul{margin:0 0 10px;padding-left:20px;max-width:80ch}
 .slide li{margin:0 0 5px}
 .slide a{color:var(--acc);text-decoration:none;border-bottom:1px solid var(--accbg)}
@@ -112,7 +112,7 @@ def main():
         body_html.append("\n".join(parts))
     page = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
             "<title>%s · the deck, read</title><style>%s</style></head><body><div class=\"wrap\">"
-            "<h1>%s</h1><p class=\"sub\">%d slides, read slide by slide — what each shows, the concepts behind it, the evidence, and one thing to take away · <a href=\"../\">the deck</a> · <a href=\"../#present\">present it</a></p>"
+            "<h1>%s</h1><p class=\"sub\">%d slides, read slide by slide — a paragraph each, with the sources linked in the text · <a href=\"../\">the deck</a> · <a href=\"../#present\">present it</a></p>"
             "<nav class=\"toc\">%s</nav>%s%s</div></body></html>") % (
         html.escape(title), CSS, html.escape(title), len(deck["slides"]), "\n".join(toc), "\n".join(body_html),
         ('<div class="sources"><h2>Sources</h2>%s</div>' % block_html(sources)) if sources else "")

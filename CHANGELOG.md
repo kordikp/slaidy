@@ -9,8 +9,8 @@ Dates are when the work landed, not when it was released; there are no releases 
   under `site/`, where the Pages workflow makes it a page carrying the whole editor;
   `#present` on the end opens straight into the projector. Beside the deck it writes
   `notes/`, the speaker notes as a document that prints. `scripts/commentary.py` writes
-  `commentary/`: every slide as it projects, with a reading of it for the audience — what
-  it shows, the concepts, the argument, the evidence with links, one thing to take away.
+  `commentary/`: every slide as it projects, with a paragraph under it for the audience
+  that says what the slide claims and links the sources in the text.
   The ISD 2026 keynote is published this way and kept in `decks/isd2026.json` as the
   worked example of a deck that has been used in anger.
 - **A figure of your own.** The figure picker has four ways in: from the library, generate,

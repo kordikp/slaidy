@@ -103,14 +103,16 @@ def main():
         if not txt: missing.append(n)
         parts = ['<section class="slide" id="s%d"><h2><span class="n">%03d</span>%s</h2>' % (n, n, html.escape(s["title"])),
                  '<img class="shot" src="../slides/slide-%d.png" alt="%s" loading="lazy">' % (n, html.escape("Slide %d: %s" % (n, s["title"])))]
-        if txt: parts.append(block_html(txt[1]))
-        if s.get("notes"):
-            parts.append('<div class="note"><b>The speaker\'s own note</b>%s</div>' % inline(s["notes"].strip()))
+        if txt:
+            body_md, _, take = txt[1].partition("### Takeaway")
+            parts.append(block_html(body_md))
+            if take.strip():
+                parts.append('<div class="note"><b>Takeaway</b>%s</div>' % inline(" ".join(l.strip() for l in take.strip().split("\n") if l.strip())))
         parts.append("</section>")
         body_html.append("\n".join(parts))
     page = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-            "<title>%s · commented slides</title><style>%s</style></head><body><div class=\"wrap\">"
-            "<h1>%s</h1><p class=\"sub\">%d slides, commented · <a href=\"../\">the deck</a> · <a href=\"../#present\">present it</a> · <a href=\"../notes/\">speaker notes</a></p>"
+            "<title>%s · the deck, read</title><style>%s</style></head><body><div class=\"wrap\">"
+            "<h1>%s</h1><p class=\"sub\">%d slides, read slide by slide — what each shows, the concepts behind it, the evidence, and one thing to take away · <a href=\"../\">the deck</a> · <a href=\"../#present\">present it</a></p>"
             "<nav class=\"toc\">%s</nav>%s%s</div></body></html>") % (
         html.escape(title), CSS, html.escape(title), len(deck["slides"]), "\n".join(toc), "\n".join(body_html),
         ('<div class="sources"><h2>Sources</h2>%s</div>' % block_html(sources)) if sources else "")

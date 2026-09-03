@@ -1,6 +1,7 @@
 # built bundles, except the example the README tells you to open
 decks/*.json
 !decks/example.json
+!decks/isd2026.json
 
 # test artefacts
 tests/fixture.json

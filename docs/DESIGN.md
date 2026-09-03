@@ -582,6 +582,20 @@ What a reader does on a published page is theirs: the deck they edit is the brow
 and there is nothing there that could write back. AI on that page goes through the demo's
 function, with its daily limits, because it is the same origin.
 
+### The deck, read beside its slides
+
+A published talk has three faces. The page itself, which presents. `notes/`, which
+`publish.py` writes from the same deck: every slide with its figure and the speaker's note,
+as a plain document with a page break at each section — a presenter wants that on a lectern,
+not in a browser. And `commentary/`, which `commentary.py` writes from a markdown file the
+author keeps beside the deck: one `## N. Title` block per slide, with what the slide shows,
+the concepts a reader from another field would need, the argument, the evidence with links,
+and one thing to take away, laid out next to a picture of each slide as it projects. The
+commentary is for the audience, so nothing addressed to the speaker goes in it — no notes,
+no timings, no remarks about what was checked. The ISD 2026 keynote, `decks/isd2026.json`,
+is the worked example of all three, and `check_links.py` is what keeps its evidence honest:
+every DOI and arXiv id resolved, and a link called dead only when the publisher says so.
+
 ### Which copy is this
 
 "That looks like an old version" was unanswerable without reading the source, and it was

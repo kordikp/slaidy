@@ -5,11 +5,30 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **A talk is a link, and the link has three faces.** `scripts/publish.py` puts a deck
+  under `site/`, where the Pages workflow makes it a page carrying the whole editor;
+  `#present` on the end opens straight into the projector. Beside the deck it writes
+  `notes/`, the speaker notes as a document that prints. `scripts/commentary.py` writes
+  `commentary/`: every slide as it projects, with a reading of it for the audience — what
+  it shows, the concepts, the argument, the evidence with links, one thing to take away.
+  The ISD 2026 keynote is published this way and kept in `decks/isd2026.json` as the
+  worked example of a deck that has been used in anger.
+- **A figure of your own.** The figure picker has four ways in: from the library, generate,
+  draw by hand on a blank canvas, or paste SVG. A generated figure is measured before it is
+  accepted — thin lines, labels inside their boxes, nothing piled up — and drawn once more
+  with the complaints if it fails.
+- **Work that waits.** An edit, a rewrite or a list of ideas asked of one slide carries on
+  when you move to another slide, and is there when you come back.
 - **Slides move between decks.** Select in the list — click, `Shift`-click, `Ctrl`-click,
   `Ctrl-A` — then `Ctrl-C` / `Ctrl-X` / `Ctrl-V`, or right-click for the same menu. The
-  markdown goes to the system clipboard; the slides *and every figure they reference* go
-  to the browser's store, so a paste into another deck arrives whole. An incoming figure
-  whose id already means something else here does not overwrite it.
+  markdown goes to the system clipboard with the figures in a trailer behind it, so a paste
+  into another deck — another browser, or the application window, which reads the clipboard
+  itself — arrives whole. An incoming figure whose id already means something else here
+  does not overwrite it.
+- **`###` is a big heading inside a slide**, `####` a smaller one, and a numbered list has
+  room for its numbers.
+- **`scripts/check_links.py`** resolves every DOI and arXiv id in a deck and says which are
+  dead — and only says dead when the publisher does, not when it merely refuses a script.
 - **A deck from a brief.** Abstract, the questions it must answer, the arc, how long you
   have — it comes back with the shape: sections, and per slide a title and the one line
   it is there to do. What is seeded is each slide's *purpose*, so every slide is one
@@ -27,6 +46,13 @@ Dates are when the work landed, not when it was released; there are no releases 
 - **`New deck…`** asks where it will be saved before you start.
 
 ### Changed
+- **The application opens the deck you had**, and never the example on its own: a deck
+  that has moved is dropped from the recent list, and a second copy started while one is
+  running takes the next port, so two decks can sit side by side.
+- **A window, not a tab.** `install.sh` puts SlAIdy in the launcher with an icon, and
+  `studio.sh` opens it in a GTK/WebKit window of its own where those are present. The
+  installer checks that the file it installed is the one you are looking at, and the ⋯
+  menu carries the stamp of the copy being served.
 - **The project is called SlAIdy.** The name in the toolbar is the link to the source.
 - The AI can be pointed at **CESNET e-INFRA CZ** in one click, and `studio.sh` prefers it
   when `CESNET_API_KEY` is in the environment or in `.env`. A reasoning model's token

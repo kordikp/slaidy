@@ -1034,6 +1034,18 @@ let fileHandle=null, fileName=null;
    after a restart, no second copy, and the file the app edits is the file on
    disk. The handle stays as the fallback for any other way of opening this. */
 let srvDeck=null;
+/* A deck loaded from ?deck=<url> lives at that URL: GET gave it, PUT saves it
+   back. The URL is the whole protocol — a class storage on Vercel, a GitLab
+   raw file behind a proxy, anything that answers those two verbs. */
+let rmtDeck=null;
+async function writeRemote(){
+  const r=await fetch(rmtDeck.url,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(S)});
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok)throw new Error((j&&j.error)||('the storage answered '+r.status));
+  if(j&&j.rev)rmtDeck.rev=j.rev;
+  return true;
+}
 /* srvDeck is the file studio.sh serves. srvLinked says whether the deck in this
    window IS that file. It has to be a separate question: a new deck, a deck
    built from a brief and a deck you opened are all not that file, and writing
@@ -1258,7 +1270,7 @@ async function persist(){
        await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()}); }
   catch(e){ where=null; }
   try{
-    const toDisk=(srvDeck&&srvLinked)?await writeServer():await writeFile();
+    const toDisk=rmtDeck?await writeRemote():(srvDeck&&srvLinked)?await writeServer():await writeFile();
     lastSaved=new Date();dirty=false;saveErr=null;
     if(Date.now()-lastSnap>90000){lastSnap=Date.now();snapshot().catch(()=>{});}
     setStatus('ok',toDisk?null:(where==='local storage'?where:'in this browser only'));
@@ -7039,6 +7051,30 @@ async function boot(){
     lastSaved=new Date();setStatus('ok');paint();
     if(byLink)setTimeout(()=>{present(true);armFullscreen();},300);
   };
+
+  /* 0. a deck named in the address: ?deck=<url>. The shared copy is the truth
+     — this is the link a teacher hands a class, and everyone must see the same
+     deck. Saves go back to the same URL; if the storage refuses them, the
+     banner says so and the browser copy still catches everything. */
+  const durl=new URLSearchParams(location.search).get('deck');
+  if(durl&&/^https?:\/\//.test(durl)){
+    try{
+      const r=await fetch(durl,{cache:'no-store'});
+      if(r.ok){
+        const b=await r.json();
+        if(b&&b.slides){
+          rmtDeck={url:durl};
+          let host='storage';try{host=new URL(durl).host;}catch(e){}
+          fileName='cloud · '+host;
+          load(b);return;
+        }
+      }
+      banner('The deck at that address answered '+r.status+'.','Start empty',()=>{});
+    }catch(e){
+      banner('Could not reach the deck address — '+(e.message||e)+'.','Start empty',()=>{});
+    }
+    return;
+  }
 
   /* 1. the deck the server is serving, which it will also write */
   srvDeck=await probeServer();

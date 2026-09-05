@@ -15,6 +15,9 @@ application, and if the application disappears you still have a deck.
 
 ### [Try it in your browser →](https://kordikp.github.io/slaidy/)
 
+A deck can also live at a URL — `?deck=<address>` opens it and saves back to it,
+which is how a class shares one storage ([docs/REMOTE.md](docs/REMOTE.md)).
+
 Nothing to sign up for and nothing uploaded — the same single file with the tour deck in
 it, and a small daily allowance of AI so you can see what the panels do. A real talk is
 published the same way: [the ISD 2026 keynote](https://kordikp.github.io/slaidy/isd2026/),

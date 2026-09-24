@@ -6,7 +6,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const f=document.getElementById('f');
 const spill=()=>{if(!document.getElementById('out'))
   document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'\nERROR the file stopped here</pre>');};
-const __watchdog=setTimeout(spill,90000);
+/* under the browser's 70 s budget, so a hang still reports how far it got */
+const __watchdog=setTimeout(spill,55000);
 addEventListener('load',async()=>{
  const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
  try{

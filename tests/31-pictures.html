@@ -1,0 +1,148 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const f=document.getElementById('f');
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'\nERROR the file stopped here</pre>');};
+const __watchdog=setTimeout(spill,90000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  // ---------- pictures ----------
+  // A photograph is kept as bytes, once, named by its content; a figure points
+  // at it with href="asset:…". The figure stays text a model can read and
+  // change, and the pixels never enter a prompt.
+  const png=(wd,ht,paint)=>new Promise(r=>{const c=d.createElement('canvas');c.width=wd;c.height=ht;
+    const g=c.getContext('2d');paint(g,wd,ht);c.toBlob(r,'image/png');});
+  const noisy=(g,wd,ht)=>{for(let i=0;i<4000;i++){g.fillStyle=`hsl(${i*37%360},70%,50%)`;
+    g.fillRect(Math.random()*wd,Math.random()*ht,40,40);}};
+  const big=await png(4000,1000,noisy);
+  const r1=await w.picImport(big,{name:'rig.png',source:'file'});
+  ok('a large picture is brought down to the longest edge kept',r1.w===1920&&r1.h===480,r1.w+'×'+r1.h);
+  const a1=w.S.assets[r1.id];
+  ok('and stored under a name made from its content',/^img-[0-9a-f]{24}$/.test(r1.id)&&!!a1,r1.id);
+  ok('re-encoded to something smaller than the original',a1.data.length*3/4<big.size,Math.round(a1.data.length*3/4/1024)+' kB vs '+Math.round(big.size/1024)+' kB, '+a1.type);
+  const small=await png(300,200,(g)=>{g.fillStyle='#0EA5E9';g.fillRect(0,0,300,200);});
+  const r2=await w.picImport(small,{name:'dot.png'});
+  ok('a small picture keeps its own bytes',w.S.assets[r2.id].type==='image/png'&&r2.w===300,w.S.assets[r2.id].type);
+  ok('the same bytes are the same picture',w.picAdd('image/png',w.S.assets[r2.id].data)===r2.id);
+  let refused='';
+  try{await w.picImport(new W.Blob(['<svg/>'],{type:'image/svg+xml'}));}catch(e){refused=e.message;}
+  ok('an SVG is sent to the figures, not kept as a picture',/SVG/.test(refused),refused);
+
+  // ---------- one reference, three spellings ----------
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200"><image href="asset:${r1.id}" x="0" y="0" width="800" height="200"/></svg>`;
+  const lv=w.live(svg), pt=w.portable(svg);
+  ok('live points at a blob and names the picture',/href="blob:/.test(lv)&&lv.includes(`data-asset="${r1.id}"`));
+  ok('portable carries the bytes',pt.includes('href="data:'+a1.type+';base64,'));
+  ok('both come back to the stored spelling',w.stored(lv)===svg&&w.stored(pt)===svg,w.stored(lv).slice(0,160));
+  ok('a figure keeps the name, not the bytes',svg.length<300,svg.length+' chars');
+
+  // an SVG from elsewhere with the picture embedded hands it over
+  const dataUrl='data:image/png;base64,'+w.S.assets[r2.id].data;
+  const foreign=`<svg viewBox="0 0 10 10"><image xlink:href="${dataUrl}" width="10" height="10"/></svg>`;
+  ok('an embedded picture is adopted into the deck',w.stored(foreign)===`<svg viewBox="0 0 10 10"><image href="asset:${r2.id}" width="10" height="10"/></svg>`,w.stored(foreign).slice(0,120));
+  // one pasted from another deck names a picture this deck has not got: the bytes win
+  const alien=`<svg viewBox="0 0 10 10"><image href="${dataUrl}" data-asset="img-aaaaaaaaaaaaaaaaaaaaaaaa" width="10" height="10"/></svg>`;
+  ok('a name this deck does not know is not trusted over the bytes',w.stored(alien).includes('asset:'+r2.id));
+
+  // ---------- a deck from outside ----------
+  const keep=w.S.assets;
+  w.S.assets={...keep,'img-000000000000000000000000':{type:'text/html',data:'PHNjcmlwdD4='},
+              'not-a-name':{type:'image/png',data:'AAAA'},
+              'img-111111111111111111111111':{type:'image/png',data:'<svg onload=alert(1)>'}};
+  w.S.figs['fig-inline']=foreign;
+  w.normalise();
+  ok('pictures that are not pictures are dropped',!w.S.assets['img-000000000000000000000000']&&!w.S.assets['not-a-name']&&!w.S.assets['img-111111111111111111111111']&&!!w.S.assets[r1.id],Object.keys(w.S.assets).join(','));
+  ok('and a drawing carrying one inline is made small',!/base64/.test(w.S.figs['fig-inline'])&&w.S.figs['fig-inline'].includes('asset:'+r2.id));
+  ok('a missing picture shows as one, not as nothing',/missing picture/.test(decodeURIComponent(w.live(svg.replace(r1.id,'img-222222222222222222222222')))));
+
+  // ---------- on the slide ----------
+  w.S.figs['fig-photo']=svg;
+  w.S.assets[r1.id].desc='test rig; the sensor is the black box on the left';
+  const si=w.S.slides.findIndex(s=>!/!\[\[/.test(s.body||''));
+  w.cur=si;w.S.slides[si].body+='\n\n![[fig-photo]]';w.paint();await wait(200);
+  const im=d.querySelector('#sheet image[data-asset], .stage image[data-asset]');
+  ok('the slide shows it',!!im&&/^blob:/.test(im.getAttribute('href')||''),im?im.getAttribute('href').slice(0,20):'no image on the stage');
+  const loaded=im?await new Promise(r=>{const i=new W.Image();i.onload=()=>r(i.naturalWidth);i.onerror=()=>r(0);i.src=im.getAttribute('href');}):0;
+  ok('from bytes the browser can read',loaded===1920,String(loaded));
+
+  // ---------- what a model is told ----------
+  const notes=w.picNotes(svg);
+  ok('a model reads the description, not the pixels',notes.includes('test rig')&&notes.includes('1920×480')&&!/base64/.test(notes),notes.trim());
+  const g1=w.picGuard(svg,svg.replace('</svg>','<image href="asset:img-ffffffffffffffffffffffff" width="5" height="5"/></svg>'));
+  ok('a picture the model made up is taken out',g1.unknown.length===1&&!g1.svg.includes('img-ffff')&&g1.svg.includes(r1.id),JSON.stringify(g1.unknown));
+  const g2=w.picGuard(svg,'<svg viewBox="0 0 800 200"><rect width="10" height="10"/></svg>');
+  ok('a picture the model dropped is reported',g2.lost.length===1&&g2.lost[0]===r1.id);
+  const g3=w.picGuard(svg,svg.replace('</svg>','<image href="https://example.com/x.png"/></svg>'));
+  ok('and so is one from the web',g3.unknown.length===1&&!g3.svg.includes('example.com'));
+
+  // ---------- the editor ----------
+  w.figEdit(w.S.slides[si],'fig-photo');await wait(500);
+  const fi=w.FE&&w.FE.svg&&w.FE.svg.querySelector('image');
+  ok('the editor mounts the picture',!!fi&&/^blob:/.test(fi.getAttribute('href')||''));
+  const out=w.feHtml();
+  ok('and saves the name, never the bytes or the blob',out.includes('asset:'+r1.id)&&!/blob:|base64/.test(out),out.slice(0,200));
+  w.feSelect([fi]);await wait(80);
+  const desc=d.getElementById('fePicDesc');
+  ok('a selected picture offers its description',!!desc&&desc.value.includes('test rig'));
+  ok('and not a fill or a stroke',!d.getElementById('feFill'));
+  desc.value='test rig, sensor on the left';desc.dispatchEvent(new W.Event('input'));
+  ok('the description is the picture\'s own',w.S.assets[r1.id].desc==='test rig, sensor on the left');
+  [...d.querySelectorAll('#fePicFit button')].find(b=>b.dataset.v==='xMidYMid slice').click();
+  d.getElementById('fePicGray').checked=true;d.getElementById('fePicGray').dispatchEvent(new W.Event('change'));
+  const looked=w.feHtml();
+  ok('fill-the-box and black-and-white are plain attributes',/preserveAspectRatio="xMidYMid slice"/.test(looked)&&/grayscale\(1\)/.test(looked),looked.slice(0,260));
+  w.fePutPicture(r2);await wait(80);
+  ok('a second picture goes into the drawing',(w.feHtml().match(/asset:img-/g)||[]).length===2);
+  const src=d.querySelector('.fetools button[data-a="pic"]');
+  ok('the toolbar has a picture button',!!src);
+  d.getElementById('feSave').click();await wait(150);
+  ok('saved with both pictures by name',(w.S.figs['fig-photo'].match(/asset:img-/g)||[]).length===2&&!/blob:|base64/.test(w.S.figs['fig-photo']));
+
+  // ---------- leaving the deck ----------
+  const carried=w.figsOf([w.S.slides[si]]);
+  ok('slides copied out carry their pictures inside',/base64/.test(carried['fig-photo']||''));
+  const mine=w.S.assets;w.S.assets={};
+  const map=w.mergeFigs({'fig-carried':carried['fig-photo']});
+  ok('and a deck they are pasted into takes them in',!!w.S.assets[r1.id]&&!!w.S.assets[r2.id]&&w.S.figs[map['fig-carried']].includes('asset:'),Object.keys(w.S.assets).join(','));
+  w.S.assets={...mine,...w.S.assets};
+  const png2=await w.svgToPng(w.S.figs['fig-photo'],400);
+  ok('a picture of the figure has the picture in it',!!png2&&png2.url.length>3000,png2?png2.url.length+' chars':'none');
+  const art=w.picPortably(w.articleHtml);
+  ok('an exported article carries bytes, not this page\'s blobs',!/blob:/.test(art)&&/data:image\/(webp|png);base64/.test(art));
+
+  // ---------- pictures nobody uses ----------
+  w.S.assets['img-333333333333333333333333']={type:'image/png',data:w.S.assets[r2.id].data};
+  w.UNDO.push({slides:[],cur:0,label:'t',figs:{'fig-old':'<svg><image href="asset:img-444444444444444444444444"/></svg>'},title:null});
+  w.S.assets['img-444444444444444444444444']={type:'image/png',data:w.S.assets[r2.id].data};
+  w.picGc();
+  ok('a picture nothing uses goes on save',!w.S.assets['img-333333333333333333333333']);
+  ok('one an undo would bring back stays',!!w.S.assets['img-444444444444444444444444']);
+  w.UNDO.pop();
+
+  // ---------- pasted or dropped with nothing open ----------
+  const n0=Object.keys(w.S.figs).length,b0=w.S.slides[w.cur].body;
+  const dt=new W.DataTransfer();dt.items.add(new W.File([small],'pasted.png',{type:'image/png'}));
+  d.dispatchEvent(new W.ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
+  for(let i=0;i<30&&Object.keys(w.S.figs).length===n0;i++)await wait(100);
+  ok('a pasted picture lands on the slide as a figure',Object.keys(w.S.figs).length===n0+1&&w.S.slides[w.cur].body.length>b0.length,w.S.slides[w.cur].body.slice(-40));
+
+  // ---------- the picker ----------
+  let picked=null;w.pickFigure(id=>{picked=id;});await wait(120);
+  const tab=[...d.querySelectorAll('.dlg .fetabs button')].find(b=>b.dataset.t==='pic');
+  ok('the picker has a Picture tab',!!tab);
+  tab.click();await wait(80);
+  d.getElementById('nfDesc').value='a blue rectangle';d.getElementById('nfId').value='fig-blue';
+  const dt2=new W.DataTransfer();dt2.items.add(new W.File([small],'blue.png',{type:'image/png'}));
+  d.dispatchEvent(new W.ClipboardEvent('paste',{clipboardData:dt2,bubbles:true,cancelable:true}));
+  for(let i=0;i<30&&!picked;i++)await wait(100);
+  ok('pasting into it makes a figure of the picture',picked==='fig-blue'&&/asset:img-/.test(w.S.figs['fig-blue']||''),String(picked));
+  ok('with the description given',w.S.assets[r2.id].desc==='a blue rectangle');
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

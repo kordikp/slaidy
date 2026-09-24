@@ -960,6 +960,64 @@ a worse way to set a number than a number field.
 * Empty means from the start, and never — so it writes no attribute rather than
   `data-step="1"`, and a figure with no steps stays a figure with no steps.
 
+### Pictures: bytes kept once, a name in the drawing
+
+Not everything is a drawing. A photograph of the rig, a screenshot or a plot of a
+result can't become SVG. Tracing one into paths gives a worse photo and a worse
+drawing, and people don't move their talks to a tool that asks them to. So a
+picture is kept as what it is, and the rest of the design is about keeping it out
+of the way of the text.
+
+**Stored once, named by its content.** The bytes go in `S.assets`, under
+`img-` + 24 hex digits of a hash of them. A figure places the picture with
+`<image href="asset:img-…">`, so a figure holding a photo is still a few hundred
+characters of SVG that a model can read and change. The same bytes pasted twice
+are one picture.
+
+**The description is what a model sees.** Each picture has `desc`. When a figure
+goes to a model, the prompt lists its pictures with their descriptions and never
+the pixels. The obvious worry is that a description stops matching the picture.
+That can't happen: the name *is* the content, so different pixels are a
+different picture with no description yet. A description can still be wrong, but
+it can't be about a picture that has since changed.
+
+**One reference, three spellings.** `stored` (`href="asset:ID"`) is the one kept
+in figures, in files and in prompts. `live` (`href="blob:…" data-asset="ID"`) is
+what is mounted on the page: a short URL, not megabytes of base64 in every
+repaint. `portable` (`href="data:…" data-asset="ID"`) is what leaves the deck:
+the clipboard, a PNG of a figure, an exported article. `stored()` turns either
+back into the first. It also adopts a `data:` picture that arrives embedded in
+somebody else's SVG, so an old deck, a pasted figure or another deck's slides
+come in small.
+
+**Not a link.** Adding from an address fetches the picture and copies it in. A
+deck that points outside itself shows whatever is behind the link today, or
+nothing. Descriptions for it would then be claims about something nobody can
+check.
+
+**Small enough.** Pictures are shrunk to 1920 pixels on the longest edge and
+written as WebP where the browser can. A picture already small enough keeps its
+own bytes, because re-encoding it would only make it worse. In the deck file,
+`assets` comes after the slides, so a reader meets the slides first.
+`scripts/assets.py list` shows everything about them without the bytes.
+
+**What a model may do to a picture.** It may do everything that is text and
+nothing that is pixels: move, size, crop (`preserveAspectRatio="… slice"` or a
+`clipPath`), black and white, brightness and contrast (a CSS `filter` on the
+`<image>`), and draw on top: arrows, labels, a highlight, a box over a face.
+That covers what people actually ask for ("point at the peak", "crop to the
+middle", "hide the name") without touching a pixel. When a model returns a
+figure, a picture it made up is removed, and one it dropped is reported before
+anything is applied.
+
+**Changing the pixels is deliberately not here.** Image-editing models exist and
+could be added the same way as the text ones, with the result stored as a new
+picture that records what it was derived from and why. They would not be
+offered for everything. A picture of a result is evidence, and a regenerated one
+is a fabrication no matter how good it looks. Seeing is a different matter: a
+vision model that *writes a description* would help and changes nothing. It
+waits for the endpoint to carry images, because the one here carries text.
+
 ## Where the deck lives
 
 **The deck file is the document.** One `.json` holding the slides, the figures and the

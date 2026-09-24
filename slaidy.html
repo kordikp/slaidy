@@ -634,6 +634,12 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .ferow code{font:11.5px ui-monospace,monospace;background:#F1F2F5;padding:2px 6px;border-radius:4px;color:var(--acc)}
 .fewarn{margin-top:8px;font-size:11px;line-height:1.45;color:var(--b);background:#FEF7EA;
  border:1px solid #F3DCB0;border-radius:var(--r6);padding:6px 8px}
+.picdrop{border:1.5px dashed var(--line);border-radius:var(--r6);padding:18px 14px;text-align:center;
+ font-size:12.5px;line-height:1.9;color:var(--gray);outline:none}
+.picdrop.on,.picdrop:focus{border-color:var(--d);background:#F5F3FF}
+.chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--gray);margin:2px 0 8px}
+.fld .chk input{width:auto;margin:0}
+#fePicFit button.on{background:var(--ink)}
 .fepanel textarea{width:100%;border:1px solid var(--line);border-radius:var(--r6);padding:6px 8px;
  font:12px/1.5 system-ui;resize:vertical;outline:none}
 .fepanel textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
@@ -1213,7 +1219,7 @@ async function openDeckFile(){
       const b=await r.json();
       if(!b.slides)throw new Error('that file is not a deck');
       S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-         meta:b.meta||{},style:b.style||{}};
+         meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
       normalise();cur=0;dirty=false;unbanner();
       srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
       lastSaved=new Date();setStatus('ok');
@@ -1235,7 +1241,7 @@ async function openDeckFile(){
     const b=JSON.parse(await (await h.getFile()).text());
     if(!b.slides)throw new Error('that file is not a deck');
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-       meta:b.meta||{},style:b.style||{}};
+       meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
     normalise();cur=0;dirty=false;
     srvLinked=false;                 /* this file is now the deck's home, not the served one */
     unbanner();
@@ -1295,6 +1301,7 @@ async function persist(){
      net, and it used to be skipped whenever the file write threw — so the one
      moment it was needed was the one moment it did not run. */
   let where=null;
+  picGc();
   try{ where=await put(KEY(),S);
        await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()}); }
   catch(e){ where=null; }
@@ -1450,7 +1457,7 @@ function disarmSvg(svg){
     .replace(/((?:xlink:)?href)\s*=\s*(["'])\s*(?:javascript|data(?!:image\/(?:png|jpe?g|gif|webp|svg\+xml);)|vbscript):[^"']*\2/gi,'$1="#"');
 }
 function scopeSvg(svg,uid){
-  svg=disarmSvg(svg);
+  svg=live(disarmSvg(svg));
   svg=freshIds(svg,uid);
   if(!svg) return '';
   svg=svg.replace(/<\?xml[^>]*\?>/,'').trim();
@@ -1463,6 +1470,411 @@ function scopeSvg(svg,uid){
     });
     return `<style>${c}</style>`;
   });
+}
+/* ---------- pictures --------------------------------------------------------
+   A photograph is not a drawing, and tracing one into paths makes a worse photo
+   and a worse drawing. So a picture is kept as what it is — bytes — once, in
+   S.assets, under a name made from its content, and a figure points at it:
+
+       <image href="asset:img-3f9c…" x="0" y="0" width="800" height="533"/>
+
+   The figure stays a small text that a model can read and change; the pixels
+   never enter a prompt. What a model is told about a picture is the description
+   its author gave it, and because the name is the content, that description can
+   never drift onto different pixels: other pixels are another picture.
+
+   One reference, three spellings:
+     stored    href="asset:ID"                               S.figs, prompts, files
+     live      href="blob:…"  data-asset="ID"                mounted on this page
+     portable  href="data:image/…;base64,…"  data-asset="ID" leaving the deck: the
+                                                             clipboard, a PNG, an export
+   stored() is the way back from either, and it also adopts a data: picture that
+   arrived embedded in somebody else's SVG — which is how an old deck, a pasted
+   figure or another deck's slides end up small again.
+--------------------------------------------------------------------------- */
+const PIC_TYPES={'image/webp':'webp','image/png':'png','image/jpeg':'jpg','image/gif':'gif'};
+const PIC_ID=/^img-[0-9a-f]{12,40}$/;
+/* The longest edge kept. The stage is 1280 wide and a projector rarely more than
+   1920; a 6000-pixel phone photo costs twenty times the bytes and shows nothing more. */
+const PIC_MAX=1920;
+/* Content naming, not security: two 53-bit mixes of the base64, 24 hex digits. */
+function picHash(s){
+  const mix=seed=>{
+    let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;
+    for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);
+      h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
+    h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+    h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0');};
+  return 'img-'+(mix(0)+mix(7)).slice(0,24);
+}
+/* A deck can arrive from anywhere, so a picture in it is checked before it is
+   ever turned into a URL: a known image type, and base64 and nothing else. */
+const picChecked=new WeakSet();
+function picOk(a){
+  if(!a||typeof a!=='object')return false;
+  if(picChecked.has(a))return true;
+  const ok=!!PIC_TYPES[a.type]&&typeof a.data==='string'&&a.data.length>0&&a.data.length<16e6&&
+           /^[A-Za-z0-9+/]+=*$/.test(a.data);
+  if(ok)picChecked.add(a);
+  return ok;
+}
+function picAdd(type,data,info){
+  const id=picHash(data);
+  S.assets=S.assets||{};
+  if(!S.assets[id])S.assets[id]={type,data,desc:'',...(info||{}),added:new Date().toISOString().slice(0,10)};
+  return id;
+}
+const PIC_MISSING='data:image/svg+xml,'+encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90"><rect width="160" height="90" fill="#F3F4F6"/>'+
+  '<path d="M0 0L160 90M160 0L0 90" stroke="#D1D5DB"/><text x="80" y="50" font-size="11" text-anchor="middle" '+
+  'fill="#6B7280" font-family="sans-serif">missing picture</text></svg>');
+const picB64=d=>{const b=atob(d),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;};
+const PIC_URL=new Map();
+function picUrl(id){
+  const a=S.assets&&S.assets[id];
+  if(!picOk(a))return PIC_MISSING;
+  const c=PIC_URL.get(id);
+  if(c&&c.data===a.data)return c.url;
+  const url=URL.createObjectURL(new Blob([picB64(a.data)],{type:a.type}));
+  PIC_URL.set(id,{data:a.data,url});
+  return url;
+}
+function picData(id){
+  const a=S.assets&&S.assets[id];
+  return picOk(a)?`data:${a.type};base64,${a.data}`:PIC_MISSING;
+}
+/* every <image> tag, rewritten by fn(tag, id, href) */
+const PIC_TAG=/<image\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+const PIC_HREF=/\s(?:xlink:)?href\s*=\s*(["'])([^"']*)\1/gi;
+const PIC_ATTR=/\sdata-asset\s*=\s*(["'])([^"']*)\1/i;
+function picTags(svg,fn){
+  return String(svg||'').replace(PIC_TAG,tag=>{
+    const hrefs=[...tag.matchAll(PIC_HREF)].map(m=>m[2]);
+    const href=hrefs[0]||'', named=(tag.match(PIC_ATTR)||[])[2]||'';
+    const id=href.startsWith('asset:')?href.slice(6):named;
+    const out=fn(tag,PIC_ID.test(id)?id:'',href);
+    return out==null?tag:out;
+  });
+}
+const picBare=tag=>tag.replace(PIC_HREF,'').replace(PIC_ATTR,'');
+const picSet=(tag,attrs)=>picBare(tag).replace(/^<image\b/i,'<image'+attrs);
+/* the one spelling that is kept */
+function stored(svg){
+  if(!/<image\b/i.test(svg||''))return svg;
+  return picTags(svg,(tag,id,href)=>{
+    /* bytes that came with the tag win over a name this deck does not know:
+       a picture pasted from another deck brings itself */
+    const m=/^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/]+=*)$/.exec(href.replace(/\s+/g,''));
+    if(m&&!(id&&picOk((S.assets||{})[id])))id=picAdd(m[1],m[2]);
+    return id?picSet(tag,` href="asset:${id}"`):null;   /* not a picture of ours: disarmSvg's business */
+  });
+}
+/* An export is a page of its own, where this page's blob: addresses mean
+   nothing — so while one is being written, what is live is portable. */
+let PIC_PORTABLE=false;
+function picPortably(fn){PIC_PORTABLE=true;try{return fn();}finally{PIC_PORTABLE=false;}}
+function live(svg){
+  if(PIC_PORTABLE)return portable(svg);
+  if(!/asset:/.test(svg||''))return svg;
+  return picTags(svg,(tag,id,href)=>id&&href.startsWith('asset:')
+    ?picSet(tag,` href="${picUrl(id)}" data-asset="${id}"`):null);
+}
+function portable(svg){
+  svg=stored(svg);
+  if(!/asset:/.test(svg||''))return svg;
+  return picTags(svg,(tag,id,href)=>id&&href.startsWith('asset:')
+    ?picSet(tag,` href="${picData(id)}" data-asset="${id}"`):null);
+}
+function picRefs(svg){
+  const out=new Set();
+  for(const m of String(svg||'').matchAll(/asset:(img-[0-9a-f]{12,40})/g))out.add(m[1]);
+  return out;
+}
+/* What a model is told about the pictures in a figure it is asked to change —
+   the author's words, never the pixels. */
+function picNotes(svg){
+  const ids=[...picRefs(svg)];
+  if(!ids.length)return '';
+  return '\n\nPICTURES IN THIS FIGURE — bitmaps you cannot see; this is what each one shows:\n'+
+    ids.map(id=>{const a=(S.assets||{})[id]||{};
+      return `- asset:${id}${a.w?` (${a.w}×${a.h} px)`:''}: ${(a.desc||'').trim()||'no description given'}`;}).join('\n')+'\n';
+}
+/* What a model hands back is held to the pictures it was given: it may move,
+   size, crop and draw over them, but a picture it names that does not exist is
+   one it made up, and a picture that went missing is one it threw away. */
+function picGuard(before,after){
+  const had=picRefs(before),unknown=[];
+  if(/<image\b/i.test(after)){
+    const doc=new DOMParser().parseFromString(after,'image/svg+xml'),root=doc.documentElement;
+    if(root&&root.tagName.toLowerCase()==='svg'){
+      root.querySelectorAll('image').forEach(el=>{
+        const href=el.getAttribute('href')||el.getAttribute('xlink:href')||'';
+        const id=href.startsWith('asset:')?href.slice(6):'';
+        if(id&&PIC_ID.test(id)&&picOk((S.assets||{})[id]))return;
+        unknown.push(id||href.slice(0,24)||'an image without a source');el.remove();
+      });
+      if(unknown.length)after=new XMLSerializer().serializeToString(root);
+    }
+  }
+  const now=picRefs(after);
+  return {svg:after,unknown,lost:[...had].filter(id=>!now.has(id))};
+}
+/* pictures nothing points at any more — not the deck, not an undo, not the
+   drawing open in the editor — go when the deck is saved */
+function picGc(){
+  if(!S.assets)return 0;
+  const inUse=new Set();
+  const see=svg=>picRefs(svg).forEach(id=>inUse.add(id));
+  Object.values(S.figs||{}).forEach(see);
+  UNDO.forEach(u=>u.figs&&Object.values(u.figs).forEach(see));
+  if(typeof FE!=='undefined'&&FE){see(FE.src);(FE.hist||[]).forEach(see);}
+  let n=0;
+  for(const id of Object.keys(S.assets))if(!inUse.has(id)){delete S.assets[id];PIC_URL.delete(id);n++;}
+  return n;
+}
+/* a deck that came from outside: pictures that are not pictures go, and any
+   drawing still carrying one inline hands it over */
+function picNormalise(){
+  if(S.assets&&typeof S.assets==='object'&&!Array.isArray(S.assets)){
+    for(const id of Object.keys(S.assets))if(!PIC_ID.test(id)||!picOk(S.assets[id]))delete S.assets[id];
+    if(!Object.keys(S.assets).length)delete S.assets;
+  }else delete S.assets;
+  for(const id in S.figs||{})
+    if(/<image\b/i.test(S.figs[id])&&/data:image\/|data-asset=/.test(S.figs[id]))S.figs[id]=stored(S.figs[id]);
+}
+const picBytes=()=>Object.values(S.assets||{}).reduce((n,a)=>n+Math.round((a.data||'').length*3/4),0);
+function picReadB64(blob){
+  return new Promise((res,rej)=>{const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej(r.error);r.readAsDataURL(blob);});
+}
+/* Bring a picture in from a file, the clipboard or a download. It is made as
+   small as it can be without being made worse: at most PIC_MAX on its longest
+   edge, WebP where the browser writes it (it keeps transparency), and the
+   original bytes whenever re-encoding would not save anything. */
+async function picImport(blob,info){
+  info=info||{};
+  const type=(blob&&blob.type)||'';
+  if(!/^image\//.test(type))throw new Error('That is not a picture');
+  if(/svg/.test(type))throw new Error('That is an SVG — a drawing, not a picture. Add it as a figure');
+  /* an <img> and its load event, not createImageBitmap or decode(): those never
+     settle under a headless browser's virtual clock, and this reads everywhere */
+  const url=URL.createObjectURL(blob);
+  const img=new Image();
+  try{
+    await new Promise((res,rej)=>{img.onload=res;
+      img.onerror=()=>rej(new Error('This browser cannot read that picture ('+(type||'unknown type')+')'));img.src=url;});
+  }finally{URL.revokeObjectURL(url);}
+  const w0=img.naturalWidth,h0=img.naturalHeight;
+  if(!w0||!h0)throw new Error('That picture has no size');
+  const k=Math.min(1,PIC_MAX/Math.max(w0,h0));
+  const keep=PIC_TYPES[type]&&(type==='image/gif'?blob.size<=2e6:(k===1&&blob.size<=350e3));
+  let out=null,w=w0,h=h0;
+  if(!keep){
+    w=Math.max(1,Math.round(w0*k));h=Math.max(1,Math.round(h0*k));
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const g=c.getContext('2d');g.drawImage(img,0,0,w,h);
+    /* toDataURL rather than toBlob: synchronous, and a browser without a WebP
+       writer says so by answering PNG */
+    let u=c.toDataURL('image/webp',.86);
+    if(!/^data:image\/webp/.test(u)){
+      let alpha=false;
+      try{const px=g.getImageData(0,0,w,h).data;for(let i=3;i<px.length;i+=16)if(px[i]<250){alpha=true;break;}}catch(e){}
+      u=alpha?c.toDataURL('image/png'):c.toDataURL('image/jpeg',.86);
+    }
+    const m=/^data:(image\/[a-z]+);base64,(.*)$/.exec(u);
+    /* re-encoding that saves nothing is not worth what it costs the picture */
+    if(m&&(k<1||m[2].length*3/4<blob.size||!PIC_TYPES[type]))out={type:m[1],data:m[2]};
+    else{w=w0;h=h0;}
+  }
+  if(!out)out={type,data:await picReadB64(blob)};
+  const id=picAdd(out.type,out.data,{w,h,name:info.name||'',source:info.source||''});
+  if(info.desc&&!S.assets[id].desc)S.assets[id].desc=info.desc;
+  return {id,w,h};
+}
+/* Pictures on the web: fetched by the browser, so only from a site that allows
+   it. The picture is then copied in like any other — the deck never points
+   outside itself, because what is behind a link can change or vanish. */
+async function picFetch(url){
+  if(!/^https?:\/\//i.test(url||''))throw new Error('Give a full address, starting with https://');
+  let r;
+  try{r=await fetch(url,{mode:'cors',credentials:'omit'});}
+  catch(e){throw new Error('That site does not let a page fetch its pictures. Save the picture and add the file instead');}
+  if(!r.ok)throw new Error(`The address answered ${r.status}`);
+  const b=await r.blob();
+  return picImport(b,{name:decodeURIComponent(url.split(/[?#]/)[0].split('/').pop()||''),source:url});
+}
+/* the first picture on a clipboard or in a drop, if there is one */
+function picFromTransfer(dt){
+  if(!dt)return null;
+  for(const it of dt.items||[])if(it.kind==='file'&&/^image\/(?!svg)/.test(it.type))return it.getAsFile();
+  for(const f of dt.files||[])if(/^image\/(?!svg)/.test(f.type))return f;
+  return null;
+}
+/* A figure that is only a picture, at the picture's own proportions. */
+function picFigureSvg(id,w,h){
+  const H=Math.max(40,Math.round(800*h/w));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 ${H}" width="800" height="${H}">\n`+
+    `<image href="asset:${id}" x="0" y="0" width="800" height="${H}" preserveAspectRatio="xMidYMid meet"/>\n</svg>`;
+}
+/* Where a picture goes when one is pasted or dropped: the widget or editor that
+   is open says so here, and nothing open means "onto the slide". */
+let PIC_TARGET=null;
+function figName(want,fallback){
+  let id=(want||fallback||'fig-picture').toLowerCase().replace(/\.[a-z0-9]+$/,'')
+    .replace(/[^a-z0-9.-]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+  if(!/^fig-/.test(id))id='fig-'+id;
+  let n=id;for(let k=2;S.figs[n];k++)n=id+'-'+k;return n;
+}
+const picKB=a=>Math.round((a.data||'').length*3/4/1024);
+/* One way in, used by the figure picker and by the editor: a file, the
+   clipboard, a drop or an address. onPicture({id,w,h}) gets the stored picture. */
+function picWidget(host,onPicture){
+  host.innerHTML=`<div class="picdrop" id="picDrop" tabindex="0">
+      <b>Drop a picture here</b>, paste one with <kbd>Ctrl</kbd>+<kbd>V</kbd>, or
+      <button class="b" id="picFile">choose a file…</button>
+      <input type="file" id="picIn" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>
+    <div class="rw fld" style="margin-top:8px"><input id="picUrl" placeholder="or an address: https://…/photo.jpg">
+      <button class="b" id="picGet" style="flex:0 0 auto;padding:0 14px">Fetch</button></div>
+    <div id="picMsg" class="tip"></div>`;
+  const msg=t=>{const m=host.querySelector('#picMsg');if(m)m.innerHTML=t;};
+  const take=async(get,label)=>{
+    msg(`<span class="spin"></span> ${esc(label)}…`);
+    try{const r=await get();msg('');onPicture(r);}
+    catch(e){msg(`<span style="color:var(--b)">${esc(e.message||String(e))}</span>`);}
+  };
+  const file=f=>take(()=>picImport(f,{name:f.name||'',source:f.name?'file':'clipboard'}),'reading the picture');
+  const inp=host.querySelector('#picIn');
+  host.querySelector('#picFile').onclick=()=>inp.click();
+  inp.onchange=()=>{if(inp.files[0])file(inp.files[0]);};
+  const drop=host.querySelector('#picDrop');
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('on');});
+  drop.addEventListener('dragleave',()=>drop.classList.remove('on'));
+  drop.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();drop.classList.remove('on');
+    const f=picFromTransfer(e.dataTransfer);f?file(f):msg('That was not a picture');});
+  host.querySelector('#picGet').onclick=()=>{
+    const u=host.querySelector('#picUrl').value.trim();
+    take(()=>picFetch(u),'fetching');};
+  PIC_TARGET=file;
+  return file;
+}
+/* the picker's tab: a picture becomes a figure of its own */
+function picPickTab(body,pick){
+  body.innerHTML=`<div class="fld"><label>What it shows</label>
+      <textarea id="nfDesc" rows="2" placeholder="e.g. loss curves of the three runs; the green one plateaus at epoch 40"></textarea></div>
+    <div class="fld"><label>Name</label><input id="nfId" placeholder="fig-photo"></div>
+    <div id="picW"></div>
+    <div class="tip">A picture stays a picture — nothing is traced. It is shrunk to at most
+      ${PIC_MAX} pixels on its longest side and kept once in the deck; the figure around it can
+      carry arrows, labels and clicks. The AI does not see the pixels: it reads what you write
+      above, so say what matters in it.</div>`;
+  picWidget(body.querySelector('#picW'),({id,w,h})=>{
+    const desc=body.querySelector('#nfDesc').value.trim();
+    if(desc)S.assets[id].desc=desc;
+    const n=figName(body.querySelector('#nfId').value.trim(),S.assets[id].name||'fig-picture');
+    snap('new figure',{[n]:null});S.figs[n]=picFigureSvg(id,w,h);touch();
+    PIC_TARGET=null;closeDialog();pick(n);
+    toast(desc?'Picture added':'Picture added — describe it in the figure editor so the AI knows what it shows');
+  });
+}
+/* A picture dropped or pasted with nothing open lands on the current slide. */
+async function picIntoSlide(f){
+  const s=S.slides[cur];if(!s)return;
+  try{
+    const {id,w,h}=await picImport(f,{name:f.name||'',source:f.name?'file':'clipboard'});
+    const n=figName(S.assets[id].name,'fig-picture');
+    snap('picture',{[n]:null});
+    S.figs[n]=picFigureSvg(id,w,h);
+    s.body=((s.body||'').trim()?s.body.trim()+'\n\n':'')+figMark(n,100);
+    touch();paint();
+    toast(`Added ${n} — click it to describe what it shows`);
+    if(picBytes()>20e6)banner(`The pictures in this deck are ${Math.round(picBytes()/1e6)} MB now.`,'OK',()=>{});
+  }catch(e){toast(e.message||String(e));}
+}
+/* ---- in the figure editor ---- */
+function feAddPicture(){
+  const p=document.getElementById('fepanel');if(!p||!FE.svg)return;
+  feSelect([]);
+  p.innerHTML=`<div class="sec"><div class="sect">Add a picture</div><div id="picW"></div>
+    <div class="tip">It goes in the middle; move and size it like any shape, and draw on top of it.</div></div>`;
+  picWidget(p.querySelector('#picW'),r=>fePutPicture(r));
+}
+function fePutPicture({id,w,h}){
+  if(!FE.svg)return;
+  fePush();
+  const vb=(FE.svg.getAttribute('viewBox')||'0 0 800 450').trim().split(/[\s,]+/).map(Number);
+  const k=Math.min(vb[2]*.7/w,vb[3]*.7/h);
+  const W=Math.round(w*k),H=Math.round(h*k);
+  const el=FE.doc.createElementNS(NS,'image');
+  el.setAttribute('href',picUrl(id));el.setAttribute('data-asset',id);
+  el.setAttribute('x',Math.round(vb[0]+(vb[2]-W)/2));el.setAttribute('y',Math.round(vb[1]+(vb[3]-H)/2));
+  el.setAttribute('width',W);el.setAttribute('height',H);
+  el.setAttribute('preserveAspectRatio','xMidYMid meet');
+  const bg=[...FE.svg.children].find(c=>c.tagName.toLowerCase()==='rect');
+  /* above the background plate, under everything drawn — a picture is what gets drawn on */
+  if(bg&&bg.nextSibling)FE.svg.insertBefore(el,bg.nextSibling);else FE.svg.appendChild(el);
+  feHot(el);feSelect([el]);
+  PIC_TARGET=fePutPictureFile;
+  toast('Picture added — say what it shows on the right');
+}
+const fePutPictureFile=f=>picImport(f,{name:f.name||'',source:f.name?'file':'clipboard'})
+  .then(fePutPicture,e=>toast(e.message||String(e)));
+const PIC_FIT=[['xMidYMid meet','Whole picture'],['xMidYMid slice','Fill the box'],['none','Stretch']];
+function picLook(el){
+  const f=(el.style&&el.style.filter)||'';
+  const n=(k,d)=>{const m=new RegExp(k+'\\(([\\d.]+)\\)').exec(f);return m?+m[1]:d;};
+  return {gray:n('grayscale',0),bright:n('brightness',1),contrast:n('contrast',1)};
+}
+function picPanelHtml(el){
+  const id=el.getAttribute('data-asset'),a=(S.assets||{})[id];
+  if(!a)return `<div class="sec"><div class="sect">Picture</div>
+    <p class="fewarn">This picture is not in the deck. Replace it, or delete it.</p>
+    <div class="rw"><button class="b" id="fePicSwap">Replace the picture…</button></div>
+    <input type="file" id="fePicIn" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>`;
+  const fit=el.getAttribute('preserveAspectRatio')||'xMidYMid meet',L=picLook(el);
+  return `<div class="sec"><div class="sect">Picture</div>
+    <div class="tip" style="margin-top:0">${a.w?`${a.w} × ${a.h} px · `:''}${picKB(a)} kB · ${esc(PIC_TYPES[a.type]||a.type)}
+      ${a.source&&/^https?:/.test(a.source)?` · from <a href="${esc(a.source)}" target="_blank" rel="noopener noreferrer">${esc(a.source.replace(/^https?:\/\//,'').slice(0,32))}</a>`:''}</div>
+    <div class="fld" style="margin-top:8px"><label>What it shows — the AI reads this, not the pixels</label>
+      <textarea id="fePicDesc" rows="3" placeholder="e.g. photo of the test rig; the sensor is the black box on the left">${esc(a.desc||'')}</textarea></div>
+    <div class="tip">Kept with the picture, wherever it is used — changed as you type.</div>
+    <div class="fld" style="margin-top:8px"><label>In its box</label><div class="seg" id="fePicFit">
+      ${PIC_FIT.map(([v,l])=>`<button data-v="${v}" class="${fit===v?'on':''}">${l}</button>`).join('')}</div></div>
+    <div class="tip">Fill the box, then size the box: that is a crop.</div>
+    <div class="fld" style="margin-top:8px"><label>Look</label>
+      <div class="chk"><input type="checkbox" id="fePicGray" ${L.gray?'checked':''}><span>black and white</span></div>
+      <div class="ferow"><span class="tip" style="margin:0;width:70px">Brightness</span>
+        <input id="fePicBr" type="range" min=".4" max="1.6" step=".05" value="${L.bright}" style="flex:1"></div>
+      <div class="ferow"><span class="tip" style="margin:0;width:70px">Contrast</span>
+        <input id="fePicCo" type="range" min=".4" max="1.6" step=".05" value="${L.contrast}" style="flex:1"></div></div>
+    <div class="rw" style="margin-top:8px"><button class="b" id="fePicSwap">Replace the picture…</button></div>
+    <input type="file" id="fePicIn" accept="image/png,image/jpeg,image/webp,image/gif" hidden></div>`;
+}
+function picPanelWire(el){
+  const id=el.getAttribute('data-asset');
+  const desc=document.getElementById('fePicDesc');
+  if(desc)desc.oninput=()=>{if(S.assets&&S.assets[id]){S.assets[id].desc=desc.value;touch();}};
+  document.querySelectorAll('#fePicFit button').forEach(b=>b.onclick=()=>{
+    fePush();el.setAttribute('preserveAspectRatio',b.dataset.v);
+    document.querySelectorAll('#fePicFit button').forEach(x=>x.classList.toggle('on',x===b));});
+  const look=()=>{
+    const g=document.getElementById('fePicGray').checked,br=+document.getElementById('fePicBr').value,
+          co=+document.getElementById('fePicCo').value;
+    const f=[g?'grayscale(1)':'',br!==1?`brightness(${br})`:'',co!==1?`contrast(${co})`:''].filter(Boolean).join(' ');
+    el.style.filter=f;if(!el.getAttribute('style'))el.removeAttribute('style');};
+  ['fePicGray','fePicBr','fePicCo'].forEach(k=>{const x=document.getElementById(k);
+    if(x){x.oninput=look;x.onchange=()=>{look();fePush();};}});
+  const inp=document.getElementById('fePicIn');
+  document.getElementById('fePicSwap').onclick=()=>inp.click();
+  inp.onchange=async()=>{
+    const f=inp.files[0];if(!f)return;
+    try{const r=await picImport(f,{name:f.name,source:'file'});
+      fePush();el.setAttribute('href',picUrl(r.id));el.setAttribute('data-asset',r.id);
+      if(id&&S.assets[id]&&S.assets[id].desc&&!S.assets[r.id].desc)
+        toast('Replaced — the description belonged to the old picture, write one for this');
+      fePanel();}
+    catch(e){toast(e.message||String(e));}
+  };
 }
 let uidN=0;
 /* The drawing's own shape, from its viewBox — every box around it is sized by
@@ -2061,7 +2473,8 @@ function normalise(){ S.slides.forEach((s,i)=>{
   delete s.fig; delete s.figScale;      /* including the ones that were only ever null */
   s.n=i+1;s.layout=LAY[s.layout]||(S.meta&&S.meta.layouts&&S.meta.layouts[s.layout])?s.layout:'text';
   s.tag=s.tag||'S';if(s.sub===undefined)s.sub=null;s.skip=!!s.skip;s.flags=s.flags||[];
-  s.textScale=s.textScale||100;}); }
+  s.textScale=s.textScale||100;});
+  picNormalise(); }
 
 /* ---------- bringing markdown in -------------------------------------------
    A folder of .md files is not obviously a deck: how many slides is it, what
@@ -2117,7 +2530,7 @@ async function importWizard(files){
             'Download a copy',()=>downloadDeck());return;}}
         const b=r.bundle;
         S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-           meta:b.meta||{},style:b.style||{}};
+           meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
         normalise();cur=0;fileHandle=null;fileName=null;srvLinked=false;
         document.getElementById('welcome').classList.add('hidden');
         closeDialog();await persist();paint();toast('Opened');};
@@ -2155,8 +2568,9 @@ async function importWizard(files){
           'Download a copy',()=>downloadDeck());return;}}
       const t=document.getElementById('iwTitle').value.trim()||'Imported deck';
       S={id:t.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||'deck',
-         title:t,slides:p.slides,figs:{...(S.figs||{})},meta:S.meta||{},style:S.style||{}};
-      r.svgs.forEach(([id,svg])=>{S.figs[id]=svg;});
+         title:t,slides:p.slides,figs:{...(S.figs||{})},meta:S.meta||{},style:S.style||{},
+         assets:{...(S.assets||{})}};
+      r.svgs.forEach(([id,svg])=>{S.figs[id]=stored(svg);});
       normalise();cur=0;fileHandle=null;fileName=null;srvLinked=false;
       document.getElementById('welcome').classList.add('hidden');
       closeDialog();await persist();paint();
@@ -2168,7 +2582,13 @@ async function importWizard(files){
   if(read)return show(read);
   document.getElementById('picker2').click();
 }
-async function ingest(files){ return importWizard(files); }
+async function ingest(files){
+  /* pictures go where pictures go; the rest is a deck, markdown or drawings */
+  const pics=[...files].filter(f=>/^image\/(?!svg)/.test(f.type||'')||/\.(png|jpe?g|webp|gif)$/i.test(f.name||''));
+  const rest=[...files].filter(f=>!pics.includes(f));
+  for(const f of pics){ if(PIC_TARGET)await PIC_TARGET(f); else await picIntoSlide(f); }
+  if(rest.length)return importWizard(rest);
+}
 
 /* ---------- carrying slides between decks --------------------------------
    Two decks are two files, so the only thing they share is the browser. The
@@ -2187,7 +2607,7 @@ function picked(){
 function figsOf(list){
   const out={};
   list.forEach(s=>{
-    figIds(s).forEach(id=>{if(S.figs[id])out[id]=S.figs[id];});
+    figIds(s).forEach(id=>{if(S.figs[id])out[id]=portable(S.figs[id]);});
   });
   return out;
 }
@@ -2241,6 +2661,8 @@ async function cutSlides(){
 /* An id that means something else in this deck must not be allowed to win. */
 function mergeFigs(figs){
   const map={};
+  figs={...figs};
+  for(const id in figs)figs[id]=stored(figs[id]);   /* pictures that came along move into this deck */
   for(const id in figs){
     if(!S.figs[id]){S.figs[id]=figs[id];map[id]=id;continue;}
     if(S.figs[id]===figs[id]){map[id]=id;continue;}          /* the same drawing */
@@ -2257,6 +2679,16 @@ function mergeFigs(figs){
    last copy THIS app had made, which is how a slide came in with somebody
    else's figure. */
 let PASTE_AT=0;
+/* A picture on the clipboard: into whatever is open to take one, or with
+   nothing open, onto the slide. Text on the clipboard is left to the handler
+   below, which reads it as slides. */
+document.addEventListener('paste',e=>{
+  const f=picFromTransfer(e.clipboardData);if(!f)return;
+  const typing=/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||'');
+  if(PIC_TARGET){e.preventDefault();e.stopImmediatePropagation();PIC_TARGET(f);return;}
+  if(typing||document.getElementById('veil').classList.contains('on'))return;
+  e.preventDefault();e.stopImmediatePropagation();picIntoSlide(f);
+},true);
 document.addEventListener('paste',e=>{
   const typing=/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||'')||
                (document.activeElement&&document.activeElement.isContentEditable);
@@ -4358,7 +4790,8 @@ function pickFigure(pick){
       <div class="fetabs"><button data-t="lib" class="on">From the library</button>
         <button data-t="new">Generate</button>
         <button data-t="hand">Draw by hand</button>
-        <button data-t="svg">Paste SVG</button></div>
+        <button data-t="svg">Paste SVG</button>
+        <button data-t="pic">Picture</button></div>
       <span style="flex:1"></span>
       <button class="b" id="pfNo">Cancel</button></div>
     <div id="pfBody" style="padding:14px 16px;overflow:auto;max-height:70vh"></div>`,'wide2');
@@ -4446,7 +4879,7 @@ function pickFigure(pick){
       const a=raw.indexOf('<svg'),b2=raw.lastIndexOf('</svg>');
       const out=document.getElementById('nfOut');out.classList.remove('hidden');
       if(a<0||b2<0){out.innerHTML='<p class="tip" style="color:var(--b)">That is not an SVG — it needs an &lt;svg&gt; … &lt;/svg&gt; element.</p>';return;}
-      const svg=disarmSvg(raw.slice(a,b2+6));
+      const svg=stored(disarmSvg(raw.slice(a,b2+6)));
       const bad=checkSvg(svg);
       if(bad.some(x=>/invalid|unparseable/.test(x))){out.innerHTML=`<p class="tip" style="color:var(--b)">${esc(bad.join('; '))}</p>`;return;}
       const n=nameFrom(document.getElementById('nfId').value.trim(),'fig-pasted');
@@ -4456,7 +4889,8 @@ function pickFigure(pick){
   };
   document.querySelectorAll('.dlg .fetabs button').forEach(b=>b.onclick=()=>{
     document.querySelectorAll('.dlg .fetabs button').forEach(x=>x.classList.toggle('on',x===b));
-    ({lib,new:make,hand,svg:paste}[b.dataset.t]||lib)();});
+    PIC_TARGET=null;
+    ({lib,new:make,hand,svg:paste,pic:()=>picPickTab(body,pick)}[b.dataset.t]||lib)();});
   document.getElementById('pfNo').onclick=closeDialog;
   lib();
 }
@@ -4834,6 +5268,7 @@ function figEdit(s,figId,onRename){
       <div class="fecanvas" id="fecanvas">
         <div class="fetools" id="fetools">
           ${Object.keys(ADD).map(k=>`<button data-a="${k}" title="${ADD[k].l}">${fico(k)}</button>`).join('')}
+          <button data-a="pic" title="Picture — a file, the clipboard or an address">${fico('pic')}</button>
           <span class="hr"></span>
           <button data-a="con" title="Join the two selected (Ctrl-J)">${fico('con')}</button>
           <button data-a="dup" title="Duplicate (Ctrl-D)">${fico('dup')}</button>
@@ -4850,6 +5285,7 @@ function figEdit(s,figId,onRename){
     const b=e.target.closest('button');if(!b)return;
     if(b.dataset.a==='dup')return feDup();
     if(b.dataset.a==='con')return feConnect();
+    if(b.dataset.a==='pic')return feAddPicture();
     feAdd(b.dataset.a);};
   document.getElementById('feCancel').onclick=closeDialog;
   document.getElementById('feUndo').onclick=feUndo;
@@ -4883,7 +5319,7 @@ function feMount(){
        hidden — the projector hides it, but here it is still a thing you might
        want to click, drag or take out of the drawing. */
     .fe-later{opacity:.16}
-  </style>${FE.src}`;
+  </style>${live(FE.src)}`;
   fr.onload=()=>{
     const d=fr.contentDocument, svg=d.querySelector('svg');
     if(!svg)return;
@@ -4898,6 +5334,13 @@ function feMount(){
       if(e.target&&e.target!==FE.svg&&!e.target.closest('defs')){e.preventDefault();feSelect([e.target]);}
     });
     d.addEventListener('keydown',feKey);
+    /* a picture pasted or dropped onto the canvas goes into the drawing */
+    PIC_TARGET=fePutPictureFile;
+    d.addEventListener('paste',e=>{const f=picFromTransfer(e.clipboardData);
+      if(f){e.preventDefault();(PIC_TARGET||fePutPictureFile)(f);}});
+    d.addEventListener('dragover',e=>e.preventDefault());
+    d.addEventListener('drop',e=>{const f=picFromTransfer(e.dataTransfer);
+      if(f){e.preventDefault();fePutPictureFile(f);}});
     /* the panel steals focus the moment you touch a button, so listen here too */
     document.addEventListener('keydown',feKeyOutside);
     d.body.tabIndex=0;
@@ -5374,6 +5817,8 @@ const FICO={
          '<path d="M4.5 4.7 9.5 9.3"/>',
   dup   :'<rect x="1.8" y="1.8" width="7" height="7" rx="1.3"/>'+
          '<path d="M5.2 12.2h5.6a1.4 1.4 0 0 0 1.4-1.4V5.2"/>'
+  ,pic:'<rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="5.6" r="1.1"/>'+
+       '<path d="M2 10.4l3.1-2.9 2.3 2 2-1.6 2.6 2.4"/>'
 };
 const fico=k=>`<svg viewBox="0 0 14 14" width="15" height="15" fill="none" stroke="currentColor"
   stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FICO[k]}</svg>`;
@@ -5654,6 +6099,7 @@ function fePanel(){
   const tag=el.tagName.toLowerCase();
   const isText=tag==='text'||tag==='tspan';
   const isGroup=tag==='g';
+  const isPic=tag==='image';
   const spans=isText?[...el.querySelectorAll('tspan')]:[];
   const val=isText?(spans.length?spans.map(t=>t.textContent).join('\n'):el.textContent):'';
   const fill=el.getAttribute('fill')||'', stroke=el.getAttribute('stroke')||'';
@@ -5679,10 +6125,10 @@ function fePanel(){
     ${spans.length?`<div class="tip">One line per line of the label (${spans.length}).</div>`:''}
     <div class="fld" style="margin-top:8px"><label>Size</label>
       <input id="feFs" value="${esc(fs)}" placeholder="inherited"></div></div>`:''}
-  <div class="sec"><div class="sect">Fill</div>${swatch('feFill',fill)}</div>
+  ${isPic?picPanelHtml(el):`<div class="sec"><div class="sect">Fill</div>${swatch('feFill',fill)}</div>
   <div class="sec"><div class="sect">Stroke</div>${swatch('feStroke',stroke)}
     <div class="fld" style="margin-top:8px"><label>Width</label>
-      <input id="feSw" value="${esc(el.getAttribute('stroke-width')||'')}" placeholder="inherited"></div></div>
+      <input id="feSw" value="${esc(el.getAttribute('stroke-width')||'')}" placeholder="inherited"></div></div>`}
   ${(()=>{const {from,until}=feStepOf(el);const n=feStepsIn();
     return `<div class="sec"><div class="sect">Click</div>
     <div class="rw">
@@ -5723,9 +6169,12 @@ function fePanel(){
       clearTimeout(fePanel.t);fePanel.t=setTimeout(fePush,500);feBox();};
     document.getElementById('feFs').onchange=e=>set('font-size',e.target.value.trim());
   }
-  wireSwatch('feFill',v=>set('fill',v));
-  wireSwatch('feStroke',v=>set('stroke',v));
-  document.getElementById('feSw').onchange=e=>set('stroke-width',e.target.value.trim());
+  if(isPic)picPanelWire(el);
+  else{
+    wireSwatch('feFill',v=>set('fill',v));
+    wireSwatch('feStroke',v=>set('stroke',v));
+    document.getElementById('feSw').onchange=e=>set('stroke-width',e.target.value.trim());
+  }
   document.getElementById('feOp').oninput=e=>{el.setAttribute('opacity',e.target.value);};
   document.getElementById('feOp').onchange=fePush;
   {
@@ -5835,7 +6284,16 @@ and the typical label is four words.
 Palette only: #1E1B4B #6B7280 #FFFFFF #FAFAF7 #E5E7EB #0EA5E9 #E0F2FE #075985 #7C3AED #EDE9FE #4C1D95
 #10B981 #D1FAE5 #065F46 #D97706 #FEF3C7 #92400E #EF4444 #FEE2E2 #991B1B.
 Animation: CSS @keyframes inside one <style>, 6s ease-in-out infinite, transform/opacity only, never SMIL,
-and the figure must read fully in its unanimated state. No gradients, filters, <image> or <foreignObject>.
+and the figure must read fully in its unanimated state. No gradients, filters or <foreignObject>, and no
+<image> of your own.
+PICTURES. An <image href="asset:img-…"> is a bitmap the author put there — a photograph, a
+screenshot, a plot of a result. You cannot see it; you are told what it shows. Keep every one,
+with its href exactly as it is: never invent an asset: name, never embed data: or a web address.
+You may move and resize it (keep its proportions), change preserveAspectRatio ("xMidYMid slice"
+fills its box, which crops), set style="filter:grayscale(1) brightness(1.1) contrast(1.2)",
+wrap it in a clipPath to crop to a region, and draw on top of it — arrows, labels, highlight
+boxes, an opaque box over something that must not show. Point at things with the description's
+words, not guesses about pixels you have not seen.
 Text never below 11px and never within 14px of the canvas edge.
 LINES AND ARROWS ARE THIN. A connector is stroke-width 1.5 to 2, never above 2.5; a box outline
 is 1 to 1.5. Arrowheads are one small <marker> reused by every arrow — viewBox 0 0 10 10,
@@ -5870,7 +6328,7 @@ function feHtml(){
     x.classList.remove('fe-hot');
     if(!x.getAttribute('class'))x.removeAttribute('class');
   });
-  return c.outerHTML;
+  return stored(c.outerHTML);
 }
 
 /* Anything that draws shows a Stop while it draws. A figure takes twenty
@@ -5898,7 +6356,7 @@ async function feAskSelection(){
   const out=document.getElementById('feSelOut');
   const sel=feClean(FE.sel.outerHTML).slice(0,1500);
   const t=await withStop(out,'redrawing…',sig=>llm2(sig,figSys(),
-    `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\n`+
+    `CURRENT FIGURE:\n${feHtml()}${picNotes(feHtml())}\n\nSLIDE: ${FE.slide.title}\n\n`+
     `THE USER HAS SELECTED THIS ELEMENT:\n${sel}\n\n`+
     `CHANGE REQUESTED, about that element specifically: ${instr}\n`+
     `Leave the rest of the figure as it is.`,20000,'figure'));
@@ -5909,7 +6367,10 @@ function feAccept(t,out){
   t=t.replace(/^```[a-z]*\s*/,'').replace(/\s*```$/,'').trim();
   const a=t.indexOf('<svg'),b=t.lastIndexOf('</svg>');
   if(a<0||b<0){out.textContent='The model did not return an SVG.';return;}
-  const svg=t.slice(a,b+6), bad=checkSvg(svg);
+  const g=picGuard(feHtml(),t.slice(a,b+6));
+  const svg=g.svg, bad=checkSvg(svg);
+  if(g.unknown.length)bad.push(`removed ${g.unknown.length} picture${g.unknown.length>1?'s':''} the model made up`);
+  if(g.lost.length)bad.push(`the model dropped ${g.lost.length} of your pictures — Discard keeps them`);
   out.innerHTML=`<div class="fepv">${scopeSvg(svg,'p'+(++uidN))}</div>
     ${bad.length?`<p class="tip" style="color:var(--b)">Warnings: ${esc(bad.join('; '))}</p>`:''}
     <div class="rw" style="margin-top:6px"><button class="b p" id="feTake">Use it</button>
@@ -5947,7 +6408,9 @@ function srcHtml(){
     const named=[],geo=[];
     [...el.attributes].forEach(a=>{
       if(a.name==='class'){if(cls)named.push(`<span class="a">class</span>=<span class="v">"${esc(cls)}"</span>`);return;}
-      const h=`<span class="a">${esc(a.name)}</span>=<span class="v">"${cut(a.value,GEO.has(a.name)?18:44)}"</span>`;
+      if(a.name==='data-asset')return;
+      const v=/href$/.test(a.name)&&el.getAttribute('data-asset')?'asset:'+el.getAttribute('data-asset'):a.value;
+      const h=`<span class="a">${esc(a.name)}</span>=<span class="v">"${cut(v,GEO.has(a.name)?18:44)}"</span>`;
       (GEO.has(a.name)?geo:named).push(h);
     });
     const kids=[...el.children].filter(k=>!skip(k));
@@ -6054,7 +6517,7 @@ function feTab(t){
     if(!instr){toast('Say what to change');return;}
     const out=document.getElementById('feAiOut');
     const t=await withStop(out,'redrawing…',sig=>llm2(sig,figSys(),
-      `CURRENT FIGURE:\n${feHtml()}\n\nSLIDE: ${FE.slide.title}\n\nCHANGE REQUESTED: ${instr}`,
+      `CURRENT FIGURE:\n${feHtml()}${picNotes(feHtml())}\n\nSLIDE: ${FE.slide.title}\n\nCHANGE REQUESTED: ${instr}`,
       20000,'figure'));
     if(t!=null)feAccept(t,out);
   };
@@ -6327,7 +6790,7 @@ function checkSvg(svg){
 
 /* ---------- dialog ---------- */
 function dialog(h,cls){const d=document.getElementById('dlg');d.className='dlg'+(cls?' '+cls:'');d.innerHTML=h;document.getElementById('veil').classList.add('on');}
-function closeDialog(){document.getElementById('veil').classList.remove('on');}
+function closeDialog(){PIC_TARGET=null;document.getElementById('veil').classList.remove('on');}
 document.getElementById('veil').onclick=e=>{if(e.target.id==='veil')closeDialog();};
 
 /* ---------- export ---------- */
@@ -6451,6 +6914,7 @@ function zipStore(files){                       // no compression: a zip is a zi
   return new Blob(parts,{type:'application/zip'});
 }
 function svgToPng(svg,w){
+  svg=portable(svg);   /* an SVG drawn as an <img> may not fetch anything, a blob: included */
   return new Promise(res=>{
     const m=svg.match(/viewBox="\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
     const vw=m?+m[1]:800, vh=m?+m[2]:450;
@@ -6672,7 +7136,7 @@ function save(){
     closeDialog();toast(`Exporting ${n} files — allow multiple downloads`);};
   const slug=(S.title||'deck').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   document.getElementById('eArtH').onclick=()=>{
-    downloadText(slug+'-article.html',ARTICLE_SHELL(S.title,articleHtml()),'text/html');
+    downloadText(slug+'-article.html',ARTICLE_SHELL(S.title,picPortably(articleHtml)),'text/html');
     closeDialog();toast('Open it, select all, paste');};
   const withPics=async fn=>{
     const msg=document.getElementById('artMsg');
@@ -7223,7 +7687,7 @@ async function recentDecks(){
       const bdy=await r.json();
       if(!r.ok||!bdy.slides)throw new Error(bdy.error||'that file is not a deck');
       S={id:bdy.id||'deck',title:bdy.title||'Deck',slides:bdy.slides||[],figs:bdy.figs||{},
-         meta:bdy.meta||{},style:bdy.style||{}};
+         meta:bdy.meta||{},style:bdy.style||{},assets:bdy.assets||{}};
       normalise();cur=0;dirty=false;unbanner();
       srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
       lastSaved=new Date();setStatus('ok');closeDialog();
@@ -7268,7 +7732,7 @@ async function boot(){
 
   const load=b=>{
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-       meta:b.meta||{},style:b.style||{}};
+       meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
     normalise();cur=0;dirty=false;
     /* ?s=N opens at slide N and &step=K at the K-th click of it: a link to one
        moment of a talk, and how a screenshot of that moment is taken */

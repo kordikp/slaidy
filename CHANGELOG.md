@@ -5,6 +5,16 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **Pictures.** Photographs, screenshots and plots come in from a file, the clipboard, a
+  drop or an address: ＋ Figure → *Picture*, the picture button in the figure editor, or a
+  paste straight onto a slide. A picture is kept once in the deck, shrunk to 1920 px and
+  WebP, and a figure places it with `<image href="asset:…">`. The figure stays a small text
+  a model can edit, and the model reads the picture's description, never its pixels.
+  Crop, fit, black and white, brightness and contrast are attributes; arrows, labels and
+  clicks draw on top. A model's reply is checked for pictures it invented or dropped.
+  `scripts/assets.py` lists, extracts and describes pictures without reading their
+  bytes; `build_bundle.py` reads them from `figures/assets/`. `AGENTS.md` says what an
+  assistant must respect.
 - **Steps within a slide — Beamer's `\pause`.** `<!-- step -->` in the body holds what
   follows for the next click; a figure's shapes carry `data-step="n"` (there from click
   *n*) and `data-until="m"` (gone at *m*), so a series of drawings is one figure rather

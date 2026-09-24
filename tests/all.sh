@@ -23,6 +23,9 @@ python3 scripts/test_server.py | tail -3 || fail=1
 step "Publishing a deck to the web"
 python3 scripts/test_publish.py | tail -3 || fail=1
 
+step "One file with the deck in it, opened from a disk"
+python3 scripts/test_onefile.py | tail -3 || fail=1
+
 step "The browser suite"
 tests/run.sh || fail=1
 

@@ -889,6 +889,77 @@ in a tab behind the one filling the screen, and the room still sees the slide. C
 leaves full screen first, so what you asked for is what you see; the deck stays presented and `F`
 puts it back.
 
+### Steps: one slide, several clicks
+
+`<!-- step -->` in the body is what `\pause` is in Beamer: everything after it
+waits for a click. It is an HTML comment, like the `<!-- col -->` beside it, so
+every other markdown renderer shows nothing.
+
+A figure can carry steps too. A shape marked `data-step="5"` arrives on the
+fifth click; one marked `data-step="1" data-until="4"` is there from the start
+and gone at the fourth. That second attribute is what lets **one** drawing hold
+a series in which something changes rather than only being added — the old
+version ends where the new one begins.
+
+That mattered enough to build. A lecture imported from Beamer had fourteen saves
+of one drawing stored as fourteen figures, each holding everything up to its own
+step: 396 kB, of which the last one — which contains all of it — was 40 kB. Over
+ten such series the deck was 4.2 MB and about half of it was the same shapes
+written out again. Marked with steps and stored once, the figures went from
+3.8 MB to 1.8 MB and the deck from 4.5 MB to 2.3 MB. The slide count went from
+77 to 35, because a series is one slide now, not one slide per click.
+
+**Nothing declares how many steps a slide has.** It is the highest step anything
+on it asks for: the markers in the body, and the highest `data-step` or
+`data-until` in its figures. Counts refresh whenever the SVG source changes,
+including replacing or removing a drawing. A number that had to be kept in agreement with the content would drift
+from it.
+
+`→` spends the steps before it moves on; `←` steps back, and off the start of a
+slide it lands on the **last** step of the one before — which is what going back
+to check something wants. A tap does the same, because a clicker sends one. A
+swipe is deliberately left out: it is a bigger gesture, and it moves a whole
+slide.
+
+The editor shows every step at once, because the whole slide is what is being
+edited; the list marks a slide that has them with `· n`. Printing makes **one
+page per step**, so a handout still has the pages the Beamer build had.
+
+What the click brought in fades up — `.stepnew`, in the app's stylesheet rather
+than in the figure. A figure is one file across every step of its series and
+cannot know which one it is being shown at; only the slide knows that. Unless the
+click brought in most of the drawing: then it is a redraw rather than an addition
+— a diagram whose arrows move between steps replaces nearly every shape — and
+fading all of it in reads as the picture arriving late instead of as something
+being pointed at. Past 40% of the figure, the step simply appears.
+
+Hidden blocks reserve their final space, so centred content and table columns
+stay in place through the build. Hidden links are inert and hidden content is
+excluded from the accessibility tree. The entrance effect changes opacity only;
+it never replaces a figure group's positioning transform. Reduced motion and
+printing disable the effect. `applySteps(root, Infinity)` exposes all variants
+for editing, including shapes that disappear during the presentation.
+
+**Inserting one.** `Next click` is in the ＋ menu and the icon row under the
+slide, beside `Column break`, because it is a block like any other and that is
+where blocks come from.
+
+**A shape's click, in the figure editor.** Not the AI panel: this is a property
+of the thing you are pointing at, and describing it in prose to a model would be
+a worse way to set a number than a number field.
+
+* A **strip under the canvas** lists the clicks — `all · 1 · 2 · 3 …` — with how
+  many shapes arrive at each. Picking one previews the drawing at that click.
+* What has not arrived is **faded, not hidden**. This is the one place the
+  projector's rule is deliberately not followed: the whole drawing is what is
+  being edited, and a shape three clicks away is still something you might want
+  to select, move or recolour.
+* The panel's **Click** section sets *Appears on* and *Gone at* for the
+  selection, and while a click is previewed there is a **Bring it in on click N**
+  button, which is the gesture that actually gets used.
+* Empty means from the start, and never — so it writes no attribute rather than
+  `data-step="1"`, and a figure with no steps stays a figure with no steps.
+
 ## Where the deck lives
 
 **The deck file is the document.** One `.json` holding the slides, the figures and the

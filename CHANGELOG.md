@@ -5,6 +5,17 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **Steps within a slide — Beamer's `\pause`.** `<!-- step -->` in the body holds what
+  follows for the next click; a figure's shapes carry `data-step="n"` (there from click
+  *n*) and `data-until="m"` (gone at *m*), so a series of drawings is one figure rather
+  than one file per click. `→` spends the steps before it leaves a slide, `←` lands on
+  the last step of the one before, print makes a page per step, and the figure editor
+  has a strip of clicks to preview and set them. Nothing declares a step count; it is
+  derived. See *Steps: one slide, several clicks* in `docs/DESIGN.md`.
+- **One file with the deck in it.** `scripts/onefile.py deck.json talk.html` writes the
+  deck into the page as `<script id="slaidy-deck">`, which SlAIdy reads where it would
+  fetch `deck.json` — so the page opens from a disk or an e-mail with no server and no
+  patched copy of the application. `?s=N&step=K` opens at slide *N*, click *K*.
 - **A talk is a link, and the link has three faces.** `scripts/publish.py` puts a deck
   under `site/`, where the Pages workflow makes it a page carrying the whole editor;
   `#present` on the end opens straight into the projector. Beside the deck it writes

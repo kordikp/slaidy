@@ -1,0 +1,268 @@
+<!doctype html><meta charset=utf-8><body style="margin:0">
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,90000);
+
+async function open_(){
+  const f=document.createElement('iframe');
+  f.style.cssText='width:1280px;height:800px;border:0;position:absolute;left:-9999px;top:0';
+  f.src='/index.html';
+  document.body.appendChild(f);
+  await new Promise(r=>{f.onload=r;setTimeout(r,9000);});
+  const d=f.contentDocument;
+  for(let i=0;i<70;i++){await wait(120);if(d.querySelectorAll('#nav .item').length)break;}
+  await wait(400);
+  return f;
+}
+
+addEventListener('load',async()=>{
+ try{
+  // ---------- steps within a slide ----------
+  // What \pause does in Beamer: a slide is at step k, and things on it carry the
+  // step they arrive at. Two kinds of thing — blocks of the body, split by
+  // <!-- step -->, and shapes of a figure carrying data-step. The point of the
+  // second one is that a series of drawings is stored once instead of once per
+  // click, which is where a deck of this shape keeps most of its bytes.
+  const f=await open_();
+  const W=f.contentWindow,D=f.contentDocument,A=W.__api;
+
+  // A drawing whose shapes arrive on different clicks, and one that leaves.
+  A.S.figs['fig-steps']=
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">'
+    +'<rect id="a" data-step="1" x="0" y="0" width="10" height="10"/>'
+    +'<rect id="b" data-step="2" x="20" y="0" width="10" height="10"/>'
+    +'<rect id="c" data-step="3" x="40" y="0" width="10" height="10"/>'
+    +'<rect id="d" data-step="1" data-until="3" x="60" y="0" width="10" height="10"/>'
+    +'</svg>';
+  A.S.slides=[{tag:'S',group:'G',sub:null,title:'Built up',layout:'text',
+    body:'- first\n\n<!-- step -->\n\n- second\n\n![[fig-steps]]\n\n<!-- step -->\n\n- third',
+    notes:'',figScale:100,summary:'',skip:false,flags:[],textScale:100,n:1},
+   {tag:'S',group:'G',sub:null,title:'Plain',layout:'text',
+    body:'- nothing to wait for',notes:'',figScale:100,summary:'',skip:false,
+    flags:[],textScale:100,n:2}];
+  A.cur=0; A.paint(); await wait(250);
+
+  // ---- how many clicks a slide takes is derived, never declared ----
+  ok('a slide counts its own steps',A.stepsOf(A.S.slides[0])===3,
+     'got '+A.stepsOf(A.S.slides[0])+' — two markers and a three-step figure');
+  ok('a slide with neither is one step',A.stepsOf(A.S.slides[1])===1,
+     'got '+A.stepsOf(A.S.slides[1]));
+  ok('a figure reports the steps in it',A.figSteps('fig-steps')===3,
+     'got '+A.figSteps('fig-steps'));
+
+  // ---- the editor shows the whole slide, because that is what is being edited ----
+  const shown=()=>[...D.querySelectorAll('#sheet .bk,#sheet .stage .bk')]
+    .filter(el=>!el.classList.contains('stepoff')).length;
+  ok('the editor holds nothing back',
+     !D.querySelector('#sheet .stepoff'),'nothing is marked stepoff in the editor');
+  ok('and it marks where the clicks are',
+     D.querySelectorAll('#sheet .stepbrk').length===2,
+     D.querySelectorAll('#sheet .stepbrk').length+' markers drawn');
+
+  // ---- the projector reveals a step at a time ----
+  W.__api.present(true); await wait(400);
+  A.overlay=1; A.paintDeck(); await wait(150);
+  const deck=()=>D.getElementById('deck');
+  /* a block carries data-s only when it waits for a click, so what is on the
+     slide at step k is everything without the attribute plus everything whose
+     step has come. The figure's own shapes are found by data-step: scopeSvg
+     renames every id in a mounted figure, so an id is no way to reach them. */
+  const held=k=>[...deck().querySelectorAll(`[data-s="${k}"]`)]
+    .filter(el=>!el.classList.contains('stepoff')&&!el.classList.contains('stepbrk')).length;
+  const shape=k=>deck().querySelector(`[data-step="${k}"]`);
+  const leaves=()=>deck().querySelector('[data-until]');
+
+  ok('step 1 holds back the blocks that wait for a click',
+     held(2)===0&&held(3)===0,`${held(2)} and ${held(3)} shown`);
+  ok('step 1 hides the shapes that arrive later',
+     shape(2).classList.contains('stepoff')&&shape(3).classList.contains('stepoff'));
+  ok('step 1 shows the shape that leaves later',
+     !!leaves()&&!leaves().classList.contains('stepoff'));
+
+  A.advance(1); await wait(150);
+  ok('a click brings in the next block and its figure',held(2)===2&&held(3)===0,
+     `${held(2)} at step 2, ${held(3)} at step 3`);
+  ok('and the next shape',!shape(2).classList.contains('stepoff'));
+  ok('but not the one after that',shape(3).classList.contains('stepoff'));
+
+  A.advance(1); await wait(150);
+  ok('the last click brings in the rest',held(2)===2&&held(3)===1,
+     `${held(2)} at step 2, ${held(3)} at step 3`);
+  ok('data-until takes a shape away again',leaves().classList.contains('stepoff'),
+     'the shape marked data-until="3" is gone at step 3');
+  ok('the count says which click we are on',
+     /· 3\/3/.test(D.getElementById('count').textContent),
+     D.getElementById('count').textContent);
+
+  // ---- past the last step it is the next slide, and back is the last step ----
+  ok('still on the first slide while steps remain',A.cur===0,'slide '+(A.cur+1));
+  A.advance(1); await wait(150);
+  ok('past the last step it moves on',A.cur===1&&A.overlay===1,
+     'slide '+(A.cur+1)+' step '+A.overlay);
+  A.advance(-1); await wait(150);
+  ok('going back lands on the last step of the slide before',
+     A.cur===0&&A.overlay===3,'slide '+(A.cur+1)+' step '+A.overlay);
+  ok('and that slide is drawn complete',held(2)===2&&held(3)===1,
+     `${held(2)} at step 2, ${held(3)} at step 3`);
+
+  // ---- an addition is pointed at; a redraw is not ----
+  // A diagram whose arrows move between steps replaces nearly every shape, and
+  // fading all of it in reads as the picture arriving late rather than as
+  // something being pointed at.
+  A.S.figs['fig-redrawn']=
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">'
+    +'<rect data-step="1" data-until="2" x="0" y="0" width="9" height="9"/>'
+    +'<rect data-step="1" data-until="2" x="10" y="0" width="9" height="9"/>'
+    +'<rect data-step="1" data-until="2" x="20" y="0" width="9" height="9"/>'
+    +'<rect data-step="2" x="0" y="10" width="9" height="9"/>'
+    +'<rect data-step="2" x="10" y="10" width="9" height="9"/>'
+    +'<rect data-step="2" x="20" y="10" width="9" height="9"/>'
+    +'</svg>';
+  A.S.slides[1]={...A.S.slides[1],title:'Redrawn',body:'![[fig-redrawn]]'};
+  A.cur=1; A.overlay=2; A.paintDeck(); await wait(200);
+  ok('a step that replaces most of the drawing is not animated',
+     !deck().querySelector('.stepnew'),
+     deck().querySelectorAll('.stepnew').length+' shapes marked new');
+  ok('but it is still shown, and what it replaced is gone',
+     deck().querySelectorAll('[data-step="2"]:not(.stepoff)').length===3
+     &&deck().querySelectorAll('[data-until="2"]:not(.stepoff)').length===0);
+  A.S.slides[1]={...A.S.slides[1],title:'Plain',body:'- nothing to wait for'};
+  A.cur=0; A.overlay=2; A.paintDeck(); await wait(200);
+  ok('while a step that adds one shape to a drawing is animated',
+     !!deck().querySelector('[data-step="2"].stepnew'));
+
+  // ---- a tap is the same click, because a clicker sends one ----
+  A.overlay=1; A.paintDeck(); await wait(150);
+  D.getElementById('show').dispatchEvent(new W.MouseEvent('click',
+    {bubbles:true,cancelable:true,clientX:1200,clientY:400}));
+  await wait(250);
+  ok('a tap on the right spends a step before it changes slide',
+     A.cur===0&&A.overlay===2,'slide '+(A.cur+1)+' step '+A.overlay);
+  W.__api.present(false); await wait(250);
+
+  // ---- the list says a slide takes more than one click ----
+  A.paintNav(); await wait(150);
+  const badge=D.querySelector('#nav .item .steps');
+  ok('the slide list marks a slide that has steps',!!badge&&/3/.test(badge.textContent),
+     badge?badge.textContent:'no badge');
+  ok('and leaves a one-step slide alone',
+     D.querySelectorAll('#nav .item .steps').length===1,
+     D.querySelectorAll('#nav .item .steps').length+' badges for 2 slides');
+
+  // ---- print makes a page per step, the way the Beamer build did ----
+  const pages=[];
+  A.S.slides.forEach(s=>{const n=A.stepsOf(s);
+    for(let k=1;k<=n;k++)pages.push(A.printSlide(s,false,k));});
+  ok('a slide with steps prints one page per step',pages.length===4,
+     pages.length+' pages for 2 slides');
+  ok('and each page says which step it is',
+     /data-overlay="1"/.test(pages[0])&&/data-overlay="3"/.test(pages[2]));
+
+  // Editing or replacing a drawing must invalidate the cached click count.
+  A.S.figs['fig-cache']='<svg><g data-step="2"/></svg>';
+  ok('initial figure click count',A.figSteps('fig-cache')===2);
+  A.S.figs['fig-cache']="<svg><g data-step = '5'/></svg>";
+  ok('figure edits refresh the count, including single quoted attributes',A.figSteps('fig-cache')===5);
+  delete A.S.figs['fig-cache'];
+  ok('removing a figure forgets its old steps',A.figSteps('fig-cache')===1);
+
+  // A centred slide must stay put while it is being built. Hidden links are
+  // absent from the focus order, but still reserve their final layout space.
+  const probe=D.createElement('div');probe.className='stage';
+  probe.innerHTML=A.stageHtml({...A.S.slides[0],flags:['center'],
+    body:'First line\n\n<!-- step -->\n\n[A link](https://example.com)'},false);
+  D.body.appendChild(probe);
+  A.applySteps(probe,1);
+  const first=probe.querySelector('p'),later=probe.querySelector('[data-s="2"]:not(.stepbrk)');
+  const top=first.getBoundingClientRect().top,height=later.getBoundingClientRect().height;
+  ok('future text reserves its space and cannot receive focus',height>0&&later.inert&&
+     W.getComputedStyle(later).visibility==='hidden'&&later.getAttribute('aria-hidden')==='true');
+  A.applySteps(probe,2);
+  ok('revealing keeps centred content in place',Math.abs(first.getBoundingClientRect().top-top)<1);
+  ok('revealed links are available again',!later.inert&&!later.hasAttribute('aria-hidden'));
+  probe.innerHTML='<svg><g data-step="1" data-until="2" transform="translate(12 6)"><rect width="5" height="5"/></g></svg>';
+  A.applySteps(probe,2);
+  ok('a replacement hides the outgoing drawing',!!probe.querySelector('.stepoff'));
+  A.applySteps(probe,Infinity);
+  ok('showing all includes outgoing variants for editing',!probe.querySelector('.stepoff'));
+  probe.remove();
+
+  // ---- the marker survives the round trip, like every other block ----
+  const md=A.slideMd(A.S.slides[0]);
+  ok('<!-- step --> comes back out of the markdown',
+     (md.match(/<!--\s*step\s*-->/g)||[]).length===2,
+     (md.match(/<!--\s*step\s*-->/g)||[]).length+' markers in the markdown');
+  const back=A.blocks(A.S.slides[0].body).filter(b=>b.kind==='step').length;
+  ok('and is read back as a block of its own',back===2,back+' step blocks');
+
+  // ---- the marker is an element you insert, like a column break ----
+  A.cur=0; A.paint(); await wait(250);
+  ok('the insert row offers the click',
+     !!D.querySelector('#plus button[data-k="step"]'),
+     [...D.querySelectorAll('#plus button')].map(b=>b.dataset.k).join(' '));
+  ok('and it is in the ＋ menu too',!!A.SNIP.step&&A.SNIP.step.src==='<!-- step -->',
+     A.SNIP.step?A.SNIP.step.src:'no entry');
+  {
+    const before=A.blocks(A.S.slides[0].body).filter(b=>b.kind==='step').length;
+    A.insertBlock('step',0); await wait(250);
+    const after=A.blocks(A.S.slides[0].body).filter(b=>b.kind==='step').length;
+    ok('inserting one adds a step to the slide',after===before+1,
+       `${before} → ${after}`);
+    A.undo(); await wait(250);
+    ok('and undo takes it back',
+       A.blocks(A.S.slides[0].body).filter(b=>b.kind==='step').length===before);
+  }
+
+  // ---- and a shape's click is a property of the shape, in the figure editor ----
+  // The projector hides what has not arrived; the editor fades it, because the
+  // whole drawing is what is being edited and a shape three clicks away is
+  // still something you might want to move.
+  A.figEdit(A.S.slides[0],'fig-steps'); await wait(900);
+  ok('the editor knows how many clicks the figure has',A.feStepsIn()===3,
+     'got '+A.feStepsIn());
+  const bar=D.getElementById('festeps');
+  ok('and offers one button per click, plus all',
+     !!bar&&bar.querySelectorAll('button').length===4,
+     bar?bar.querySelectorAll('button').length+' buttons':'no strip');
+  ok('with nothing faded until a click is picked',
+     !A.FE.svg.querySelector('.fe-later'));
+  bar.querySelector('button[data-k="1"]').click(); await wait(200);
+  ok('picking click 1 fades what has not arrived',
+     A.FE.svg.querySelectorAll('.fe-later').length===2,
+     A.FE.svg.querySelectorAll('.fe-later').length+' faded');
+  ok('but leaves them in the drawing, still selectable',
+     A.FE.svg.querySelectorAll('[data-step]').length===4);
+  {
+    const shape=A.FE.svg.querySelector('[data-step="3"]');
+    A.feSelect([shape]); await wait(250);
+    ok('the panel says which click the selection arrives on',
+       D.getElementById('feFrom')&&D.getElementById('feFrom').value==='3',
+       D.getElementById('feFrom')?D.getElementById('feFrom').value:'no field');
+    A.feSetStep(2,null); await wait(250);
+    ok('and setting it moves the shape to that click',
+       shape.getAttribute('data-step')==='2'&&!shape.hasAttribute('data-until'),
+       shape.getAttribute('data-step'));
+    A.feUndo(); await wait(300);
+    ok('undo puts it back',
+       A.FE.svg.querySelector('[data-step="3"]')!==null);
+    const first=A.FE.svg.querySelector('[data-step="1"]:not([data-until])');
+    A.feSelect([first]); await wait(200);
+    A.feSetStep(1,null); await wait(200);
+    ok('click 1 with no end writes no attributes at all',
+       !first.hasAttribute('data-step')&&!first.hasAttribute('data-until'),
+       'from-the-start is the absence of the attribute, not data-step="1"');
+  }
+  A.closeDialog(); await wait(300);
+
+  f.remove();
+
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

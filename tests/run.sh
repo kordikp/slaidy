@@ -32,6 +32,8 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   importMarkdown,deckSettings,applyStyle,style,hdrHtml,paintNav,paintBody,paintSide,editMarkdown,stats,
   mdParse,mdPreview,mdNormalise,llm,stageHtml,blocks,stageClass,scaleStage,printSlide,paintDeck,paintGrid,
   fig,measureStage,toggleSkip,liveIdx,liveStats,clock,
+  stepsOf,applySteps,advance,figSteps,get overlay(){return overlay},set overlay(v){overlay=v},
+  feStepsIn,feStepOf,feStepBar,feStepPaint,feSetStep,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},
   get UNDO(){return UNDO},get showHidden(){return showHidden},set showHidden(v){showHidden=v},get showing(){return showing},
   pickFigure,figRef,figMark,figBlocks,firstFig,figIds,setFigSize,bodyParts,notesHtml,tidyAllDialog,askSummary,importWizard,boot,slideKind,KINDS,

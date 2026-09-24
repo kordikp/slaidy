@@ -171,12 +171,25 @@ button{cursor:pointer;background:none;border:none}
 #sheet .stage .area.bare .addhere{top:0;height:auto;opacity:1;background:transparent;
  border:1px dashed #CFD3DA;color:var(--faint);font-weight:600}
 #sheet .stage .area.bare:hover .addhere{border-color:var(--acc);color:var(--acc);background:var(--accbg)}
-.stage .colbrk{display:none}
+.stage .colbrk,.stage .stepbrk{display:none}
 #sheet .stage .bk.iscol{position:relative;z-index:1}
-#sheet .stage .colbrk{display:flex;align-items:center;gap:9px;margin:10px 0;color:var(--faint);
- font:600 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase}
-#sheet .stage .colbrk:before,#sheet .stage .colbrk:after{content:"";flex:1;height:0;
+#sheet .stage .colbrk,#sheet .stage .stepbrk{display:flex;align-items:center;gap:9px;margin:10px 0;
+ color:var(--faint);font:600 10px/1 system-ui;letter-spacing:.1em;text-transform:uppercase}
+#sheet .stage .colbrk:before,#sheet .stage .colbrk:after,
+#sheet .stage .stepbrk:before,#sheet .stage .stepbrk:after{content:"";flex:1;height:0;
  border-top:1px dashed #CFD3DA}
+#sheet .stage .stepbrk{color:var(--acc)}
+#sheet .stage .stepbrk:before,#sheet .stage .stepbrk:after{border-top-color:var(--acc);opacity:.45}
+/* Not yet arrived. display:none rather than a fade, so nothing on the slide is
+   laid out around a thing the room cannot see. */
+.stepoff{visibility:hidden!important;pointer-events:none!important}
+/* Reserve the final layout throughout a build, including centred columns. */
+@keyframes stepin{from{opacity:0}to{opacity:1}}
+.stepnew{animation:stepin .45s cubic-bezier(.2,.7,.3,1) both}
+@media (prefers-reduced-motion:reduce){.stepnew{animation:none}}
+@media print{.stepnew{animation:none}}
+#nav .item .steps{margin-left:6px;font:600 9px/1 system-ui;color:var(--faint);
+ border:1px solid var(--line);border-radius:6px;padding:1px 3px;vertical-align:1px}
 /* A slide that opens or closes a talk: no header, and the title carries it */
 .stage.titled{justify-content:center}
 .stage h2.big{font-size:calc(var(--d-title)*1.7);margin-bottom:26px}
@@ -593,6 +606,16 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .fewrap{display:grid;grid-template-columns:1fr 288px;flex:1;min-height:0;transition:grid-template-columns .15s}
 .fewrap.src{grid-template-columns:1fr 440px}
 .fecanvas{position:relative;background:#F7F8FA;display:grid;place-items:center;padding:16px;min-height:0;overflow:hidden}
+.festeps{display:none}
+.festeps.on{display:flex;position:absolute;left:52px;right:12px;bottom:34px;gap:5px;align-items:center;
+ flex-wrap:wrap;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r8);
+ padding:5px 8px;font:11px/1 system-ui}
+.festeps .lbl{font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-size:9px}
+.festeps button{border:1px solid var(--line);background:#fff;border-radius:var(--r6);
+ padding:3px 7px;font:600 11px/1 system-ui;color:var(--ink);cursor:pointer}
+.festeps button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.festeps button i{font-style:normal;opacity:.6;margin-left:3px;font-size:9px}
+.festeps .tip{margin:0;flex:1;min-width:140px;text-align:right}
 .fetools{position:absolute;left:9px;top:50%;transform:translateY(-50%);z-index:3;
  display:flex;flex-direction:column;gap:2px;background:#fff;border:1px solid var(--line);
  border-radius:9px;padding:4px;box-shadow:0 2px 10px rgba(15,18,26,.09)}
@@ -923,6 +946,12 @@ const LAYOUTS=Object.keys(LAY);          /* what markdown will accept as a name 
 
 let S={id:'untitled',title:'Untitled deck',slides:[],figs:{},meta:{},style:{}};
 let cur=0,dirty=false,showing=false,notesOn=false,gridOn=false;
+/* Which click of the current slide the projector is on — Beamer calls it the
+   overlay. The right arrow spends it before moving on; the left arrow lands on
+   the last step of the slide before, which is what going back to check
+   something wants. (Not `step`: that name is already the move-by-n-slides one,
+   which the swipes use.) */
+let overlay=1;
 
 /* ---------- storage ----------------------------------------------------
    Decks run to roughly a megabyte, which is close enough to the localStorage
@@ -1499,7 +1528,7 @@ const TEX_SYM={
 const TEX_BIG={sum:'∑',prod:'∏',coprod:'∐',int:'∫',iint:'∬',oint:'∮',
                bigcup:'⋃',bigcap:'⋂',bigoplus:'⨁',lim:'lim',max:'max',min:'min',
                argmax:'arg max',argmin:'arg min',sup:'sup',inf:'inf'};
-const TEX_FN=['log','ln','exp','sin','cos','tan','det','dim','ker','deg','gcd','mod','Pr','softmax','sigmoid'];
+const TEX_FN=['arg','log','ln','exp','sin','cos','tan','det','dim','ker','deg','gcd','mod','Pr','softmax','sigmoid'];
 const TEX_VAR={mathbf:'bold',mathbb:'double-struck',mathcal:'script',mathrm:'normal',
                mathit:'italic',mathsf:'sans-serif',mathtt:'monospace',boldsymbol:'bold-italic'};
 const TEX_ACC={hat:'^',bar:'‾',vec:'→',tilde:'~',dot:'˙',ddot:'¨',widehat:'^',overline:'‾'};
@@ -1534,6 +1563,12 @@ function texParse(tk,end){
 function texGroup(tk){
   if(!tk.length)throw new Error('nothing to apply that to');
   if(tk[0].t==='{'){tk.shift();return texParse(tk,'}');}
+  // TeX's unbraced argument is one token: \frac12 means {1}{2},
+  // even though ordinary numbers are coalesced for readable MathML.
+  if(tk[0].t==='num'&&tk[0].v.length>1){
+    const n=tk.shift().v;tk.unshift(...texTokens(n.slice(1)));
+    return [`<mn>${n[0]}</mn>`];
+  }
   return [texAtom(tk)];
 }
 function texWrap(a){return a.length===1?a[0]:`<mrow>${a.join('')}</mrow>`;}
@@ -1616,10 +1651,17 @@ function inl(s){
   /* Maths comes out before escaping — TeX contains < and > and \, and running
      it through esc() first would turn the formula into entities. It goes back
      in as rendered MathML at the end. */
-  const math=[];
-  s=String(s).replace(/\$([^$\n]+?)\$/g,(m,tex)=>{
+  const math=[],literal=[];
+  const keepLiteral=html=>{literal.push(html);return `\u0000L${literal.length-1}\u0000`;};
+  // Match left to right: code and escaped dollars are literal; $$ must be
+  // consumed before $ even inside paragraphs, lists, quotes and table cells.
+  s=String(s).replace(/(`+)([\s\S]*?)\1(?!`)|\\([\\$`])|\$\$([\s\S]+?)\$\$|\$\$|\$([^$\n]+?)\$/g,(m,ticks,code,escaped,display,tex)=>{
+    if(ticks)return keepLiteral('<code>'+esc(code)+'</code>');
+    if(escaped)return keepLiteral(esc(escaped));
+    if(m==='$$')return m; // an unfinished delimiter is not an inline opener
+    if(display!==undefined){math.push({tex:display.trim(),display:true});return `\u0000M${math.length-1}\u0000`;}
     if(/^\s|\s$/.test(tex)||/^\d+(\.\d+)?$/.test(tex))return m;   /* $5 and $ 5 are not maths */
-    math.push(tex);return `\u0000M${math.length-1}\u0000`;
+    math.push({tex,display:false});return `\u0000M${math.length-1}\u0000`;
   });
   s=esc(s);
   s=s.replace(/!\[\[([a-zA-Z0-9._-]+)(\|\d{2,3}%)?\]\]/g,''); // inline figures handled at block level
@@ -1656,7 +1698,8 @@ function inl(s){
     return `${pre}<a href="${href}" target="_blank" rel="noopener noreferrer">${u}</a>${tail}`;
   });
   s=s.replace(/\u0000A(\d+)\u0000/g,(m,i)=>keep[+i]);
-  s=s.replace(/\u0000M(\d+)\u0000/g,(m,i)=>tex2mml(math[+i],false));
+  s=s.replace(/\u0000M(\d+)\u0000/g,(m,i)=>tex2mml(math[+i].tex,math[+i].display));
+  s=s.replace(/\u0000L(\d+)\u0000/g,(m,i)=>literal[+i]);
   return s;
 }
 /* ![[fig-id]] or ![[fig-id|70%]] — the size rides with the reference, so each
@@ -1707,14 +1750,20 @@ function blocks(md){
     /* inside a fence or a display formula every line is taken literally */
     if(fence){
       buf.push(l);
-      if((fence==='code'&&/^```/.test(t))||(fence==='math'&&/\$\$\s*$/.test(t))){flush();fence=null;}
+      if(fence==='math'&&t.includes('$$')){
+        // Keep punctuation or prose after the closing delimiter as prose.
+        if(t.indexOf('$$')!==t.length-2)kind='para';
+        flush();fence=null;
+      }else if(fence==='code'&&/^```/.test(t)){flush();fence=null;}
       continue;
     }
     if(/^```/.test(t)){flush();kind='code';buf.push(l);fence='code';continue;}
     if(/^\$\$/.test(t)){
-      flush();
-      if(/^\$\$.*\$\$$/.test(t)&&t.length>4){out.push({kind:'math',src:t});continue;}
-      kind='math';buf.push(l);fence='math';continue;
+      const end=t.indexOf('$$',2);
+      if(end===-1){flush();kind='math';buf.push(l);fence='math';continue;}
+      if(end===t.length-2){flush();out.push({kind:'math',src:t});continue;}
+      // $$x$$ followed by text, or multiple equations: inline rendering owns
+      // the delimiters. Do not swallow the following blocks as one formula.
     }
     if(/^#{3,6}\s+\S/.test(t)){flush();out.push({kind:'head',src:t});continue;}
     if(/^!\[\[[a-zA-Z0-9._-]+(\|\d{2,3}%)?\]\]$/.test(t)){flush();out.push({kind:'fig',src:t});continue;}
@@ -1722,12 +1771,15 @@ function blocks(md){
     if(/^<!--\s*gap\s*-->$/.test(t)){flush();out.push({kind:'gap',src:'<!-- gap -->'});continue;}
     /* the next area starts here; how wide it is comes from the slide's layout */
     if(/^<!--\s*col\s*-->$/.test(t)){flush();out.push({kind:'col',src:'<!-- col -->'});continue;}
+    /* everything after this appears on the next click, the way \pause does */
+    if(/^<!--\s*step\s*-->$/.test(t)){flush();out.push({kind:'step',src:'<!-- step -->'});continue;}
     if(/^\*\*\*+$/.test(t)){flush();out.push({kind:'rule',src:'***'});continue;}
     const k=t.startsWith('|')?'table':/^([-*]|\d+\.)\s+/.test(t)?'list':t.startsWith('>')?'quote':t===''?null:'para';
     if(k===null){flush();continue;}
     if(kind&&k!==kind)flush();
     kind=k;buf.push(l);
   }
+  if(fence==='math')kind='para'; // preserve an unfinished formula while editing
   flush();return out;
 }
 /* Each rendered block carries the index of the block it came from, so the
@@ -1746,10 +1798,12 @@ const soloFig=list=>{
   const real=list.filter(b=>b.kind!=='col');
   return real.length===1&&real[0].kind==='fig'?real[0]:null;
 };
-function block(b,ix,solo){
-  const at=(ix==null||BLOCKIX===null)?'':` data-b="${ix}"`;
+function block(b,ix,solo,step){
+  const at=((ix==null||BLOCKIX===null)?'':` data-b="${ix}"`)
+          +(step>1?` data-s="${step}"`:'');
   if(b.kind==='gap')return `<div class="gap"${at}></div>`;
   if(b.kind==='col')return `<div class="colbrk"${at}><span>column break</span></div>`;
+  if(b.kind==='step')return `<div class="stepbrk"${at}><span>next click</span></div>`;
   if(b.kind==='rule')return `<hr class="rule"${at}>`;
   const L=b.src.split('\n');
   if(b.kind==='head'){
@@ -1839,12 +1893,67 @@ function splitBody(s,n){
    move blocks around; the index has to survive that. */
 function areasHtml(list,L,ix){
   const at=b=>ix?ix.get(b):null;
-  const draw=g=>{const only=soloFig(g);return g.map(b=>block(b,at(b),b===only)).join('');};
+  /* the step is counted over the whole slide, not per column, so a marker in
+     the left column also holds back what follows it on the right */
+  const step=new Map();{let k=1;list.forEach(b=>{if(b.kind==='step')k++;step.set(b,k);});}
+  const draw=g=>{const only=soloFig(g);
+    return g.map(b=>block(b,at(b),b===only,step.get(b)||1)).join('');};
   if(L.areas.length<2)return draw(list);
   return areaGroups(list,L.areas.length).map((g,i)=>
     `<div class="area" style="flex:${(L.areas[i]||{}).w||1} 1 0">${draw(g)}</div>`
   ).join('');
 }
+/* ---------- steps: one slide, several clicks ---------- */
+/* A slide is at step k. Body blocks after the k-th <!-- step --> are not there
+   yet; neither are the shapes of a figure whose data-step is past k, nor those
+   whose data-until has already been reached. Nothing declares how many steps a
+   slide has — it is the highest one anything on it asks for. */
+const figSteps=(()=>{const seen=new Map();return id=>{
+  const svg=String(S.figs[id]||''),cached=seen.get(id);
+  if(cached&&cached.svg===svg)return cached.n;
+  let n=1;
+  for(const m of svg.matchAll(/\bdata-(?:step|until)\s*=\s*["'](\d+)["']/g))n=Math.max(n,+m[1]);
+  seen.set(id,{svg,n});return n;};})();
+function stepsOf(s){
+  if(!s)return 1;
+  let n=blocks(s.body).filter(b=>b.kind==='step').length+1;
+  figBlocks(s).forEach(f=>{if(S.figs[f.id])n=Math.max(n,figSteps(f.id));});
+  return n;
+}
+/* Show the slide as it stands at step k. The editor passes Infinity, because
+   what is being edited is the whole slide, not one of its moments. */
+function applySteps(root,k){
+  if(!root)return;
+  root.querySelectorAll('[data-s]').forEach(el=>{
+    const hidden=+el.dataset.s>k;
+    el.classList.toggle('stepoff',hidden);
+    el.toggleAttribute('inert',hidden);
+    if(hidden)el.setAttribute('aria-hidden','true');else el.removeAttribute('aria-hidden');
+    el.classList.toggle('stepnew',+el.dataset.s===k&&k>1);
+  });
+  root.querySelectorAll('svg').forEach(svg=>{
+    const parts=svg.querySelectorAll('[data-step],[data-until]');
+    /* What this click brought in fades up, so the eye is told where to look. It
+       belongs here rather than in the figure: a figure is one file across every
+       step and cannot know which one it is being shown at.
+
+       Unless the click brought in most of the drawing — then it is a redraw
+       rather than an addition (a diagram whose arrows move between steps
+       replaces nearly every shape), and fading all of it in reads as the picture
+       arriving late instead of as something being pointed at. */
+    let arriving=0;
+    parts.forEach(el=>{if(+(el.dataset.step||1)===k)arriving++;});
+    const redraw=k>1&&parts.length&&arriving>parts.length*0.4;
+    parts.forEach(el=>{
+      const from=+(el.dataset.step||1),until=el.dataset.until?+el.dataset.until:Infinity;
+      const hidden=Number.isFinite(k)&&(k<from||k>=until);
+      el.classList.toggle('stepoff',hidden);
+      if(hidden)el.setAttribute('aria-hidden','true');else el.removeAttribute('aria-hidden');
+      el.classList.toggle('stepnew',from===k&&k>1&&!redraw);
+    });
+  });
+}
+
 /* "Behind" takes the first figure out of the flow and paints it under
    everything. It is the one layout that is not a column, so it is the one place
    left that treats a figure differently from any other block. */
@@ -2305,7 +2414,8 @@ function paintNav(){
     d.innerHTML=`<span class="ix">${String(s.n).padStart(3,'0')}</span>
       <span class="pip" style="background:${KINDS[slideKind(s)][1]}"
         title="${KINDS[slideKind(s)][0]}"></span>
-      <span class="tt">${esc(s.title)}${(s.flags||[]).includes('ours')?'<span class="own" title="Our own work">·</span>':''}</span>
+      <span class="tt">${esc(s.title)}${(s.flags||[]).includes('ours')?'<span class="own" title="Our own work">·</span>':''}${
+        (n=>n>1?`<span class="steps" title="${n} clicks to get through it">·${n}</span>`:'')(stepsOf(s))}</span>
       ${(j=>j?`<span class="jb ${j.state}" title="${
         j.state==='queued'?'waiting its turn':j.state==='running'?esc(j.label||'working'):
         j.state==='failed'?esc(j.err||'it did not work'):'written — open it to take it'}">${
@@ -2633,7 +2743,7 @@ function paintBoard(){
   if(!s){sh.innerHTML='';return;}
   sh.innerHTML=`<div class="stagewrap" id="stagewrap">
       <div class="${stageClass(s)}" id="stage"${stageStyle(s)}>${stageHtml(s,true)}</div></div>
-    <div class="ins" id="plus">${['para','head','list','quote','table','math','code','fig','rule','gap']
+    <div class="ins" id="plus">${['para','head','list','quote','table','math','code','fig','rule','gap','step']
       .concat(layOf(s).areas.length>1?['col']:[]).map(k=>
       `<button data-k="${k}" title="${SNIP[k].l}" aria-label="${SNIP[k].l}">${ico(k)}</button>`).join('')}</div>
     <div id="overflag"><span>past the edge of the slide</span>
@@ -2817,6 +2927,10 @@ const ICO={
   gap  :'<path d="M1.5 2.2h11M1.5 11.8h11"/><path d="M7 4.6v4.8M5.6 6L7 4.6 8.4 6M5.6 8L7 9.4 8.4 8"/>',
   rule :'<path d="M1.5 7h11"/><path d="M4 3.6h6M4 10.4h6" opacity=".33"/>',
   col  :'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/><path d="M7 2.9v8.2" stroke-dasharray="1.6 1.4"/>',
+  /* the line the body waits at, broken by a "carry on" — a cursor drawn over it
+     read as a blob at 14px, which is the only size it is ever drawn at */
+  step :'<path d="M1.5 7h4.1M8.4 7h4.1" stroke-dasharray="1.6 1.4"/>'+
+        '<path d="M6.4 4.5 9.1 7l-2.7 2.5z" fill="currentColor" stroke="none"/>',
   table:'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/><path d="M1.9 5.9h10.2M7 2.9v8.2"/>',
   fig  :'<rect x="1.9" y="2.9" width="10.2" height="8.2" rx="1"/>'+
         '<circle cx="5" cy="5.9" r="1" fill="currentColor" stroke="none"/>'+
@@ -2836,6 +2950,7 @@ const SNIP={
   rule :{l:'Divider',   src:'***'},
   gap  :{l:'Space',     src:'<!-- gap -->'},
   col  :{l:'Column break', src:'<!-- col -->'},
+  step :{l:'Next click',   src:'<!-- step -->'},
   fig  :{l:'Figure',    src:null},
   /* #### and deeper only: ### is what starts a slide, so a body cannot use it */
   head :{l:'Sub-head',  src:'#### A heading inside the slide'},
@@ -4625,6 +4740,7 @@ async function editSlide(s,instr,signal){
   prog.step('rewriting the slide');
   const sys=`You edit one slide of a technical presentation. House style: plain, precise, no marketing adjectives; every claim carries a number, a named system or a citation, or it is cut; honest about limits. Where the instruction and the house style disagree, the instruction wins — do not hand back what was already there.
 Return ONLY the replacement slide body in markdown — no title line, no code fences, no commentary. Keep existing conventions (tables, > for the key line, **bold**, \`code\`). A line reading ![[fig-id]] places a figure and must be preserved.
+For mathematics, use $...$ inline and $$ on separate lines for display equations. Do not use \\[...\\] or \\(...\\) delimiters. Use explicit argument braces, for example \\frac{1}{2} and \\hat{y}.
 If the instruction asks for a figure the slide does not have, put a line containing only ![[fig-<short-slug>]] where it belongs — it will be drawn for you. Never reference a figure id you were not given.
 If a change needs a different title, make the FIRST line exactly "TITLE: <the new title>" and put the body after it. Otherwise do not mention the title.`;
   const usr=`TITLE: ${s.title}\nTAG: ${s.tag}\nGROUP: ${s.group||''}\n\nBODY:\n${s.body}\n\nINSTRUCTION: ${instr}`;
@@ -4700,7 +4816,8 @@ function figEdit(s,figId,onRename){
     pickFigure(x=>{snap('figure');
       s.body=figMark(x,100)+((s.body||'').trim()?'\n\n'+s.body.trim():'');
       touch();paint();figEdit(s,x);});return;}
-  FE={slide:s,id,src:S.figs[id],onRename:onRename||null,sel:null,sels:[],hist:[],tab:'design'};
+  FE={slide:s,id,src:S.figs[id],onRename:onRename||null,sel:null,sels:[],hist:[],tab:'design',
+      at:0};   /* which click is being previewed; 0 is all of them at once */
   dialog(`<div class="fehead">
       <h3>${esc(id)}</h3>
       <div class="fetabs">
@@ -4722,6 +4839,7 @@ function figEdit(s,figId,onRename){
           <button data-a="dup" title="Duplicate (Ctrl-D)">${fico('dup')}</button>
         </div>
         <iframe id="fefr" sandbox="allow-same-origin allow-scripts"></iframe>
+        <div class="festeps" id="festeps"></div>
         <div class="fehint" id="fehint">Click takes the whole object · double-click steps inside ·
           lasso by dragging empty space · handles resize · tools on the left add shapes</div>
       </div>
@@ -4761,6 +4879,10 @@ function feMount(){
     .fe-h[data-h="ne"],.fe-h[data-h="sw"]{cursor:nesw-resize}
     .fe-h[data-h="n"],.fe-h[data-h="s"]{cursor:ns-resize}
     .fe-h[data-h="e"],.fe-h[data-h="w"]{cursor:ew-resize}
+    /* A shape that has not arrived at the step being previewed is faded, not
+       hidden — the projector hides it, but here it is still a thing you might
+       want to click, drag or take out of the drawing. */
+    .fe-later{opacity:.16}
   </style>${FE.src}`;
   fr.onload=()=>{
     const d=fr.contentDocument, svg=d.querySelector('svg');
@@ -4770,6 +4892,7 @@ function feMount(){
       if(!/^(defs|style|title|desc|clipPath|linearGradient|radialGradient|marker|pattern|mask)$/.test(el.tagName)
          && !el.closest('defs')) el.classList.add('fe-hot');
     });
+    feStepPaint();feStepBar();
     d.addEventListener('mousedown',feDown);
     d.addEventListener('dblclick',e=>{
       if(e.target&&e.target!==FE.svg&&!e.target.closest('defs')){e.preventDefault();feSelect([e.target]);}
@@ -5434,6 +5557,60 @@ function feDel(){
 }
 
 /* ---- the inspector beside the canvas ---- */
+/* ---------- steps, in the figure editor ---------- */
+/* The projector hides what has not arrived. The editor fades it instead: the
+   whole drawing is what is being edited, and a shape three clicks away is still
+   something you might want to move, recolour or take out. */
+function feStepsIn(){
+  if(!FE.svg)return 0;
+  let n=0;
+  FE.svg.querySelectorAll('[data-step],[data-until]').forEach(el=>{
+    n=Math.max(n,+(el.dataset.step||1),el.dataset.until?+el.dataset.until-1:0);});
+  return n>1?n:0;
+}
+function feStepOf(el){
+  return {from:+(el.dataset.step||1),
+          until:el.dataset.until?+el.dataset.until:null};
+}
+function feStepBar(){
+  const bar=document.getElementById('festeps');if(!bar)return;
+  const n=feStepsIn();
+  if(!n){bar.innerHTML='';bar.classList.remove('on');return;}
+  const count=k=>{let c=0;FE.svg.querySelectorAll('[data-step]').forEach(el=>{
+    if(+(el.dataset.step||1)===k)c++;});return c;};
+  bar.classList.add('on');
+  bar.innerHTML='<span class="lbl">Clicks</span>'
+    +`<button data-k="0" class="${FE.at?'':'on'}" title="Every step at once">all</button>`
+    +Array.from({length:n},(_,i)=>{const k=i+1,c=count(k);
+       return `<button data-k="${k}" class="${FE.at===k?'on':''}" title="${
+         k===1?'what the figure opens with':c+' shape'+(c===1?'':'s')+' arrive here'}">${k}${
+         k>1&&c?`<i>${c}</i>`:''}</button>`;}).join('')
+    +'<span class="tip">Faded shapes have not arrived yet — they are still selectable.</span>';
+  bar.onclick=e=>{const b=e.target.closest('button');if(!b)return;
+    FE.at=+b.dataset.k;feStepPaint();feStepBar();};
+}
+function feStepPaint(){
+  if(!FE.svg)return;
+  FE.svg.querySelectorAll('[data-step],[data-until]').forEach(el=>{
+    const {from,until}=feStepOf(el);
+    el.classList.toggle('fe-later',
+      !!FE.at&&(FE.at<from||(until!==null&&FE.at>=until)));
+  });
+}
+/* Writing the step onto the selection. Empty means "from the start" and "never
+   leaves", which is what a shape with no step attribute already means, so the
+   attribute is removed rather than written as 1. */
+function feSetStep(from,until){
+  const els=FE.sels.length?FE.sels:(FE.sel?[FE.sel]:[]);
+  if(!els.length)return;
+  fePush();                       /* the snapshot is of the state before the edit */
+  els.forEach(el=>{
+    if(from>1)el.setAttribute('data-step',String(from));else el.removeAttribute('data-step');
+    if(until)el.setAttribute('data-until',String(until));else el.removeAttribute('data-until');
+  });
+  feStepPaint();feStepBar();fePanel();
+}
+
 function fePanel(){
   const p=document.getElementById('fepanel');if(!p)return;
   /* whichever panel drew it, the crop button does the same thing */
@@ -5506,6 +5683,18 @@ function fePanel(){
   <div class="sec"><div class="sect">Stroke</div>${swatch('feStroke',stroke)}
     <div class="fld" style="margin-top:8px"><label>Width</label>
       <input id="feSw" value="${esc(el.getAttribute('stroke-width')||'')}" placeholder="inherited"></div></div>
+  ${(()=>{const {from,until}=feStepOf(el);const n=feStepsIn();
+    return `<div class="sec"><div class="sect">Click</div>
+    <div class="rw">
+      <div class="fld"><label>Appears on</label>
+        <input id="feFrom" type="number" min="1" step="1" value="${from>1?from:''}" placeholder="1"></div>
+      <div class="fld"><label>Gone at</label>
+        <input id="feUntil" type="number" min="2" step="1" value="${until||''}" placeholder="never"></div>
+    </div>
+    ${FE.at?`<button class="b" id="feHere" style="width:100%;margin-top:6px">Bring it in on click ${FE.at}</button>`:''}
+    <div class="tip">Which click of the slide puts this on the screen, and which one takes it off
+      again. Empty is from the start, and never. ${n?`This figure has ${n} clicks.`
+      :'Set one and the figure becomes a series the slide clicks through.'}</div></div>`;})()}
   <div class="sec"><div class="sect">Arrange</div>
     <div class="rw"><button class="b" id="feFront">Front</button><button class="b" id="feBack">Back</button>
       <button class="b" id="feDup">Duplicate</button><button class="b" id="feDel">Delete</button></div>
@@ -5539,6 +5728,15 @@ function fePanel(){
   document.getElementById('feSw').onchange=e=>set('stroke-width',e.target.value.trim());
   document.getElementById('feOp').oninput=e=>{el.setAttribute('opacity',e.target.value);};
   document.getElementById('feOp').onchange=fePush;
+  {
+    const read=id=>{const v=parseInt(document.getElementById(id).value,10);
+                    return Number.isFinite(v)&&v>0?v:0;};
+    const write=()=>feSetStep(read('feFrom')||1,read('feUntil'));
+    document.getElementById('feFrom').onchange=write;
+    document.getElementById('feUntil').onchange=write;
+    document.getElementById('feHere')?.addEventListener('click',
+      ()=>feSetStep(FE.at,read('feUntil')));
+  }
   document.getElementById('feFront').onclick=()=>{fePush();el.parentElement.appendChild(el);feBox();};
   document.getElementById('feBack').onclick=()=>{fePush();el.parentElement.prepend(el);feBox();};
   document.getElementById('feDup').onclick=feDup;
@@ -6509,17 +6707,23 @@ function save(){
 /* ---------- PDF ----------
    Every slide is rendered into a hidden container and handed to the browser's
    own print engine, so there is no dependency and no upload. */
-function printSlide(s,withNotes){
+function printSlide(s,withNotes,at){
   const notes=withNotes&&(s.notes||'').trim()
     ?`<div class="pn"><b>Notes.</b> ${notesHtml(s.notes.trim())}</div>`:'';
-  return `<section class="psl${withNotes?' withnotes':''}">
+  return `<section class="psl${withNotes?' withnotes':''}" data-overlay="${at||1}">
     <div class="${stageClass(s)}"${stageStyle(s)}>${stageHtml(s,false)}</div>${notes}</section>`;
 }
 
+/* A slide with steps prints one page per step, the way the Beamer build it came
+   from did: the handout has to show the last click as well as the first. */
 function toPdf(withNotes){
   const host=document.getElementById('printroot');
-  toast('Building '+S.slides.length+' pages…');
-  host.innerHTML=S.slides.map(s=>printSlide(s,withNotes)).join('');
+  const pages=[];
+  S.slides.forEach(s=>{const n=stepsOf(s);
+    for(let k=1;k<=n;k++)pages.push(printSlide(s,withNotes,k));});
+  toast('Building '+pages.length+' pages…');
+  host.innerHTML=pages.join('');
+  host.querySelectorAll('.psl').forEach(p=>applySteps(p,+p.dataset.overlay||1));
   setTimeout(()=>{window.print();},450);
 }
 addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTML='';});
@@ -6539,10 +6743,14 @@ function paintDeck(){
   const d=document.getElementById('deck');
   d.className=stageClass(s);d.style.cssText=styleVars(s);
   d.innerHTML=stageHtml(s,false);
+  const steps=stepsOf(s);
+  overlay=Math.min(Math.max(1,overlay),steps);
+  applySteps(d,overlay);
   const R=liveIdx(),at=R.indexOf(cur);
-  document.querySelector('#prog i').style.width=(((at<0?0:at)+1)/R.length*100)+'%';
+  const done=((at<0?0:at)+(steps>1?overlay/steps:1))/R.length;
+  document.querySelector('#prog i').style.width=(done*100)+'%';
   document.getElementById('count').textContent=
-    `${(at<0?cur:at)+1} / ${R.length}${s.skip?' · hidden':''}`;
+    `${(at<0?cur:at)+1} / ${R.length}${steps>1?` · ${overlay}/${steps}`:''}${s.skip?' · hidden':''}`;
   const has=figBlocks(s).some(f=>S.figs[f.id]);
   const n=(s.notes||'').trim()||(has?String(s.body||'').replace(/[#*`>|]/g,'').slice(0,900):'—');
   document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${notesHtml(n)}`;
@@ -6557,6 +6765,23 @@ function paintDeck(){
    a person did something. So the deck comes up presented, and the first thing
    you do to it, whatever that is, also takes the browser out of the way. The
    line says so, and goes when it happens. */
+/* One click forward or back, wherever it came from: an arrow key, a tap on a
+   phone, a clicker. It spends the slide's steps before it moves off the slide,
+   and going back arrives at the last step of the one before. A swipe is left
+   out on purpose — it is a bigger gesture, and it moves a whole slide. */
+function advance(d){
+  const R=liveIdx(),at=Math.max(0,R.findIndex(i=>i>=cur));
+  if(d>0){
+    if(overlay<stepsOf(S.slides[cur]))overlay++;
+    else{const nx=R[Math.min(R.length-1,(R[at]===cur?at:at-1)+1)]??cur;
+         if(nx!==cur){cur=nx;overlay=1;}}
+  }else{
+    if(overlay>1)overlay--;
+    else{const pv=R[Math.max(0,at-1)]??cur;
+         if(pv!==cur){cur=pv;overlay=stepsOf(S.slides[cur]);}}
+  }
+  paintDeck();
+}
 function armFullscreen(){
   if(document.fullscreenElement)return;
   const t=document.getElementById('turn');
@@ -6624,12 +6849,10 @@ document.addEventListener('keydown',e=>{
   if(typing||!S.slides.length)return;
   if(showing){
     const R=liveIdx(),at=Math.max(0,R.findIndex(i=>i>=cur));
-    if(['ArrowRight',' ','PageDown','j'].includes(e.key)){e.preventDefault();
-      cur=R[Math.min(R.length-1,(R[at]===cur?at:at-1)+1)]??cur;paintDeck();}
-    else if(['ArrowLeft','PageUp','k'].includes(e.key)){e.preventDefault();
-      cur=R[Math.max(0,at-1)]??cur;paintDeck();}
-    else if(e.key==='Home'){cur=R[0];paintDeck();}
-    else if(e.key==='End'){cur=R[R.length-1];paintDeck();}
+    if(['ArrowRight',' ','PageDown','j'].includes(e.key)){e.preventDefault();advance(1);}
+    else if(['ArrowLeft','PageUp','k'].includes(e.key)){e.preventDefault();advance(-1);}
+    else if(e.key==='Home'){cur=R[0];overlay=1;paintDeck();}
+    else if(e.key==='End'){cur=R[R.length-1];overlay=stepsOf(S.slides[cur]);paintDeck();}
     else if(e.key==='h'||e.key==='H'){
       const h=S.slides.filter(x=>x.skip).length;
       if(!h){toast('No slides are hidden');return;}
@@ -6837,7 +7060,7 @@ const step=d=>{
   const R=showing?liveIdx():S.slides.map((_,i)=>i);
   const at=R.indexOf(cur), to=R[Math.min(R.length-1,Math.max(0,(at<0?0:at)+d))];
   if(to==null||to===cur)return;
-  cur=to;PICKED.clear();showing?paintDeck():paint();
+  cur=to;overlay=d<0?stepsOf(S.slides[to]):1;PICKED.clear();showing?paintDeck():paint();
 };
 swipes(document.getElementById('board'),{
   onLeft:()=>{step(1);hintSwipe();},
@@ -6854,7 +7077,7 @@ document.getElementById('show').addEventListener('click',e=>{
   if(!showing||Date.now()-swiped<500)return;
   if(e.target.closest('a[href]'))return;
   if(gridOn||notesOn)return;
-  step(e.clientX<window.innerWidth/3?-1:1);
+  advance(e.clientX<window.innerWidth/3?-1:1);
 });
 /* choosing a slide on a phone means you want to look at it, not at the list */
 document.getElementById('nav').addEventListener('click',e=>{
@@ -7047,6 +7270,11 @@ async function boot(){
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
        meta:b.meta||{},style:b.style||{}};
     normalise();cur=0;dirty=false;
+    /* ?s=N opens at slide N and &step=K at the K-th click of it: a link to one
+       moment of a talk, and how a screenshot of that moment is taken */
+    const q=new URLSearchParams(location.search),at=parseInt(q.get('s')||'',10);
+    if(at>0&&S.slides.length)cur=Math.min(at,S.slides.length)-1;
+    overlay=Math.max(1,parseInt(q.get('step')||'',10)||1);
     document.getElementById('welcome').classList.add('hidden');
     lastSaved=new Date();setStatus('ok');paint();
     if(byLink)setTimeout(()=>{present(true);armFullscreen();},300);
@@ -7128,11 +7356,17 @@ async function boot(){
   }
   if(remembered)fileName=remembered.name;    /* known, but not yet permitted */
 
-  if(location.protocol==='file:')return;
-
-  /* 3. a deck.json beside the page, unless this browser holds something newer */
+  /* 3. the deck that came with the page, unless this browser holds something
+     newer: written into the page itself — one file that opens from a disk or
+     an e-mail, scripts/onefile.py makes it — or a deck.json beside it */
+  const inPage=document.getElementById('slaidy-deck');
+  if(!inPage&&location.protocol==='file:')return;
   let file=null,fileAt=0;
-  try{
+  if(inPage)try{
+    file=JSON.parse(inPage.textContent);
+    fileAt=Date.parse(inPage.dataset.modified||'')||0;
+  }catch(e){}
+  else try{
     const r=await fetch('deck.json');
     if(r.ok){
       file=await r.json();
@@ -7140,7 +7374,7 @@ async function boot(){
       fileAt=lm?Date.parse(lm):0;
     }
   }catch(e){}
-  if(!file)return;
+  if(!file||!Array.isArray(file.slides))return;
 
   let mine=null,mineAt=0;
   try{

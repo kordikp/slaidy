@@ -5,6 +5,14 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **Formulas: what it takes was measured, not chosen by taste.** 720 distinct formulas out of
+  the recsys p-book and two decks — it refused 67 of them and refuses **none** now.
+  `\begin{cases}`, `\begin{pmatrix}` and the rest of the matrix family, `aligned`, `array`,
+  `split` and `substack`; `\binom`; `\left … \right` as one row, so the brackets stretch;
+  `\mid` and the `\lvert`/`\lVert` family; `\{`; the `\big` sizes; `\overset`, `\underset`,
+  `\stackrel`, `\underbrace`, `\overbrace`, `\xrightarrow`; primes; `\limits` and the style
+  commands; the reserved characters `\%`, `\_`, `\&`, `\#`; and a long tail of symbols,
+  greek and named functions. An environment left unclosed is refused rather than guessed at.
 - **A deck from a document.** Drop in markdown that was never written for a stage — a
   chapter of a book, a paper, lecture notes — and it is laid out rather than sliced up:
   what is shown stays on the slide, the prose goes to the speaker notes, and the blocks
@@ -118,6 +126,16 @@ Dates are when the work landed, not when it was released; there are no releases 
   catchy quietly got you the house default back.
 
 ### Fixed
+- **`\mathbb{R}` was drawing a plain R** — and `\mathcal{L}` a plain L, and `\mathbf{x}` a plain
+  x, since the day they were added. `mathvariant` is a dead letter in a browser: measured,
+  `<mi mathvariant="double-struck">R</mi>` draws exactly the R that `<mi>R</mi>` draws. The
+  variants are characters in Unicode, so characters are what is emitted now.
+- **`\text{if }` came out `ifx`**: the tokeniser ate the author's space. `\text` and its family
+  are read rather than tokenised.
+- **`\mathbf{x_i}` came out `xi`**, subscript and all, because the variant was applied by
+  stripping every tag out of what it wrapped.
+- **`\|` drew a single bar** where it means a double one, and `\epsilon`/`\varepsilon` and
+  `\phi`/`\varphi` were each one glyph rather than two.
 - The editor now fits the device. The slide was capped at 940px however large the screen, and
   below 1000px the three columns simply overflowed — on a phone the toolbar pushed **Present**
   off the edge.

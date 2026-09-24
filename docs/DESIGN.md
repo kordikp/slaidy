@@ -96,11 +96,34 @@ on every figure the AI draws or revises. It lives on the deck, not in the browse
 out the same wherever it is opened and the rule travels with an export.
 
 **Formulas.** `$x^2$` inline, `$$ … $$` on its own line. TeX in, **MathML out** — the browser
-renders maths natively, so nothing is vendored for it. The subset is the one a systems talk uses:
-sub- and superscripts, fractions, roots, sums and products with limits, `\mathbf`, `\hat` and
-`\vec`, `argmax`, greek, the usual relations and arrows. What it cannot parse comes back as **the
+renders maths natively, so nothing is vendored for it. What it cannot parse comes back as **the
 TeX you typed**, marked, with the reason in its tooltip — never as something quietly wrong. `$5`
 is left alone; a price is not a formula.
+
+**What it takes was chosen by reading what people write.** 720 distinct formulas out of the
+recsys p-book and two decks: it refused 67 of them, and refuses **none** now. Sub- and
+superscripts, fractions, roots, big operators with their limits, greek, relations, arrows and
+accents were there. Added since: `\begin{…}` environments (`cases`, `pmatrix` and the rest of
+the matrices, `aligned`, `array`, `split`, `substack`), `\binom`, `\left … \right` as one row
+so the brackets stretch, `\mid` and the `\lvert` family, `\{`, the `\big` sizes, `\overset`,
+`\underset`, `\underbrace`, `\xrightarrow`, primes, `\limits`, the reserved characters
+(`\%`, `\_`, `\&`, `\#`), and a long tail of symbols and named functions.
+
+**The silent ones were the reason for most of it.** `mathvariant` is a dead letter: measured in a
+browser, `<mi mathvariant="double-struck">R</mi>` draws exactly the `R` that `<mi>R</mi>` draws.
+So `\mathbb{R}` had been rendering as a plain R, `\mathcal{L}` as a plain L and `\mathbf{x}` as
+a plain x since the day they were added — a whole deck's worth of mathematics quietly wrong in a
+way nobody would report, because it looked like maths. The variants are characters in Unicode
+(ℝ, ℒ, 𝐱), so characters are what is emitted, holes in the blocks and all. Three more of the
+same kind: `\text{if }` had its space eaten by the tokeniser and came out `ifx`, so `\text` is
+now read rather than tokenised; `\mathbf{x_i}` was flattened to `xi`, subscript and all, because
+the variant was applied by stripping every tag out of what it wrapped; and `\|` drew a single
+bar where it means a double one.
+
+> **One thing to know before printing maths from a test.** Half of a surrogate pair reaching the
+> DOM takes the renderer down — not an exception, the process. `𝐞` is one such pair, so
+> `html.slice(0,80)` in a diagnostic is now a way to lose a whole test file, which reports
+> nothing rather than one bad line. The suite cuts by characters (`[...s].slice(0,n)`).
 
 **Blocks.** Text, sub-head, bullets, numbers, quote, table, formula, code, figure, divider, space.
 `####` and deeper are a heading *inside* a slide — `###` is what starts a new one, so a body cannot

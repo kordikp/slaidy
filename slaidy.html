@@ -1923,43 +1923,145 @@ function notesHtml(t){
 /* ---------- formulas ------------------------------------------------------
    A slide that argues about scoring functions needs to be able to write one.
    No library: browsers render MathML natively, so the job is TeX in, MathML
-   out — a subset wide enough for the mathematics a systems talk actually uses
-   (subscripts, fractions, roots, sums with limits, vectors, argmax), and an
-   honest refusal for the rest. Anything it cannot parse comes back as the TeX
-   you typed, in monospace, rather than as something quietly wrong.
+   out. What it takes was chosen by reading what people write rather than by
+   taste — 720 distinct formulas out of a book and two decks, of which it now
+   refuses none, where it once refused 67. Anything it still cannot parse comes
+   back as the TeX you typed, in monospace, rather than as something quietly
+   wrong.
+
+   The quietly wrong ones were the reason for most of this. `mathvariant` is a
+   dead letter in a browser: measured, <mi mathvariant="double-struck">R</mi>
+   draws exactly the R that <mi>R</mi> draws, so \mathbb{R} had been rendering
+   as a plain R, \mathcal{L} as a plain L and \mathbf{x} as a plain x since
+   the day they were added. The variants live in Unicode, so that is what is
+   emitted now. \text{if } had its space eaten by the tokeniser and came out
+   "ifx". \mathbf{x_i} was flattened to "xi", subscript and all, because the
+   variant was applied by stripping every tag out of what it wrapped. And \|
+   drew a single bar where it means a double one.
 --------------------------------------------------------------------------- */
 const TEX_SYM={
-  alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',varepsilon:'ε',zeta:'ζ',eta:'η',
-  theta:'θ',vartheta:'ϑ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',
-  rho:'ρ',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',
+  alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ϵ',varepsilon:'ε',zeta:'ζ',eta:'η',
+  theta:'θ',vartheta:'ϑ',iota:'ι',kappa:'κ',varkappa:'ϰ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',
+  omicron:'ο',pi:'π',varpi:'ϖ',rho:'ρ',varrho:'ϱ',sigma:'σ',varsigma:'ς',tau:'τ',
+  upsilon:'υ',phi:'ϕ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',digamma:'ϝ',
   Gamma:'Γ',Delta:'Δ',Theta:'Θ',Lambda:'Λ',Xi:'Ξ',Pi:'Π',Sigma:'Σ',Upsilon:'Υ',Phi:'Φ',
   Psi:'Ψ',Omega:'Ω',
-  times:'×',cdot:'⋅',div:'÷',pm:'±',mp:'∓',ast:'∗',star:'⋆',circ:'∘',bullet:'∙',
-  leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',equiv:'≡',sim:'∼',simeq:'≃',
-  propto:'∝',ll:'≪',gg:'≫',
+  times:'×',cdot:'⋅',cdotp:'·',div:'÷',pm:'±',mp:'∓',ast:'∗',star:'⋆',circ:'∘',bullet:'∙',
+  oplus:'⊕',ominus:'⊖',otimes:'⊗',oslash:'⊘',odot:'⊙',amalg:'⨿',wr:'≀',uplus:'⊎',
+  wedge:'∧',vee:'∨',land:'∧',lor:'∨',sqcup:'⊔',sqcap:'⊓',diamond:'⋄',triangle:'△',
+  leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',approxeq:'≊',equiv:'≡',
+  sim:'∼',simeq:'≃',cong:'≅',ncong:'≇',asymp:'≍',doteq:'≐',triangleq:'≜',
+  propto:'∝',ll:'≪',gg:'≫',lesssim:'≲',gtrsim:'≳',
+  prec:'≺',succ:'≻',preceq:'⪯',succeq:'⪰',
   to:'→',rightarrow:'→',leftarrow:'←',Rightarrow:'⇒',Leftarrow:'⇐',leftrightarrow:'↔',
-  mapsto:'↦',uparrow:'↑',downarrow:'↓',
-  in:'∈',notin:'∉',ni:'∋',subset:'⊂',subseteq:'⊆',supset:'⊃',supseteq:'⊇',
-  cup:'∪',cap:'∩',setminus:'∖',emptyset:'∅',varnothing:'∅',
-  forall:'∀',exists:'∃',neg:'¬',land:'∧',lor:'∨',
-  infty:'∞',partial:'∂',nabla:'∇',hbar:'ℏ',ell:'ℓ',Re:'ℜ',Im:'ℑ',
+  Leftrightarrow:'⇔',longrightarrow:'⟶',longleftarrow:'⟵',longleftrightarrow:'⟷',
+  Longrightarrow:'⟹',Longleftarrow:'⟸',Longleftrightarrow:'⟺',
+  implies:'⟹',impliedby:'⟸',iff:'⟺',mapsto:'↦',hookrightarrow:'↪',hookleftarrow:'↩',
+  uparrow:'↑',downarrow:'↓',updownarrow:'↕',nearrow:'↗',searrow:'↘',nwarrow:'↖',swarrow:'↙',
+  rightharpoonup:'⇀',rightharpoondown:'⇁',leadsto:'⇝',
+  in:'∈',notin:'∉',ni:'∋',subset:'⊂',subseteq:'⊆',subsetneq:'⊊',supset:'⊃',supseteq:'⊇',
+  supsetneq:'⊋',nsubseteq:'⊈',nsupseteq:'⊉',sqsubseteq:'⊑',sqsupseteq:'⊒',
+  cup:'∪',cap:'∩',setminus:'∖',smallsetminus:'∖',emptyset:'∅',varnothing:'∅',complement:'∁',
+  forall:'∀',exists:'∃',nexists:'∄',neg:'¬',lnot:'¬',models:'⊨',vdash:'⊢',dashv:'⊣',
+  therefore:'∴',because:'∵',
+  infty:'∞',partial:'∂',nabla:'∇',hbar:'ℏ',ell:'ℓ',Re:'ℜ',Im:'ℑ',aleph:'ℵ',wp:'℘',
+  imath:'ı',jmath:'ȷ',surd:'√',flat:'♭',sharp:'♯',natural:'♮',checkmark:'✓',
+  square:'□',blacksquare:'■',
   ldots:'…',dots:'…',cdots:'⋯',vdots:'⋮',ddots:'⋱',
-  angle:'∠',perp:'⊥',parallel:'∥',degree:'°',prime:'′',
-  oplus:'⊕',otimes:'⊗',odot:'⊙',
-  top:'⊤',bot:'⊥',intercal:'⊺',dagger:'†',
+  angle:'∠',measuredangle:'∡',perp:'⊥',parallel:'∥',nparallel:'∦',mid:'∣',nmid:'∤',
+  degree:'°',prime:'′',dprime:'″',
+  top:'⊤',bot:'⊥',intercal:'⊺',dagger:'†',ddagger:'‡',
   langle:'⟨',rangle:'⟩',lfloor:'⌊',rfloor:'⌋',lceil:'⌈',rceil:'⌉',
-  '|':'∣',backslash:'\\',
-  hat:'^',
-  quad:' ',qquad:'  ',',':' ',';':' ',':':' ',' ':' '
+  lbrace:'{',rbrace:'}',lbrack:'[',rbrack:']',
+  vert:'|',lvert:'|',rvert:'|',Vert:'‖',lVert:'‖',rVert:'‖','|':'‖',
+  colon:':',backslash:'\\',
+  /* the characters TeX reserves, written out */
+  '%':'%','_':'_','&':'&','#':'#','$':'$','{':'{','}':'}',
+  /* space, in the widths TeX has for it */
+  quad:' ',qquad:'  ',thinspace:' ',enspace:' ',',':' ',';':' ',':':' ',' ':' '
 };
-const TEX_BIG={sum:'∑',prod:'∏',coprod:'∐',int:'∫',iint:'∬',oint:'∮',
-               bigcup:'⋃',bigcap:'⋂',bigoplus:'⨁',lim:'lim',max:'max',min:'min',
-               argmax:'arg max',argmin:'arg min',sup:'sup',inf:'inf'};
-const TEX_FN=['arg','log','ln','exp','sin','cos','tan','det','dim','ker','deg','gcd','mod','Pr','softmax','sigmoid'];
-const TEX_VAR={mathbf:'bold',mathbb:'double-struck',mathcal:'script',mathrm:'normal',
-               mathit:'italic',mathsf:'sans-serif',mathtt:'monospace',boldsymbol:'bold-italic'};
-const TEX_ACC={hat:'^',bar:'‾',vec:'→',tilde:'~',dot:'˙',ddot:'¨',widehat:'^',overline:'‾'};
+/* what takes its sub- and superscript under and over itself */
+const TEX_BIG={sum:'∑',prod:'∏',coprod:'∐',int:'∫',iint:'∬',iiint:'∭',oint:'∮',
+               bigcup:'⋃',bigcap:'⋂',bigoplus:'⨁',bigotimes:'⨂',bigodot:'⨀',
+               bigwedge:'⋀',bigvee:'⋁',bigsqcup:'⨆',
+               lim:'lim',limsup:'lim sup',liminf:'lim inf',max:'max',min:'min',
+               argmax:'arg max',argmin:'arg min',sup:'sup',inf:'inf',det:'det',gcd:'gcd',Pr:'Pr'};
+const TEX_FN=['arg','log','ln','lg','exp','sin','cos','tan','sec','csc','cot',
+              'sinh','cosh','tanh','coth','arcsin','arccos','arctan','dim','ker','deg',
+              'hom','mod','tr','rank','diag','sign','sgn','erf','softmax','sigmoid','relu'];
+/* mathvariant is a dead letter: measured in a browser, <mi mathvariant=
+   "double-struck">R</mi> draws exactly the R that <mi>R</mi> draws. The variants
+   are characters in Unicode, so characters are what this emits. */
+const TEX_ALPHA={bold:[0x1D400,0x1D41A,0x1D7CE],italic:[0x1D434,0x1D44E,null],
+  'bold-italic':[0x1D468,0x1D482,null],script:[0x1D49C,0x1D4B6,null],
+  fraktur:[0x1D504,0x1D51E,null],'double-struck':[0x1D538,0x1D552,0x1D7D8],
+  'sans-serif':[0x1D5A0,0x1D5BA,0x1D7E2],'sans-bold':[0x1D5D4,0x1D5EE,0x1D7EC],
+  monospace:[0x1D670,0x1D68A,0x1D7F6]};
+/* the letters that were already in Unicode before the maths block, and so are
+   missing from it */
+const TEX_HOLE={'italic:h':0x210E,
+  'script:B':0x212C,'script:E':0x2130,'script:F':0x2131,'script:H':0x210B,'script:I':0x2110,
+  'script:L':0x2112,'script:M':0x2133,'script:R':0x211B,'script:e':0x212F,'script:g':0x210A,
+  'script:o':0x2134,
+  'fraktur:C':0x212D,'fraktur:H':0x210C,'fraktur:I':0x2111,'fraktur:R':0x211C,'fraktur:Z':0x2128,
+  'double-struck:C':0x2102,'double-struck:H':0x210D,'double-struck:N':0x2115,
+  'double-struck:P':0x2119,'double-struck:Q':0x211A,'double-struck:R':0x211D,
+  'double-struck:Z':0x2124};
+const TEX_VAR={mathbf:'bold',mathbb:'double-struck',mathcal:'script',mathfrak:'fraktur',
+               mathrm:'normal',mathit:'italic',mathsf:'sans-serif',mathtt:'monospace',
+               boldsymbol:'bold-italic',bm:'bold-italic',mathscr:'script'};
+const TEX_ACC={hat:'^',widehat:'^',bar:'‾',overline:'‾',vec:'→',overrightarrow:'→',
+               overleftarrow:'←',tilde:'~',widetilde:'~',dot:'˙',ddot:'¨',dddot:'⃛',
+               check:'ˇ',breve:'˘',acute:'´',grave:'`',mathring:'˚'};
+/* what may follow a big operator without getting between it and its limits */
+const TEX_SKIP=new Set(['limits','nolimits','displaystyle','textstyle','scriptstyle',
+                        'scriptscriptstyle','nonumber','notag','!','/']);
+const TEX_TEXT={text:'',textrm:'',textnormal:'',mbox:'',hbox:'',operatorname:'',
+                textbf:'bold',textit:'italic',texttt:'monospace',textsf:'sans-serif'};
+const TEX_ENV={matrix:['',''],pmatrix:['(',')'],bmatrix:['[',']'],Bmatrix:['{','}'],
+               vmatrix:['|','|'],Vmatrix:['‖','‖'],smallmatrix:['',''],
+               cases:['{',''],array:['',''],subarray:['',''],substack:['',''],
+               aligned:['',''],align:['',''],'align*':['',''],alignedat:['',''],
+               split:['',''],gathered:['',''],gather:['',''],'gather*':['','']};
+const TEX_DELIM={'(':'(',')':')','[':'[',']':']','|':'|','/':'/','.':'',
+                 '\\{':'{','\\}':'}','\\|':'‖','\\langle':'⟨','\\rangle':'⟩',
+                 '\\lfloor':'⌊','\\rfloor':'⌋','\\lceil':'⌈','\\rceil':'⌉',
+                 '\\vert':'|','\\Vert':'‖','\\lvert':'|','\\rvert':'|',
+                 '\\lVert':'‖','\\rVert':'‖','\\uparrow':'↑','\\downarrow':'↓'};
+const TEX_BIGD=new Set(['big','Big','bigg','Bigg','bigl','Bigl','biggl','Biggl',
+                        'bigr','Bigr','biggr','Biggr','bigm','Bigm','biggm','Biggm']);
 
+function texVariant(s,v){
+  const b=TEX_ALPHA[v];
+  if(!b)return s;
+  return [...String(s)].map(ch=>{
+    const hole=TEX_HOLE[v+':'+ch];
+    if(hole)return String.fromCodePoint(hole);
+    const c=ch.codePointAt(0);
+    if(c>=65&&c<=90)return String.fromCodePoint(b[0]+c-65);
+    if(c>=97&&c<=122)return String.fromCodePoint(b[1]+c-97);
+    if(b[2]&&c>=48&&c<=57)return String.fromCodePoint(b[2]+c-48);
+    if(v==='bold'||v==='bold-italic'){          /* greek has a run of its own */
+      const g=v==='bold'?0x1D6A8:0x1D71C;
+      if(c>=0x391&&c<=0x3A9)return String.fromCodePoint(g+c-0x391);
+      if(c>=0x3B1&&c<=0x3C9)return String.fromCodePoint(g+0x1A+c-0x3B1);
+    }
+    return ch;
+  }).join('');
+}
+/* the balanced {...} after position i, as the characters that were written —
+   \text{if } has a space in it, and eating that space is how "if x" became
+   "ifx" for as long as this had a tokeniser and no reader */
+function texRaw(t,i){
+  if(t[i]!=='{')return null;
+  let d=0;
+  for(let j=i;j<t.length;j++){
+    if(t[j]==='\\'){j++;continue;}
+    if(t[j]==='{')d++;
+    else if(t[j]==='}'&&!--d)return{raw:t.slice(i+1,j),end:j+1};
+  }
+  return null;
+}
 function texTokens(t){
   const out=[];let i=0;
   while(i<t.length){
@@ -1967,9 +2069,24 @@ function texTokens(t){
     if(c==='\\'){
       const m=/^\\([a-zA-Z]+|.)/.exec(t.slice(i));
       if(!m)throw new Error('stray backslash');
-      out.push({t:'cmd',v:m[1]});i+=m[0].length;continue;
+      const cmd=m[1];
+      /* \text and its family are read, not tokenised: their spaces are theirs */
+      if(TEX_TEXT[cmd]!==undefined){
+        const g=texRaw(t,i+m[0].length);
+        if(!g)throw new Error('\\'+cmd+' wants {something}');
+        out.push({t:'text',v:g.raw,style:TEX_TEXT[cmd],op:cmd==='operatorname'});
+        i=g.end;continue;
+      }
+      if(cmd==='begin'||cmd==='end'){
+        const g=texRaw(t,i+m[0].length);
+        if(!g)throw new Error('\\'+cmd+' wants {a name}');
+        out.push({t:cmd,v:g.raw.trim()});
+        i=g.end;continue;
+      }
+      out.push({t:'cmd',v:cmd});i+=m[0].length;continue;
     }
     if(c==='{'||c==='}'||c==='^'||c==='_'||c==='&'){out.push({t:c});i++;continue;}
+    if(c==="'"){let n=0;while(t[i]==="'"){n++;i++;}out.push({t:'prime',v:n});continue;}
     if(/\s/.test(c)){i++;continue;}
     if(/[0-9]/.test(c)){const m=/^[0-9]+(\.[0-9]+)?/.exec(t.slice(i));out.push({t:'num',v:m[0]});i+=m[0].length;continue;}
     if(/[a-zA-Z]/.test(c)){out.push({t:'id',v:c});i++;continue;}
@@ -1982,6 +2099,7 @@ function texParse(tk,end){
   while(tk.length){
     if(end&&tk[0].t===end){tk.shift();return out;}
     if(tk[0].t==='}'){if(!end)throw new Error('unbalanced }');tk.shift();return out;}
+    if(tk[0].t==='end')throw new Error('\\end with no \\begin');
     out.push(texAtomSup(tk));
   }
   if(end)throw new Error('unbalanced {');
@@ -1999,33 +2117,90 @@ function texGroup(tk){
   return [texAtom(tk)];
 }
 function texWrap(a){return a.length===1?a[0]:`<mrow>${a.join('')}</mrow>`;}
+/* a delimiter after \left, \right or one of the \big family */
+function texDelim(tk,stretchy){
+  const d=tk.shift();
+  if(!d)throw new Error('a delimiter with nothing after it');
+  const key=d.t==='cmd'?'\\'+d.v:(d.v||d.t);
+  const ch=TEX_DELIM[key]!==undefined?TEX_DELIM[key]:(TEX_SYM[d.v]||d.v||'');
+  if(!ch)return '';
+  return `<mo${stretchy===false?' stretchy="false"':''}>${esc(ch)}</mo>`;
+}
 function texAtomSup(tk){
   let base=texAtom(tk),sub=null,sup=null;
-  for(let g=0;g<2&&tk.length;g++){
+  /* \limits and its relatives say how the limits sit, which this decides from
+     the operator — but they must not come between it and them */
+  while(tk.length&&tk[0].t==='cmd'&&TEX_SKIP.has(tk[0].v))tk.shift();
+  for(let g=0;g<3&&tk.length;g++){
+    if(tk[0].t==='prime'){sup=`<mo>${'′'.repeat(Math.min(4,tk.shift().v))}</mo>`;continue;}
     if(tk[0].t==='_'&&sub===null){tk.shift();sub=texWrap(texGroup(tk));}
     else if(tk[0].t==='^'&&sup===null){tk.shift();sup=texWrap(texGroup(tk));}
     else break;
   }
-  const big=/^<munder|^<mo class="big"/.test(base);
+  const big=/^<m(o|under|over) class="big"/.test(base);
   if(sub&&sup)return big?`<munderover>${base}${sub}${sup}</munderover>`:`<msubsup>${base}${sub}${sup}</msubsup>`;
   if(sub)return big?`<munder>${base}${sub}</munder>`:`<msub>${base}${sub}</msub>`;
   if(sup)return big?`<mover>${base}${sup}</mover>`:`<msup>${base}${sup}</msup>`;
   return base;
 }
+/* \begin{pmatrix} a & b \\ c & d \end{pmatrix} and the rest of the family */
+function texEnv(name,tk){
+  const d=TEX_ENV[name];
+  if(!d)throw new Error('\\begin{'+name+'} is not one this understands');
+  if((name==='array'||name==='subarray')&&tk[0]&&tk[0].t==='{'){   /* the column spec */
+    let depth=0;
+    do{const x=tk.shift();if(!x)throw new Error('\\begin{array} wants a column spec');
+       if(x.t==='{')depth++;else if(x.t==='}')depth--;}while(depth&&tk.length);
+  }
+  const rows=[[[]]];let closed=false;
+  while(tk.length){
+    if(tk[0].t==='end'){
+      const e=tk.shift();
+      if(e.v!==name)throw new Error('\\end{'+e.v+'} closes \\begin{'+name+'}');
+      closed=true;break;
+    }
+    if(tk[0].t==='&'){tk.shift();rows[rows.length-1].push([]);continue;}
+    if(tk[0].t==='cmd'&&tk[0].v==='\\'){tk.shift();rows.push([[]]);continue;}
+    if(tk[0].t==='}')throw new Error('\\begin{'+name+'} was never closed');
+    const row=rows[rows.length-1];
+    row[row.length-1].push(texAtomSup(tk));
+  }
+  if(!closed)throw new Error('\\begin{'+name+'} with no \\end{'+name+'}');
+  const cells=rows.filter(r=>r.some(c=>c.length));
+  const align=/^(cases|aligned|align|align\*|split|alignedat)$/.test(name)?' columnalign="left"':'';
+  const table=`<mtable${align}>`+cells.map(r=>
+    '<mtr>'+r.map(c=>`<mtd>${c.join('')}</mtd>`).join('')+'</mtr>').join('')+'</mtable>';
+  if(!d[0]&&!d[1])return table;
+  return `<mrow>${d[0]?`<mo>${esc(d[0])}</mo>`:''}${table}${d[1]?`<mo>${esc(d[1])}</mo>`:''}</mrow>`;
+}
 function texAtom(tk){
   const x=tk.shift();
   if(x.t==='num')return `<mn>${x.v}</mn>`;
   if(x.t==='id') return `<mi>${x.v}</mi>`;
+  if(x.t==='prime')return `<mo>${'′'.repeat(Math.min(4,x.v))}</mo>`;
+  if(x.t==='text'){
+    const body=esc(texVariant(x.v,x.style));
+    /* \operatorname{sim} is a name, not a sentence: it goes in an <mi>, which
+       is upright for more than one letter and spaces beside its arguments */
+    return x.op?`<mi>${body}</mi>`:`<mtext>${body.replace(/ /g,'&#160;')}</mtext>`;
+  }
+  if(x.t==='begin')return texEnv(x.v,tk);
   if(x.t==='op'){
     if(x.v==='(' ||x.v===')'||x.v==='['||x.v===']'||x.v==='|')
       return `<mo stretchy="false">${esc(x.v)}</mo>`;
     return `<mo>${esc(x.v)}</mo>`;
   }
   if(x.t==='{'){return texWrap(texParse(tk,'}'));}
+  if(x.t==='&')throw new Error('an & outside a \\begin{…}');
   if(x.t==='cmd'){
     const c=x.v;
-    if(c==='frac'||c==='tfrac'||c==='dfrac')
+    if(c==='frac'||c==='tfrac'||c==='dfrac'||c==='cfrac')
       return `<mfrac>${texWrap(texGroup(tk))}${texWrap(texGroup(tk))}</mfrac>`;
+    /* a binomial is two rows in a bracket. linethickness="0" on an <mfrac> is
+       ignored by a browser's MathML, so the line would be drawn. */
+    if(c==='binom'||c==='dbinom'||c==='tbinom')
+      return `<mrow><mo>(</mo><mtable><mtr><mtd>${texWrap(texGroup(tk))}</mtd></mtr>`+
+             `<mtr><mtd>${texWrap(texGroup(tk))}</mtd></mtr></mtable><mo>)</mo></mrow>`;
     if(c==='sqrt'){
       if(tk[0]&&tk[0].t==='op'&&tk[0].v==='['){
         tk.shift();const idx=[];
@@ -2035,20 +2210,57 @@ function texAtom(tk){
       }
       return `<msqrt>${texWrap(texGroup(tk))}</msqrt>`;
     }
-    if(TEX_VAR[c])
-      return `<mi mathvariant="${TEX_VAR[c]}">${texGroup(tk).join('').replace(/<\/?m[a-z]+[^>]*>/g,'')}</mi>`;
-    if(c==='text'||c==='textrm'||c==='operatorname')
-      return `<mtext>${texGroup(tk).join('').replace(/<\/?m[a-z]+[^>]*>/g,'')}</mtext>`;
+    if(TEX_VAR[c]){
+      const v=TEX_VAR[c],g=texGroup(tk).join('');
+      /* upright is the one variant a browser still honours, and it is the one
+         that cannot be spelt with a character */
+      if(v==='normal')return `<mi mathvariant="normal">${g.replace(/<\/?m[a-z]+[^>]*>/g,'')}</mi>`;
+      return g.replace(/>([^<>]+)</g,(m,inner)=>'>'+texVariant(inner,v)+'<');
+    }
+    if(c==='overset'||c==='stackrel'){const a=texWrap(texGroup(tk));return `<mover>${texWrap(texGroup(tk))}${a}</mover>`;}
+    if(c==='underset'){const a=texWrap(texGroup(tk));return `<munder>${texWrap(texGroup(tk))}${a}</munder>`;}
+    if(c==='underbrace')return `<munder class="big">${texWrap(texGroup(tk))}<mo>⏟</mo></munder>`;
+    if(c==='overbrace')return `<mover class="big">${texWrap(texGroup(tk))}<mo>⏞</mo></mover>`;
+    /* \substack stacks the lines of a limit under a sum, one per \\ */
+    if(c==='substack'){
+      const rows=[[]];
+      if(!tk.length||tk[0].t!=='{')throw new Error('\\substack wants {something}');
+      tk.shift();
+      while(tk.length&&tk[0].t!=='}'){
+        if(tk[0].t==='cmd'&&tk[0].v==='\\'){tk.shift();rows.push([]);continue;}
+        rows[rows.length-1].push(texAtomSup(tk));
+      }
+      tk.shift();
+      return '<mtable>'+rows.map(r=>`<mtr><mtd>${r.join('')}</mtd></mtr>`).join('')+'</mtable>';
+    }
+    if(c==='underline')return `<munder>${texWrap(texGroup(tk))}<mo>‾</mo></munder>`;
+    /* \not strikes through what follows, which Unicode does with a combining
+       overlay rather than with a glyph of its own */
+    if(c==='not'){const a=texAtom(tk);
+      return a.replace(/>([^<>]+)</,(m,inner)=>'>'+inner+'\u0338<');}
+    if(c==='pmod')return `<mrow><mo>(</mo><mi>mod</mi>${texWrap(texGroup(tk))}<mo>)</mo></mrow>`;
+    if(c==='bmod')return '<mi>mod</mi>';
     if(TEX_ACC[c])return `<mover accent="true">${texWrap(texGroup(tk))}<mo>${TEX_ACC[c]}</mo></mover>`;
     if(TEX_BIG[c])return `<mo class="big">${TEX_BIG[c]}</mo>`;
     if(TEX_FN.includes(c))return `<mi mathvariant="normal">${c}</mi>`;
-    if(c==='left'||c==='right'){
-      const d=tk.shift();
-      if(!d)throw new Error('\\'+c+' with nothing after it');
-      if(d.t==='cmd'&&d.v==='.')return '';
-      return `<mo>${esc(d.v||'')}</mo>`;
+    if(c==='hspace'||c==='mspace'||c==='phantom'){texGroup(tk);return '<mspace width="0.5em"/>';}
+    if(c==='xrightarrow'||c==='xleftarrow'){
+      if(tk[0]&&tk[0].t==='op'&&tk[0].v==='['){                    /* the optional under-label */
+        tk.shift();while(tk.length&&!(tk[0].t==='op'&&tk[0].v===']'))texAtom(tk);tk.shift();
+      }
+      return `<mover>${`<mo stretchy="true">${c==='xrightarrow'?'→':'←'}</mo>`}${texWrap(texGroup(tk))}</mover>`;
     }
+    if(TEX_BIGD.has(c))return texDelim(tk,true);
+    if(c==='left'){
+      const open=texDelim(tk,true),inner=[];
+      while(tk.length&&!(tk[0].t==='cmd'&&tk[0].v==='right'))inner.push(texAtomSup(tk));
+      if(!tk.length)throw new Error('\\left with no \\right');
+      tk.shift();
+      return `<mrow>${open}${inner.join('')}${texDelim(tk,true)}</mrow>`;
+    }
+    if(c==='right')throw new Error('\\right with no \\left');
     if(c==='\\')return '<mspace linebreak="newline"/>';
+    if(TEX_SKIP.has(c))return '';
     if(TEX_SYM[c]!==undefined)return `<mo>${esc(TEX_SYM[c])}</mo>`;
     throw new Error('\\'+c+' is not one this understands');
   }

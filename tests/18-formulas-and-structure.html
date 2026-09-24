@@ -2,6 +2,11 @@
 <script>
 const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+/* Cut by characters, not by code units. Half of a surrogate pair reaching the
+   DOM crashes the renderer outright — measured — and a file that dies there
+   reports nothing at all rather than one bad line. Maths carries astral
+   characters now: 𝐞 is one. */
+const CUT=(s,n)=>[...String(s)].slice(0,n).join('');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const spill=()=>{if(!document.getElementById('out'))
   document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
@@ -25,29 +30,105 @@ addEventListener('load',async()=>{
   ok('a root becomes msqrt',/<msqrt>/.test(m('\\sqrt{n}')));
   ok('an indexed root becomes mroot',/<mroot>/.test(m('\\sqrt[3]{n}')));
   ok('greek resolves',/α/.test(m('\\alpha')),m('\\alpha'));
-  ok('mathbf marks the variant',/mathvariant="bold"/.test(m('\\mathbf{e}')),m('\\mathbf{e}'));
+  /* mathvariant is a dead letter in a browser — measured, <mi mathvariant=
+     "double-struck">R</mi> draws the R that <mi>R</mi> draws — so the variants
+     are the characters Unicode has for them. */
+  ok('mathbf is the bold character, not an attribute',
+     m('\\mathbf{e}').includes('<mi>\u{1D41E}</mi>'),m('\\mathbf{e}'));
+  ok('mathbb is the blackboard character',m('\\mathbb{R}').includes('<mi>\u211D</mi>'),m('\\mathbb{R}'));
+  ok('mathcal is the script character',m('\\mathcal{L}').includes('<mi>\u2112</mi>'),m('\\mathcal{L}'));
+  ok('and what is inside keeps its shape',
+     m('\\mathbf{x_i}')==='<math xmlns="http://www.w3.org/1998/Math/MathML"><msub><mi>\u{1D431}</mi><mi>\u{1D422}</mi></msub></math>',
+     m('\\mathbf{x_i}'));
+  ok('mathrm is upright, which is the one variant a browser still honours',
+     /mathvariant="normal">d</.test(m('\\mathrm{d}x')),m('\\mathrm{d}x'));
   ok('a vector gets an accent',/<mover accent="true">/.test(m('\\vec{v}')));
   ok('a sum takes its limits under and over',
-     /<munderover><mo class="big">∑<\/mo>/.test(m('\\sum_{i=1}^{n}')),m('\\sum_{i=1}^{n}').slice(0,60));
+     /<munderover><mo class="big">∑<\/mo>/.test(m('\\sum_{i=1}^{n}')),CUT(m('\\sum_{i=1}^{n}'),60));
   ok('argmax is one operator, set with a thin space',
      /<mo class="big">arg\u2009max<\/mo>/.test(m('\\argmax')),
      JSON.stringify(m('\\argmax').match(/>([^<]+)</)[1]));
   ok('a named function stays upright',/mathvariant="normal">log/.test(m('\\log')));
-  ok('the deck\'s own formula renders',/mathvariant="bold"/.test(m('\\mathbf{e}_q')),m('\\mathbf{e}_q'));
+  ok('the deck\'s own formula renders',/<msub><mi>\u{1D41E}<\/mi>/u.test(m('\\mathbf{e}_q')),m('\\mathbf{e}_q'));
   ok('a real scoring function renders whole',
      /<math/.test(m('\\hat{r}_{ui} = \\mathbf{p}_u^\\top \\mathbf{q}_i + b_u'))
      &&!/class="tex"/.test(m('\\hat{r}_{ui} = \\mathbf{p}_u^\\top \\mathbf{q}_i + b_u')));
 
+  // ---------- what it takes, chosen by reading what people write ----------
+  // 720 distinct formulas out of a book and two decks. It refused 67 of them;
+  // it refuses none now, and these are the ones that were wrong in silence.
+  ok('a space inside \\text is the author\'s space',
+     m('\\text{if } x>0').includes('<mtext>if&#160;</mtext>'),m('\\text{if } x>0'));
+  ok('\\| is the double bar it means',m('\\|x\\|').includes('\u2016'),m('\\|x\\|'));
+  ok('\\epsilon and \\varepsilon are two different letters',
+     /\u03f5/.test(m('\\epsilon'))&&/\u03b5/.test(m('\\varepsilon')));
+  ok('so are \\phi and \\varphi',/\u03d5/.test(m('\\phi'))&&/\u03c6/.test(m('\\varphi')));
+  ok('a set is a set',/<mo>\{<\/mo>/.test(m('\\{1,2\\}')),m('\\{1,2\\}'));
+  ok('a conditional has its bar',/\u2223/.test(m('P(y \\mid x)')));
+  ok('a per cent is a per cent',/<mo>%<\/mo>/.test(m('100\\%')),m('100\\%'));
+  ok('a prime is a prime, not an apostrophe',/<mo>\u2032<\/mo>/.test(m("f'(x)")),m("f'(x)"));
+  ok('a double prime is two of them',/<mo>\u2032\u2032<\/mo>/.test(m("f''")));
+  ok('\\limits does not get between an operator and its limits',
+     /<munderover><mo class="big">\u2211<\/mo>/.test(m('\\sum\\limits_{i=1}^n')),
+     CUT(m('\\sum\\limits_{i=1}^n'),70));
+  ok('a binomial is two rows in a bracket, because linethickness is ignored',
+     /<mtable><mtr><mtd><mi>n<\/mi>/.test(m('\\binom{n}{k}')),CUT(m('\\binom{n}{k}'),80));
+  ok('\\left and \\right make one row, so the brackets can stretch',
+     /^<math[^>]*><mrow><mo>\(<\/mo><mfrac>/.test(m('\\left(\\frac{a}{b}\\right)')),
+     CUT(m('\\left(\\frac{a}{b}\\right)'),70));
+  ok('\\underbrace takes its label under the brace',
+     /<munder class="big">/.test(m('\\underbrace{a+b}_{c}')),CUT(m('\\underbrace{a+b}_{c}'),60));
+  ok('\\overset stacks one thing on another',/<mover>/.test(m('\\overset{?}{=}')));
+  ok('\\implies is an arrow',/\u27f9/.test(m('\\implies')));
+  ok('\\operatorname is a name, upright and whole',
+     m('\\operatorname{sim}(u,v)').includes('<mi>sim</mi>'),CUT(m('\\operatorname{sim}(u,v)'),60));
+
+  // environments — the thing a display formula most often is
+  const cases_=m('\\begin{cases} a & x>0 \\\\ b & x<0 \\end{cases}');
+  ok('cases is a table in a brace',
+     /<mrow><mo>\{<\/mo><mtable columnalign="left"><mtr>/.test(cases_),CUT(cases_,70));
+  ok('with a row per line',(cases_.match(/<mtr>/g)||[]).length===2,String((cases_.match(/<mtr>/g)||[]).length));
+  const mat=m('\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}');
+  ok('a matrix is a table in brackets',/<mo>\(<\/mo><mtable>/.test(mat)&&
+     (mat.match(/<mtd>/g)||[]).length===4,CUT(mat,70));
+  ok('bmatrix uses square brackets',/<mo>\[<\/mo>/.test(m('\\begin{bmatrix} a \\end{bmatrix}')));
+  ok('aligned lines up without brackets',
+     /^<math[^>]*><mtable columnalign="left">/.test(m('\\begin{aligned} a &= b \\\\ &= c \\end{aligned}')));
+  ok('an array eats its column spec rather than printing it',
+     !/<mi>c<\/mi><mi>c<\/mi>/.test(m('\\begin{array}{cc} a & b \\end{array}')),
+     CUT(m('\\begin{array}{cc} a & b \\end{array}'),70));
+  ok('\\substack stacks a limit under a sum',
+     /<munder><mo class="big">\u2211<\/mo><mtable>/.test(m('\\sum_{\\substack{i \\\\ j}} x')),
+     CUT(m('\\sum_{\\substack{i \\\\ j}} x'),70));
+  ok('an environment that was never closed is refused, not guessed at',
+     /class="tex"/.test(m('\\begin{pmatrix} a & b')),CUT(m('\\begin{pmatrix} a & b'),50));
+  ok('and so is one this does not know',/class="tex"/.test(m('\\begin{nosuchenv} a \\end{nosuchenv}')));
+  ok('an & outside an environment is refused',/class="tex"/.test(m('a & b')));
+
+  // the corpus itself: every one of these was written by somebody
+  const REAL=['\\hat{y} = \\mathbf{w}^\\top \\mathbf{x} + b',
+    'P(y \\mid x) = \\frac{P(x \\mid y)P(y)}{P(x)}',
+    '\\mathcal{L} = -\\sum_{i} y_i \\log \\hat{y}_i',
+    'A = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)V',
+    'X \\in \\mathbb{R}^{n \\times d}',
+    '\\text{ILD}(L) = \\frac{1}{|L|(|L|-1)} \\sum_{\\substack{i, j \\in L \\\\ i \\neq j}} d(i, j)',
+    '\\mathbf{u}_i^{\\text{new}} = (\\mathbf{V}^T\\mathbf{V} + \\lambda I)^{-1}\\mathbf{V}^T\\mathbf{x}_i',
+    '\\text{NDCG@}k = \\frac{\\text{DCG@}k}{\\text{IDCG@}k}',
+    '\\sigma(z) = \\frac{1}{1 + e^{-z}}',
+    '\\text{vec}(\\text{king}) - \\text{vec}(\\text{man}) \\approx \\text{vec}(\\text{queen})'];
+  const refused=REAL.filter(x=>/class="tex"/.test(m(x)));
+  ok('ten formulas taken out of the book all render',!refused.length,CUT(refused.join(' | '),90));
+
   // it refuses honestly rather than mangling
   const bad=m('\\notacommand{x}');
   ok('an unknown command comes back as the TeX you typed',
-     /class="tex"/.test(bad)&&/notacommand/.test(bad),bad.slice(0,70));
+     /class="tex"/.test(bad)&&/notacommand/.test(bad),CUT(bad,70));
   ok('and says why',/title="[^"]+"/.test(bad));
-  ok('unbalanced braces do not throw',/class="tex"/.test(m('\\frac{a')),m('\\frac{a').slice(0,50));
+  ok('unbalanced braces do not throw',/class="tex"/.test(m('\\frac{a')),CUT(m('\\frac{a'),50));
 
   // ---------- inline maths in a slide ----------
   const html=w.inl('the query embedding $\\mathbf{e}_q$ and $5 < x$');
-  ok('inline $…$ renders as maths',(html.match(/<math/g)||[]).length===2,html.slice(0,80));
+  ok('inline $…$ renders as maths',(html.match(/<math/g)||[]).length===2,CUT(html,80));
   ok('and its < survives being maths, not markup',/&lt;|<mo>&lt;<\/mo>/.test(html));
   ok('a price is left alone',!/math/.test(w.inl('it costs $5 and $9')),w.inl('it costs $5 and $9'));
   ok('strikethrough works too',/<s>gone<\/s>/.test(w.inl('~~gone~~')));
@@ -115,7 +196,7 @@ addEventListener('load',async()=>{
     // the round trip through the file keeps it a heading, not a second slide
     const md=w.slideMd(s0), back=w.mdParse(md,s0);
     ok('exported and read back, a bare ### stays inside the slide',back.length===1&&/^### Subtitle/m.test(back[0].body),
-       back.length+' slides · '+(back[0]?back[0].body.slice(0,30):''));
+       back.length+' slides · '+(back[0]?CUT(back[0].body,30):''));
     // in the markdown editor a numbered ### starts another slide, a bare one does not
     const two=w.mdParse('### First\n\nOne.\n\n### 2. Second\n\nTwo.',s0);
     ok('"### 2. Title" in the editor splits the slide',two.length===2&&two[1].title==='Second',two.length+' slides');
@@ -142,7 +223,7 @@ addEventListener('load',async()=>{
   const md=w.slideMd(w.S.slides[0]);
   const back=w.importMarkdown('x.md','# G\n\n'+md);
   ok('a slide with a formula survives markdown',back[0].body===body,
-     JSON.stringify(back[0].body||'').slice(0,90));
+     CUT(JSON.stringify(back[0].body||''),90));
 
   // ---------- the markdown editor points at what you clicked ----------
   w.cur=0;w.editMarkdown();await wait(350);
@@ -161,7 +242,7 @@ addEventListener('load',async()=>{
   await wait(120);
   ok('clicking a block selects its source',
      src.selectionStart===rs[+target.dataset.b].start&&src.selectionEnd===rs[+target.dataset.b].end,
-     src.value.slice(src.selectionStart,src.selectionEnd).slice(0,30));
+     CUT(src.value.slice(src.selectionStart,src.selectionEnd),30));
   ok('and the block is outlined',!!pv.querySelector('.srcon'));
   // and the other way
   src.setSelectionRange(rs[0].start+2,rs[0].start+2);

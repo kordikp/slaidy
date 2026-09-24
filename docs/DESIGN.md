@@ -281,6 +281,22 @@ means, and word overlap cannot tell that apart from an echo.
 lists, tables and key lines stay on the slide, prose moves to the speaker notes — and
 picks the layout from what is left.
 
+**A document laid out as a deck.** `scripts/fit_document.py` does the same to markdown that
+was never written for a stage — a chapter of a book, a paper, lecture notes. It splits at
+the headings, packs what is shown until the frame is full, merges neighbours that fit, and
+speaks the rest. It moves words and never changes one, so it can check that **not a word is
+lost** and fail if one is. A file already in this tool's own format is recognised and
+refused rather than read as prose. One chapter of the recsys p-book — 52 files, 36 542
+words — comes out as 206 slides of which 34 are on stage, about 39 minutes, with the other
+172 hidden and walkable with `H`. The design and what is still missing from it are in
+[proposals/a-deck-from-a-document.md](proposals/a-deck-from-a-document.md).
+
+```bash
+python3 scripts/fit_document.py --src content/ch05 --figs images        # say what it would do
+python3 scripts/fit_document.py --src content/ch05 --figs images --out /tmp/deck \
+    --grain fill --on-stage 'type=spine' --reveal
+```
+
 **Design with AI.** What the panel offers depends on what is on the slide.
 
 An **empty slide** does not hand you a blank box. **Suggest what goes here** reads where the slide

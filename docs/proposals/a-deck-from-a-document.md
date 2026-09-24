@@ -1,8 +1,11 @@
 # A deck from a document
 
-**A proposal. None of it is built yet** — this file says what should be built, why it
-looks like this, and what it must never do. Numbers in it were measured; the method is
-given beside each one so they can be checked.
+**A proposal, with its engine already built offline.** `scripts/fit_document.py` does the
+whole mechanical pass from the command line and `scripts/test_fit_document.py` holds it to
+the invariants below; **the part inside the application — the three dials, the plan you
+approve, the deck-wide pass — is not built.** This file says what should be, why it looks
+like this, and what it must never do. Numbers in it were measured, and the command that
+produces each one is given beside it.
 
 ---
 
@@ -114,13 +117,13 @@ painted ended.
    untouched).
 3. **Pack** — walk the shown blocks, filling a slide until the frame is full, then start
    another **with the same title**. A continuation slide's title is repeated, not invented:
-   the list shows them adjacent and the author renames what they want renamed. A table, a
-   code block, a figure and an ordered list are never split — the last of those for a
-   reason given under *Steps* below.
+   the list shows them adjacent and the author renames what they want renamed. A block is
+   never cut in half — except a long *unordered* list, which is a run of items and can be
+   continued. An ordered one cannot, for the reason given under *Steps* below.
 4. **Merge, when the grain is *fill the slide*** — two consecutive sibling units whose
    content fits together become one slide with each unit's heading as a `####` sub-head.
    This matters more than splitting does: without it, relocating the prose leaves slides at
-   38% of the frame. With it, 70%.
+   37% of the frame. With it, 69%.
 5. **Arrange** — `tidySlide()`, unchanged: figure size, text size, where the slack goes.
    Then, and only here, the column count. **Tidy refuses to choose a layout** because how
    many columns a slide has is a decision — but a slide that arrived from a document has
@@ -165,28 +168,40 @@ measurement, **calibrated on the keynote**: the budget is the 90th percentile of
 37 accepted slides carry per column (15.8 lines), so "fits" here means "no bigger than
 slides that already work".
 
-| | slides | on stage | hidden | median fill | over the frame | stage time |
+| `--grain` / `--on-stage` | slides | on stage | hidden | median fill | over the frame | stage time |
 |---|---|---|---|---|---|---|
 | today's importer | 257 | 257 | 0 | — | **227 (88%)** | — |
-| a slide per `##` | 293 | 293 | 0 | 38% | 2 | 5 h 41 |
-| …packed to the frame | 205 | 205 | 0 | **70%** | 2 | 3 h 59 |
-| …spine on stage, the rest hidden | 205 | **34** | 171 | 73% | **0** | **39 min** |
+| `section` | 294 | 294 | 0 | 37% | 1 | 5 h 43 |
+| `fill` | 206 | 206 | 0 | **69%** | 1 | 4 h 00 |
+| `fill`, `--on-stage '\-spine\-'` | 206 | **34** | 172 | 73% | **0** | **39 min** |
 
 The last row is the one to look at. A book chapter becomes **a 39-minute talk of 34
-slides**, with 171 slides behind it that nobody sees unless they are asked for, and **not
-one word of the chapter gone**: 5 143 words wait in the notes of the slides on stage, a
-median of 104 a slide, and 16 450 more behind the hidden ones. That is the feature.
+slides**, with 172 slides behind it that nobody sees unless they are asked for, and **not
+one word of the chapter gone**. Those 34 carry a median of 69 body words, against the
+keynote's own 97, and 5 381 words of notes wait under them; the other 17 430 sit behind
+the hidden slides. That is the feature.
 
 Two things the table also says. Packing is worth as much as splitting — it is the
-difference between 38% and 70% fill, and a deck of half-empty slides is its own kind of
-wrong. And the fitter cannot decide the third row on its own: *which files are the spine*
+difference between 37% and 69% fill, and a deck of half-empty slides is its own kind of
+wrong. And the fitter cannot decide the last row on its own: *which files are the spine*
 came from a convention in the document that a person named in one control.
 
-> Reproducing it: the prototype is ~150 lines and reads `decks/isd2026.json` to calibrate,
-> then a folder of markdown. It is not in the repository yet — if the offline path is
-> wanted it lands as `scripts/fit_document.py`, beside `fit_slides.py` and `dedupe.py`,
-> which are the same family of tool. The engine that ships in the application measures in
-> the browser instead of estimating, so its numbers will differ a little and only downward.
+Reproducing it — the last row, and the deck it makes:
+
+```bash
+git clone https://github.com/kordikp/recsys-pbook /tmp/pbook
+python3 scripts/fit_document.py --src /tmp/pbook/content/ch05-algorithms \
+    --figs /tmp/pbook/images --on-stage '\-spine\-' --out /tmp/ch05 --title Algorithms
+python3 scripts/build_bundle.py --src /tmp/ch05/slides --figs /tmp/ch05/figures \
+    --out decks/ch05.json --title Algorithms
+#   206 slides · 52 subsections · 34/34 figures · 0.59 MB
+```
+
+> The script is the offline half, beside `fit_slides.py` and `dedupe.py`, which are the
+> same family of tool. It estimates where the application measures — a line budget instead
+> of a hidden stage — so the numbers the application gets will differ a little, and only
+> downward. What it does **not** have is the part that matters most: a plan you read
+> before anything happens.
 
 ## Yes, it should run over a whole deck — but not the way Tidy does
 
@@ -283,9 +298,10 @@ lead on the slide, the rest in the notes, and points at the model.
 
 ## Tests
 
-In the shape the suite already has — `tests/32-a-document-becomes-a-deck.html`, driving the
-app in an iframe against a fixture document, plus a check in `scripts/test_roundtrip.py`
-where the word-loss guard already lives:
+`scripts/test_fit_document.py` already holds the offline engine to these, and runs in
+`tests/all.sh` with the rest. The application's half wants the same list again in the shape
+of the browser suite — `tests/32-a-document-becomes-a-deck.html`, driving the app in an
+iframe against a fixture document:
 
 - **not a word is lost** — every word of the fixture is in a title, a body or a note
 - **a second pass changes nothing** — deep-equal before and after
@@ -295,6 +311,7 @@ where the word-loss guard already lives:
 - **the application's own format still imports exactly as it did** — the keynote branch of
   `importMarkdown` is not in this path at all, and the existing round-trip test proves it
 - **no endpoint is reached** during the mechanical pass
+- **a deck's own markdown is refused**, not read as prose and wrecked
 
 ## Where the code goes
 
@@ -317,7 +334,7 @@ other has the words and needs the shape.
 
 ## Open questions
 
-1. **Is `fill the slide` the right default grain?** It measures best (70% against 38%) but
+1. **Is `fill the slide` the right default grain?** It measures best (69% against 37%) but
    it puts two of the document's headings on one slide, which is a small editorial act.
    The alternative default is *a slide per `##`* with the merge offered.
 2. **A continuation slide's title.** Repeated verbatim here. `Title (2)` reads better in
@@ -325,7 +342,7 @@ other has the words and needs the shape.
 3. **Should the deck-wide pass keep the frontmatter profile** on the deck (so a re-import
    of an updated chapter behaves the same), or ask each time? `meta.layouts` is the
    precedent for keeping it.
-4. **How much of the notes is too much.** The stage slides come out at a median of 104
+4. **How much of the notes is too much.** The stage slides come out at a median of 114
    words of notes, against the keynote's 36, and one of them carries 679 — more than
    anybody reads off a confidence monitor. The words must not be lost, and they are not
    the deck's to cut. But the notes may want the first sentences of the unit and then a

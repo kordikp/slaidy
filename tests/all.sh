@@ -26,6 +26,9 @@ python3 scripts/test_publish.py | tail -3 || fail=1
 step "Pictures from the source folder to the deck and back"
 python3 scripts/test_pictures.py | tail -3 || fail=1
 
+step "A document laid out as a deck"
+python3 scripts/test_fit_document.py | tail -3 || fail=1
+
 step "One file with the deck in it, opened from a disk"
 python3 scripts/test_onefile.py | tail -3 || fail=1
 

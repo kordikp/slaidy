@@ -191,7 +191,8 @@ The parts worth knowing before you change anything:
 - **[.env.example](.env.example)** — every way of pointing it at a model, local or hosted.
 - **`scripts/`** — `serve.py` and `window.py` are what `studio.sh` runs; `publish.py`,
   `commentary.py` and `check_links.py` are the way to the web; `build_bundle.py` turns a
-  folder of markdown into a deck.
+  folder of markdown into a deck, and `fit_document.py` turns a document that was never
+  written for a stage into that folder, without losing a word of it.
 
 ## Thanks
 

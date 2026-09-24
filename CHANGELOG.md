@@ -5,6 +5,19 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **A document laid out as a deck.** `scripts/fit_document.py` reads markdown that was
+  never written for a stage — a chapter of a book, a paper, lecture notes — and lays it
+  out: split at the headings, pack what is shown until the frame is full, merge the
+  neighbours that fit, speak the rest into the notes. It moves words and never changes
+  one, and it checks that **not a word is lost** rather than claiming it. Three dials —
+  the grain, which files are on stage (the rest come in hidden, never dropped), and
+  whether a slide builds click by click. What fits is a line budget calibrated on a deck
+  somebody accepted, not a guess. A file already in this tool's own format is refused
+  rather than read as prose. One chapter of the recsys p-book, 52 files and 36 542 words,
+  comes out as 34 slides on stage — about 39 minutes — with 172 behind them.
+  `scripts/test_fit_document.py` holds it to all of that and runs in `tests/all.sh`; the
+  design, and the half that belongs inside the application, are in
+  [docs/proposals/a-deck-from-a-document.md](docs/proposals/a-deck-from-a-document.md).
 - **Pictures.** Photographs, screenshots and plots come in from a file, the clipboard, a
   drop or an address: ＋ Figure → *Picture*, the picture button in the figure editor, or a
   paste straight onto a slide. A picture is kept once in the deck, shrunk to 1920 px and

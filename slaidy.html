@@ -483,6 +483,21 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .bwform label.bwshort span{display:flex;align-items:center;gap:7px;font:13px system-ui;
  letter-spacing:0;text-transform:none;color:var(--ink)}
 .bwform label.bwshort input{width:74px;text-align:right}
+/* the dials over the plan, and the plan itself */
+.fwd{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:9px}
+.fwd .chips{margin:0}
+.fwl{font:650 9.5px/1 system-ui;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.fwd input[type=text]{border:1px solid var(--line);border-radius:var(--r6);padding:5px 8px;
+ font:12px system-ui;background:#fff;outline:none;width:230px}
+.fwd input[type=text]:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
+.fwd label{display:flex;align-items:center;gap:5px;font:12px system-ui;color:var(--gray)}
+.chips button.on{border-color:var(--acc);color:var(--acc);background:var(--accbg)}
+.fwwhat{font:11.5px system-ui;color:var(--gray);margin-top:3px}
+.fwst{font:10px system-ui;color:var(--faint);border:1px solid var(--line);border-radius:20px;
+ padding:1px 8px;flex:none;background:#fff}
+.fwst:hover{border-color:var(--acc);color:var(--acc)}
+.brow.fwoff{opacity:.55}
+.fwover{font:10px system-ui;color:#B4232A;background:#FDF0F0;border-radius:4px;padding:1px 5px;flex:none}
 .bwrev{max-width:760px;margin:0 auto}
 .brow{background:#fff;border:1px solid var(--line);border-radius:var(--r6);padding:8px 10px;
  margin-bottom:6px}
@@ -2513,6 +2528,406 @@ function previewImport({mds,svgs}){
     sections:[...new Set(slides.map(x=>x.group).filter(Boolean))],
     missing:[...figsWanted].filter(id=>!have.has(id))};
 }
+/* ---------- a deck from a document -----------------------------------------
+   A deck from a brief takes the shape and leaves you the words. This is the
+   other half: markdown written to be read — a chapter of a book, a paper,
+   lecture notes — which has the words and no shape at all. No slide
+   boundaries, no columns, no clicks, no speaker notes, and no idea how much
+   fits on a stage. Imported as it stands, every heading becomes one slide and
+   most of them are a wall of text.
+
+   The rule is one sentence. Tidy arranges what is on a slide and never moves a
+   word; this decides what is on it, so it moves words — into the speaker
+   notes, or onto the next slide — and never changes one. Nothing here
+   summarises, deletes or invents, and no model is involved, which is what lets
+   it check that not a word was lost rather than promise it.
+
+   What fits is measured, the way Tidy measures: the slide is drawn into the
+   hidden stage at full size and the browser is asked where the last thing
+   painted ended.
+--------------------------------------------------------------------------- */
+const DOC_SHOWN=new Set(['list','table','quote','fig','code','math','head']);
+const DECK_MD=/^### \d+\.\s*`\[[SDEB]\]`/m;
+const DOC_TAG={spine:'S',depth:'D',evidence:'E',sidebar:'B',game:'B',question:'B'};
+
+/* `key: value`, and `key:` followed by `  - item`. Anything cleverer than that
+   is a YAML parser, and a document that needs one can say so. */
+function docFm(text){
+  const m=/^---\n([\s\S]*?)\n---\n?/.exec(text);
+  if(!m)return{fm:{},body:text};
+  const fm={};let key=null;
+  m[1].split('\n').forEach(l=>{
+    const it=/^\s+-\s+(.*)$/.exec(l);
+    if(it&&key){(fm[key+'[]']=fm[key+'[]']||[]).push(it[1].trim().replace(/^["']|["']$/g,''));return;}
+    const i=l.indexOf(':');
+    if(i>0&&!/^\s/.test(l)){key=l.slice(0,i).trim();fm[key]=l.slice(i+1).trim().replace(/^["']|["']$/g,'');}
+  });
+  return{fm,body:text.slice(m[0].length)};
+}
+/* A document points at a drawing by path; a deck points at it by name. The alt
+   text goes with the path — for an SVG it was never prose, and a bitmap needs
+   its description in the deck's own picture store, which is a different act. */
+function docFigrefs(md){
+  return String(md||'').replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,
+    (m,alt,src)=>`![[${src.split(/[\\/]/).pop().replace(/\.[a-z0-9]+$/i,'')}]]`);
+}
+/* one block becomes one run of spoken words — the notes are read aloud */
+function docProse(src){
+  return String(src||'').replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm,'').replace(/^\s*>\s?/gm,'')
+    .replace(/^#{1,6}\s+/gm,'').replace(/\s*\n\s*/g,' ').replace(/\s{2,}/g,' ').trim();
+}
+function docWords(t){
+  return String(t||'').replace(/!\[\[[^\]]*\]\]/g,' ').replace(/\[([^\]]*)\]\([^)]*\)/g,' $1 ')
+    .replace(/[#*`>|_~$]/g,' ').split(/\s+/).filter(Boolean);
+}
+/* Split at the headings of the grain. Anything deeper stays inside the unit,
+   where it is a sub-head on the slide — which is what #### already is. */
+function docUnits(body,grain,fm){
+  fm=fm||{};
+  const lvl=grain==='subsection'?3:2;
+  const rx=new RegExp('^#{1,'+lvl+'}\\s+(.+?)\\s*$','gm');
+  const hits=[...body.matchAll(rx)];
+  const cut=[];
+  if(!hits.length)cut.push([null,body.trim()]);
+  else{
+    const lead=body.slice(0,hits[0].index).trim();
+    if(lead)cut.push([null,lead]);
+    hits.forEach((m,i)=>{
+      const end=i+1<hits.length?hits[i+1].index:body.length;
+      cut.push([m[1],body.slice(m.index+m[0].length,end).trim()]);
+    });
+  }
+  return cut.map(([title,text],ui)=>{
+    const bs=blocks(text);
+    let shown=bs.filter(b=>DOC_SHOWN.has(b.kind)),said=bs.filter(b=>!DOC_SHOWN.has(b.kind));
+    /* What the author already wrote about their own document: a drawing it
+       names, and its own summary of itself. Three lines they wrote are a better
+       opening slide than three this had to make up — and it has no way to make
+       any up. */
+    if(!ui){
+      const extra=[],dg=String(fm.diagram||'').trim();
+      if(dg&&!/^(null|none)$/i.test(dg)&&body.indexOf('![['+dg)<0)
+        extra.push({kind:'fig',src:'![['+dg+']]'});
+      const hl=fm['highlights[]']||[];
+      if(hl.length)extra.push({kind:'list',src:hl.map(h=>'- '+h).join('\n')});
+      shown=extra.concat(shown);
+    }
+    /* a slide must show something: a title over an empty frame is worse than a
+       title over a paragraph, so the lead stays where there is nothing else */
+    if(!shown.length&&said.length){shown=[said[0]];said=said.slice(1);}
+    const lead=said.find(b=>b.kind==='para')||shown.find(b=>b.kind==='para');
+    /* the first sentence, without a lookbehind: one of those in a regex
+       literal does not make this rule wrong on an older Safari, it stops the
+       whole file parsing */
+    const said0=lead?docProse(lead.src):'';
+    const first=((/^[\s\S]*?[.!?](?=\s|$)/.exec(said0)||[said0])[0]||'').trim();
+    return{title,shown,said,sum:first.length<180?first:''};
+  });
+}
+function docProbe(title,list){
+  return{n:1,tag:'S',group:'',sub:null,title:title||'Untitled',layout:'text',
+         body:list.map(b=>b.src).join('\n\n'),notes:'',summary:'',skip:false,
+         flags:[],textScale:100};
+}
+function docOver(title,list){
+  const m=measureStage(docProbe(title,list));
+  return !m||m.over||m.slack<-1;
+}
+/* A step before each block after the first — except one that follows a
+   heading, because a sub-head and what it introduces arrive together. */
+function fitReveal(list){
+  const out=[];
+  list.forEach((b,i)=>{
+    if(i&&b.kind!=='head'&&list[i-1].kind!=='head')out.push({kind:'step',src:'<!-- step -->'});
+    out.push(b);
+  });
+  return out;
+}
+/* Tidy refuses to choose a layout, because how many columns a slide has is a
+   decision somebody made. A slide that arrived from a document has no decision
+   behind it — so the choice is made here, by Tidy's own score, and only here. */
+function fitArrange(s){
+  const cands=[];
+  ['text','two'].forEach(lay=>{
+    const c=clone(s);c.layout=lay;
+    if(lay==='two'){
+      if(blocks(c.body).filter(b=>b.kind!=='step').length<3)return;
+      if(!splitBody(c,2))return;
+    }
+    tidySlide(c);
+    const m=measureStage(c);
+    if(m)cands.push({c,sc:tidyScore(m,c,stats(c).words)});
+  });
+  if(!cands.length){tidySlide(s);return s;}
+  cands.sort((a,b)=>a.sc-b.sc);
+  Object.assign(s,cands[0].c);
+  return s;
+}
+/* Pack the blocks that stay, filling the frame before starting another slide.
+   A continuation repeats the title rather than inventing one. At the `fill`
+   grain a unit that still has room carries on where the last one stopped, its
+   heading becoming a sub-head — without that, moving the prose out leaves
+   every slide about a third full. */
+function fitDocSlides(doc,opts){
+  /* the units come from the grain, so they are read here rather than carried on
+     the document — changing where a slide ends changes what a unit is */
+  const out=[];let cur=null;
+  const open=t=>{cur={title:t||'Untitled',blocks:[],said:[],sum:''};out.push(cur);return cur;};
+  docUnits(doc.body,opts.grain,doc.fm).forEach(u=>{
+    const merging=opts.grain==='fill'&&cur&&cur.blocks.length;
+    const home=merging?cur:open(u.title);
+    home.said=home.said.concat(u.said);
+    if(!home.sum)home.sum=u.sum;
+    const list=(merging&&u.title?[{kind:'head',src:'#### '+u.title}]:[]).concat(u.shown);
+    list.forEach(b=>{
+      const keep=cur.title;
+      cur.blocks.push(b);
+      if(cur.blocks.length>1&&docOver(cur.title,cur.blocks)){
+        cur.blocks.pop();
+        const head=b.kind==='head'&&/^####\s/.test(b.src);
+        open(head?b.src.replace(/^#+\s*/,''):keep);
+        if(!head)cur.blocks.push(b);
+      }
+    });
+  });
+  return out;
+}
+function docOnStage(doc,pattern){
+  const p=String(pattern||'').trim();
+  if(!p)return true;
+  const kv=/^([A-Za-z][\w-]*)=(.*)$/.exec(p);
+  if(kv)return String(doc.fm[kv[1]]||'').trim()===kv[2].trim();
+  try{return new RegExp(p).test(doc.rel);}catch(e){return doc.rel.includes(p);}
+}
+/* Measurement reads S.figs, and the drawings being imported are not in the deck
+   yet. They are lent to it for the length of one synchronous call and taken
+   back, so nothing is left behind if the import is cancelled. */
+function withFigs(figs,fn){
+  const was=S.figs;S.figs=Object.assign({},was,figs);
+  try{return fn();}finally{S.figs=was;}
+}
+/* The plan: what the import would do, applying none of it. */
+async function fitPlan(docs,figs,opts,step){
+  const rows=[];
+  for(let i=0;i<docs.length;i++){
+    const d=docs[i];
+    withFigs(figs,()=>{
+      if(d.ready){                                  /* already this tool's own slides */
+        d.ready.forEach(s=>rows.push({s,doc:d,ready:true}));
+        return;
+      }
+      const made=fitDocSlides(d,opts);
+      const stage=docOnStage(d,opts.stage);
+      made.forEach((m,k)=>{
+        const said=m.said.map(b=>docProse(b.src)).filter(Boolean);
+        if(k===made.length-1&&d.fm.recallQ)
+          said.push(docProse(d.fm.recallQ+' — '+(d.fm.recallA||'')));
+        const s={n:0,tag:DOC_TAG[String(d.fm.type||'').trim()]||'S',
+          group:d.group,sub:d.sub,title:m.title,layout:'text',textScale:100,flags:[],
+          body:(opts.reveal?fitReveal(m.blocks):m.blocks).map(b=>b.src).join('\n\n'),
+          notes:said.join(' '),summary:(k===0&&d.fm.teaser)?d.fm.teaser:m.sum,
+          skip:!stage};
+        fitArrange(s);
+        const fr=measureStage(s);
+        /* How full the slide is, measured with the content where it was written.
+           Tidy's job is to share out what is left over, so asking the arranged
+           slide would answer "full" whatever is on it. */
+        const bare=clone(s);bare.flags=[];
+        const fb=measureStage(bare);
+        rows.push({s,doc:d,over:!!(fr&&(fr.over||fr.slack<-1)),
+                   fill:fb?Math.min(1,(fb.frame-Math.max(0,fb.slack))/Math.max(1,fb.frame)):0});
+      });
+    });
+    if(step&&(i%4===3||i===docs.length-1)){step(i+1,docs.length);await new Promise(r=>setTimeout(r,0));}
+  }
+  document.getElementById('measure')?.remove();
+  return rows;
+}
+/* Not a word is lost. The whole thing rests on it, so it is checked in front of
+   you rather than believed. */
+function fitLost(docs,rows){
+  const have=new Map();
+  const add=(map,t)=>docWords(t).forEach(w=>map.set(w,(map.get(w)||0)+1));
+  const before=new Map(),after=new Map();
+  docs.forEach(d=>{if(!d.ready)add(before,d.body);});
+  rows.forEach(r=>{if(r.ready)return;
+    add(after,r.s.title);add(after,r.s.body);add(after,r.s.notes);add(after,r.s.summary);});
+  let lost=0,total=0;const which=[];
+  before.forEach((n,w)=>{total+=n;
+    const short=n-(after.get(w)||0);
+    if(short>0){lost+=short;if(which.length<8)which.push(w);}});
+  return{lost,total,which};
+}
+function fitReport(rows,lost){
+  const stage=rows.filter(r=>!r.s.skip);
+  const fills=rows.filter(r=>!r.ready&&!r.s.skip).map(r=>r.fill).sort((a,b)=>a-b);
+  return{slides:rows.length,stage:stage.length,hidden:rows.length-stage.length,
+         over:rows.filter(r=>!r.s.skip&&r.over).length,
+         fill:fills.length?fills[fills.length>>1]:0,
+         mins:Math.round(stage.length*70/60),lost};
+}
+/* what a row says it holds, without opening it */
+function fitWhat(s){
+  const bs=blocks(s.body).filter(b=>b.kind!=='col'&&b.kind!=='step');
+  const n=k=>bs.filter(b=>b.kind===k).length;
+  const bits=[];
+  if(n('fig'))bits.push(n('fig')===1?'a figure':n('fig')+' figures');
+  if(n('table'))bits.push(n('table')===1?'a table':n('table')+' tables');
+  if(n('list'))bits.push('bullets');
+  if(n('quote'))bits.push('a key line');
+  if(n('code'))bits.push('code');
+  if(n('math'))bits.push('a formula');
+  if(!bits.length)bits.push(bs.length?'words':'nothing under this heading');
+  const say=docWords(s.notes).length;
+  return bits.join(' · ')+(say?' · '+say+' spoken':'')+
+    (blocks(s.body).some(b=>b.kind==='col')?' · two columns':'')+
+    (stepsOf(s)>1?' · '+stepsOf(s)+' clicks':'');
+}
+/* The plan you read before anything happens. A deck-wide pass that changes the
+   slide count is not news for a toast — Tidy can run silently because every
+   dial it turns is reversible and none of them changes what the deck is. */
+function fitWizard(r,p){
+  const figs={};r.svgs.forEach(([id,svg])=>{figs[id]=stored(svg);});
+  const opts={grain:'fill',stage:'',reveal:false};
+  const docs=[];
+  r.mds.forEach(([path,text])=>{
+    const rel=path.replace(/^\.?[\\/]/,'');
+    const dir=rel.includes('/')?rel.split('/').slice(0,-1).pop():'';
+    const name=rel.split('/').pop();
+    if(DECK_MD.test(text)){
+      docs.push({rel,ready:importMarkdown(name,text),fm:{},body:''});
+      return;
+    }
+    const {fm,body}=docFm(text);
+    const group=(dir||fm.chapter||'').replace(/^\d+[-_]/,'').replace(/[-_]+/g,' ').trim();
+    docs.push({rel,fm,body:docFigrefs(body),
+      group:group?group.replace(/\b\w/g,c=>c.toUpperCase()):'',
+      sub:fm.title||name.replace(/\.md$/,'').replace(/^\d+[-_]/,'').replace(/[-_]+/g,' ')});
+  });
+  const title=(r.mds[0][0].includes('/')?r.mds[0][0].split('/')[0]:'')||'Imported deck';
+  dialog(`<div class="mdhead">
+      <h3>A deck from a document</h3>
+      <span class="tip" id="fwMsg">Nothing is applied until you say so.</span>
+      <span style="flex:1"></span>
+      <button class="b" id="fwNo">Cancel</button>
+      <button class="b p" id="fwGo">Import</button>
+    </div>
+    <div class="bwrap"><div class="bwrev">
+      <div class="fwd">
+        <span class="fwl">Where a slide ends</span>
+        <span class="chips" id="fwGrain">
+          <button data-g="fill" class="on">Fill the slide</button>
+          <button data-g="section">One per <code>##</code></button>
+          <button data-g="subsection">One per <code>###</code></button></span>
+      </div>
+      <div class="fwd">
+        <span class="fwl">On stage</span>
+        <input type="text" id="fwStage" placeholder="everything — or -spine-, or type=spine">
+        <label><input type="checkbox" id="fwRev"> build click by click</label>
+        <span style="flex:1"></span>
+        <span class="fwl">Deck title</span>
+        <input type="text" id="fwTitle" value="${esc(title)}" style="width:150px">
+      </div>
+      <div class="runout" id="fwRep">measuring…</div>
+      <div id="fwRows" style="margin-top:12px"></div>
+    </div></div>`,'md');
+
+  let rows=[],busy=false;
+  const rep=document.getElementById('fwRep'),list=document.getElementById('fwRows'),
+        msg=document.getElementById('fwMsg'),go=document.getElementById('fwGo');
+
+  const draw=()=>{
+    const R=fitReport(rows,fitLost(docs,rows));
+    const miss=r.svgs.length||Object.keys(S.figs).length
+      ? [...new Set(rows.flatMap(x=>[...(x.s.body||'').matchAll(/!\[\[([a-zA-Z0-9._-]+)/g)].map(m=>m[1])))]
+          .filter(id=>!figs[id]&&!S.figs[id]) : [];
+    rep.innerHTML=`<div class="runsum"><b>${R.slides}</b> slides from <b>${docs.length}</b> document(s)
+        <span class="muted">· ${R.stage} on stage${R.hidden?' · '+R.hidden+' hidden, walked by H':''}
+        · about ${clock(R.mins*60)}</span></div>
+      <table class="runtab">
+        <tr><td>how full a slide is, at the median</td><td class="n">${Math.round(R.fill*100)}%</td></tr>
+        <tr><td>still over the frame</td><td class="n">${R.over}</td></tr>
+        <tr><td>${R.lost.lost?'<b style="color:var(--b)">words missing</b>':'not a word lost, of'}</td>
+            <td class="n">${R.lost.lost?R.lost.lost+' ('+R.lost.which.slice(0,4).join(' ')+')':R.lost.total}</td></tr>
+        ${miss.length?`<tr><td>figures referenced but not among the files</td><td class="n">${miss.length}</td></tr>`:''}
+      </table>`;
+    let doc=null;
+    list.innerHTML=rows.map((x,i)=>{
+      const head=x.doc!==doc?`<div class="bgrp">${esc(x.doc.sub||x.doc.rel)}</div>`:'';
+      const first=x.doc!==doc;doc=x.doc;
+      return `<div class="brow${x.s.skip?' fwoff':''}"${first?' data-first="1"':''} data-i="${i}">
+        ${head}
+        <div class="bline">
+          <span class="bn">${String(i+1).padStart(2,'0')}</span>
+          <input class="bt" data-t="${i}" value="${esc(x.s.title)}">
+          <button class="fwst" data-s="${i}">${x.s.skip?'hidden':'on stage'}</button>
+          ${x.over?'<span class="fwover" title="still more than one slide holds">over</span>':''}
+        </div>
+        <div class="fwwhat">${esc(x.ready?'already a slide':fitWhat(x.s))}</div>
+      </div>`;}).join('');
+    go.textContent=`Import ${R.slides} slides`;
+    list.querySelectorAll('.bt').forEach(t=>t.oninput=()=>{rows[+t.dataset.t].s.title=t.value;});
+    list.querySelectorAll('.fwst').forEach(b=>b.onclick=e=>{
+      e.stopPropagation();const x=rows[+b.dataset.s];x.s.skip=!x.s.skip;draw();});
+    list.querySelectorAll('.brow').forEach(el=>el.onclick=e=>{
+      if(e.target.closest('input,button'))return;
+      const open=el.querySelector('.pvwrap');
+      if(open){open.remove();return;}
+      const s=rows[+el.dataset.i].s;
+      withFigs(figs,()=>{
+        el.insertAdjacentHTML('beforeend',
+          `<div class="stagewrap pvwrap" style="margin-top:7px"><div class="${stageClass(s)}"${
+            stageStyle(s)}>${stageHtml(s,false)}</div></div>`);
+      });
+      scalePreview(el);
+    });
+  };
+
+  const plan=async()=>{
+    if(busy)return;busy=true;go.disabled=true;
+    msg.innerHTML='<span class="spin"></span> measuring…';
+    try{
+      rows=await fitPlan(docs,figs,opts,(k,n)=>{msg.innerHTML=`<span class="spin"></span> ${k} of ${n}`;});
+    }catch(e){
+      /* a plan that failed has to say so where the plan would have been, rather
+         than spin for ever behind a dialog that looks like it is working */
+      msg.innerHTML=`<b style="color:var(--b)">${esc(e.message)}</b>`;
+      rep.textContent='Nothing was read. '+e.message;
+      busy=false;go.disabled=false;return;
+    }
+    msg.textContent='Nothing is applied until you say so.';
+    busy=false;go.disabled=false;draw();
+  };
+
+  document.getElementById('fwGrain').onclick=e=>{
+    const b=e.target.closest('button[data-g]');if(!b||busy)return;
+    document.querySelectorAll('#fwGrain button').forEach(x=>x.classList.toggle('on',x===b));
+    opts.grain=b.dataset.g;plan();
+  };
+  const stage=document.getElementById('fwStage');
+  stage.oninput=()=>{clearTimeout(stage.t);stage.t=setTimeout(()=>{opts.stage=stage.value;plan();},400);};
+  document.getElementById('fwRev').onchange=e=>{opts.reveal=e.target.checked;plan();};
+  document.getElementById('fwNo').onclick=closeDialog;
+  go.onclick=async()=>{
+    if(busy)return;
+    if(dirty&&S.slides.length){await persist();
+      if(saveErr){banner(`Not importing — the deck you have is not saved (${saveErr}).`,
+        'Download a copy',()=>downloadDeck());return;}}
+    const t=document.getElementById('fwTitle').value.trim()||'Imported deck';
+    S={id:t.toLowerCase().replace(/\W+/g,'-').replace(/^-|-$/g,'')||'deck',
+       title:t,slides:rows.map(x=>x.s),figs:Object.assign({},S.figs,figs),
+       meta:S.meta||{},style:S.style||{},assets:Object.assign({},S.assets||{})};
+    normalise();cur=0;fileHandle=null;fileName=null;srvLinked=false;
+    document.getElementById('welcome').classList.add('hidden');
+    closeDialog();await persist();paint();
+    const on=S.slides.filter(s=>!s.skip).length;
+    toast(`${S.slides.length} slides · ${on} on stage · ${Object.keys(S.figs).length} figures`);
+    if(canFile())setTimeout(()=>banner('Laid out. Save it somewhere you own.',
+      'Save to a file',()=>saveDeckAs()),700);
+  };
+  plan();
+}
+
 async function importWizard(files){
   const read=files?await readFiles(files):null;
   const show=async r=>{
@@ -2537,6 +2952,10 @@ async function importWizard(files){
       return;
     }
     if(!r.mds.length){toast('No markdown or deck in that');return;}
+    /* Markdown that is already this tool's own slides needs no arranging and
+       goes the way it always did. Anything else is a document, and a document
+       is laid out in front of you before a word of it moves. */
+    if(r.mds.some(([,txt])=>!DECK_MD.test(txt)))return fitWizard(r);
     const p=previewImport(r);
     const title=(r.mds[0][0].includes('/')?r.mds[0][0].split('/')[0]:'')||'Imported deck';
     dialog(`<h3>Import markdown</h3>
@@ -3658,7 +4077,9 @@ const TIDY_KEYS=['textScale','flags'];
    first picture is, how big the type is, and whether a short slide sits better
    in the middle of the frame. */
 function tidySlide(i){
-  const s=S.slides[i];
+  /* an index while it is in the deck, the slide itself while it is still being
+     planned — nothing else here needs to know which */
+  const s=typeof i==='number'?S.slides[i]:i;
   const sizeNow=()=>{const f=figBlocks(s)[0];return f?f.size:null;};
   const stamp=()=>JSON.stringify(TIDY_KEYS.map(k=>s[k]))+'|'+sizeNow();
   const before=stamp();

@@ -1084,6 +1084,59 @@ exactly what the panel's top box holds — so every seeded slide arrives one pre
 slide* away from being written, and you read and edit the arc before a word is spent on it. Rows
 are editable and droppable before anything is built.
 
+### A deck from a document
+
+The pair to the brief. A brief has the shape and no words; a chapter of a book, a paper or
+a set of lecture notes has the words and no shape — no slide boundaries, no columns, no
+clicks, no speaker notes, and no idea how much fits on a stage. Dropped in as it stands,
+every heading became one slide and most of them were a wall of text: one chapter of the
+[recsys p-book](https://github.com/kordikp/recsys-pbook) arrived as 257 slides of which
+227 carried more than the 40 words that fit.
+
+The rule is one sentence, and everything else follows from it:
+
+> **Tidy** arranges what is on a slide and never moves a word.
+> **Fit** decides what is on it, so it moves words — into the speaker notes, or onto the
+> next slide — and never changes one.
+
+Nothing summarises, deletes or invents, and **no model is involved**, which is what lets the
+plan say *not a word lost* and mean it rather than promise it. Per unit of the document:
+what is shown stays (lists, tables, key lines, code, formulas, figures, sub-heads), prose is
+spoken, and the blocks that stay are packed until the frame is full — measured in the hidden
+stage, the way Tidy measures. A unit that is nothing but prose keeps its lead paragraph,
+because a title over an empty frame is worse than a title over a paragraph.
+
+**What the document already says is used rather than guessed at.** Its frontmatter names a
+drawing (`diagram:`), summarises itself (`highlights:`), says what the section is for
+(`teaser:` → `*Summary:*`, so every slide arrives one press of *Rewrite it to do this* from
+being written) and often says what kind of thing it is (`type:` → the slide's tag). An
+image path becomes the deck's own `![[id]]`.
+
+**Three dials, and a plan you read before anything happens.** Where a slide ends — fill the
+slide, one per `##`, one per `###`. Which documents are on stage — everything, or the ones
+matching a pattern or a frontmatter `key=value`; the rest come in **hidden**, greyed in the
+list and walked by `H` in a rehearsal, because *which slides matter* is the judgement this
+tool must not make. And whether a slide builds click by click. Each dial redraws the plan,
+which is one row per slide it would make: title (editable), what it would hold, on stage or
+hidden, and a click to see the slide as the room would. Nothing is applied until you press
+the button, and what is applied is one snapshot and one undo.
+
+**Choosing the layout is allowed here, and only here.** Tidy refuses to, because how many
+columns a slide has is a decision somebody made — but a slide that has just arrived from a
+document has no decision behind it, so one and two columns are both measured and Tidy's own
+score picks. On the p-book chapter that lands two columns on 20 of the 34 slides on stage;
+the ISD keynote, arranged by hand, has 19 of 37.
+
+That chapter — 52 documents, 36 542 words — comes out as **168 slides, 34 of them on stage,
+about 40 minutes**, with 134 behind them, none over the frame and not a word of it gone. The
+slides on stage carry a median of 79 body words against the keynote's 97.
+
+`scripts/fit_document.py` does the same pass offline, for a folder and a shell. It estimates
+where the application measures — a line budget calibrated on the keynote instead of a hidden
+stage — so it is more cautious: 206 slides for the same chapter rather than 168. What is
+still missing from both, and the reasoning in full, is in
+[proposals/a-deck-from-a-document.md](proposals/a-deck-from-a-document.md).
+
 ## Development
 
 `tests/preflight.py` runs before the browser does. It checks that every name the test hook exposes

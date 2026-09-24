@@ -1,11 +1,13 @@
 # A deck from a document
 
-**A proposal, with its engine already built offline.** `scripts/fit_document.py` does the
-whole mechanical pass from the command line and `scripts/test_fit_document.py` holds it to
-the invariants below; **the part inside the application — the three dials, the plan you
-approve, the deck-wide pass — is not built.** This file says what should be, why it looks
-like this, and what it must never do. Numbers in it were measured, and the command that
-produces each one is given beside it.
+**Most of this is now built.** The import path — the three dials, the plan you read before
+anything moves, the measured pass behind it — is in the application, and
+`scripts/fit_document.py` does the same pass offline for a folder and a shell. What is
+**not** built is listed under *What is still missing* at the end: the deck-wide
+`Fit every slide…`, *Split it* on the overflow warning, and revealing a list one item at a
+time. This file is still the reasoning: why it looks like this, and what it must never do.
+Numbers in it were measured, and the command or the test that produces each one is beside
+it.
 
 ---
 
@@ -199,9 +201,21 @@ python3 scripts/build_bundle.py --src /tmp/ch05/slides --figs /tmp/ch05/figures 
 
 > The script is the offline half, beside `fit_slides.py` and `dedupe.py`, which are the
 > same family of tool. It estimates where the application measures — a line budget instead
-> of a hidden stage — so the numbers the application gets will differ a little, and only
-> downward. What it does **not** have is the part that matters most: a plan you read
-> before anything happens.
+> of a hidden stage — so it is the more cautious of the two, and it has no plan to read.
+
+**And the same chapter through the application**, where the frame is measured rather than
+estimated. Dropped in with `-spine-` on stage:
+
+| | slides | on stage | hidden | over the frame | stage time | two columns |
+|---|---|---|---|---|---|---|
+| the script, estimating | 206 | 34 | 172 | 0 | 39 min | — |
+| **the application, measuring** | **168** | **34** | 134 | **0** | **40 min** | **20 of 34** |
+
+Measurement packs about a fifth more onto a slide than the line budget dares to, which is
+the whole reason the browser does it. The slides on stage carry a median of 79 body words
+against the keynote's 97, and two columns land on 20 of the 34 — the keynote, arranged by
+hand over months, has 19 of 37. Nothing on either row is over the frame, and neither loses
+a word.
 
 ## Yes, it should run over a whole deck — but not the way Tidy does
 
@@ -212,15 +226,16 @@ toast.
 
 So: the same engine, three entry points, and the deck-wide one runs behind a plan.
 
-- **`⋯ → A deck from a document…`** — the main path, and the one the import wizard grows
-  into. The wizard already says what it found before it does anything; it gains the three
-  dials and the plan.
-- **`⋯ → Fit every slide…`** — beside `Tidy every slide…`, for a deck that already exists:
-  one imported before this landed, one pasted together, one that grew. Slides that fit are
-  proposed as *leave alone*, which is most of a deck that has been worked on.
-- **The overflow warning**, per slide — it already offers *fit the slide*, *shrink the
-  picture* and *move what is over the edge into the notes*. It gains **Split it**, which is
-  rules 2 to 5 on one slide.
+- **Importing a document** — *built.* `⋯ → Import markdown…`, or a drop anywhere in the
+  window. Markdown that is already this tool's own slides goes the way it always did;
+  anything else is a document, and a document gets the dials and the plan.
+- **`⋯ → Fit every slide…`** — *not built.* Beside `Tidy every slide…`, for a deck that
+  already exists: one imported before this landed, one pasted together, one that grew.
+  Slides that fit are proposed as *leave alone*, which is most of a deck that has been
+  worked on.
+- **The overflow warning**, per slide — *not built.* It already offers *fit the slide*,
+  *shrink the picture* and *move what is over the edge into the notes*. It gains
+  **Split it**, which is rules 2 to 5 on one slide.
 
 **The plan** is modelled on the brief wizard's review, because that interaction is right and
 already exists: one row per slide it would make, grouped by source unit, showing the title,
@@ -298,10 +313,11 @@ lead on the slide, the rest in the notes, and points at the model.
 
 ## Tests
 
-`scripts/test_fit_document.py` already holds the offline engine to these, and runs in
-`tests/all.sh` with the rest. The application's half wants the same list again in the shape
-of the browser suite — `tests/32-a-document-becomes-a-deck.html`, driving the app in an
-iframe against a fixture document:
+Both halves are held to these, and both run in `tests/all.sh`:
+`scripts/test_fit_document.py` for the script, and
+`tests/32-a-document-becomes-a-deck.html` for the application, which drives the wizard in an
+iframe against a fixture document — the dials, the plan, a row's preview, the import, and
+the words that must all still be there afterwards.
 
 - **not a word is lost** — every word of the fixture is in a title, a body or a note
 - **a second pass changes nothing** — deep-equal before and after
@@ -315,22 +331,35 @@ iframe against a fixture document:
 
 ## Where the code goes
 
-One file, as always. Almost all of it is reuse:
+One file, as always, and almost all of it is reuse. What landed:
 
-| new | does | built on |
+| in `slaidy.html` | does | built on |
 |---|---|---|
-| `docUnits(text, grain)` | frontmatter and headings to units | the generic branch of `importMarkdown` |
-| `fitUnit(unit, profile)` | separate, pack, merge → slides | `blocks()`, `fit_slides.py`'s rule |
-| `fitSlide(s)` | arrange one slide, split if it still spills | `measureStage()`, `tidySlide()`, `splitBody()` |
-| `fitPlan(slides, dials)` | the plan, applying nothing | — |
-| `fitApply(plan)` | one snapshot, one splice, one undo | `snap()`, `normalise()`, `paint()` |
-| `fitWizard()` | the three dials, the plan, the preview | `briefWizard()`'s review, `stageHtml`, `scalePreview` |
+| `docFm`, `docFigrefs` | frontmatter, and a path that becomes `![[id]]` | — |
+| `docUnits` | headings and blocks to units; shown, said, and what it is for | `blocks()` |
+| `docOver` | does this much fit | `measureStage()` |
+| `fitDocSlides` | pack, merge, continue | `docOver` |
+| `fitArrange` | one column or two, then the dials | `splitBody()`, `tidySlide()`, `tidyScore()` |
+| `fitReveal` | a step between the blocks | — |
+| `withFigs` | lends the incoming drawings to the deck for one measurement | — |
+| `fitPlan`, `fitLost`, `fitReport`, `fitWhat` | the plan, applying nothing | the above |
+| `fitWizard` | the three dials, the plan, the preview | `briefWizard()`'s review, `stageHtml`, `scalePreview` |
 
-Hooks: `importWizard` (the dials and the plan replace the straight import), the `⋯` menu
-(`bFitAll` beside `bTidyAll`), the overflow warning (`data-fix="split"`), and the welcome
-screen, where *A deck from a document…* belongs next to *A deck from a brief…* — which is
-the pair this proposal is really about. One of them has the shape and needs the words. The
-other has the words and needs the shape.
+`tidySlide` gained one line: it takes a slide as well as an index, so a slide can be
+arranged before it is in the deck. `importWizard` gained one branch: markdown that is
+already this tool's own slides goes the way it always did.
+
+## What is still missing
+
+1. **`⋯ → Fit every slide…`**, the deck-wide pass over slides that are already in a deck.
+   The engine is the same; what it needs is the rule that a slide somebody arranged is
+   proposed as *leave alone* — a column break, a named layout, a text scale or flags all
+   say someone has been here.
+2. **Split it** on the overflow warning, for one slide at a time.
+3. **Revealing a list one item at a time**, which needs the renderer change above.
+4. **Bitmaps.** A document's `.png` screenshots are still ignored by the import; they
+   should go through `picImport` with their alt text as the picture's description.
+5. **A `mermaid` fence drawn as a figure**, offered in the plan rather than assumed.
 
 ## Open questions
 

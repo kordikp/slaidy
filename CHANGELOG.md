@@ -5,7 +5,23 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
-- **A document laid out as a deck.** `scripts/fit_document.py` reads markdown that was
+- **A deck from a document.** Drop in markdown that was never written for a stage — a
+  chapter of a book, a paper, lecture notes — and it is laid out rather than sliced up:
+  what is shown stays on the slide, the prose goes to the speaker notes, and the blocks
+  that stay are packed until the frame is full, measured in the hidden stage the way Tidy
+  measures. Tidy arranges what is on a slide and never moves a word; this decides what is
+  on it, so it moves words and never changes one — nothing summarises, deletes or invents,
+  and no model is involved. Three dials: where a slide ends, which documents are on stage
+  (the rest arrive **hidden**, greyed and walked by `H`, never dropped), and whether a
+  slide builds click by click. Each redraws **a plan you read before anything moves**: a
+  row per slide, its title editable, a click to see it as the room would, and a report
+  that says *not a word lost* and checks it. A document's own frontmatter is used rather
+  than guessed at — the drawing it names, its own highlights, its teaser as what the slide
+  is for. Choosing one column or two is allowed here and only here, because a slide that
+  has just arrived has no decision behind it. One chapter of the recsys p-book, 52
+  documents and 36 542 words, comes out as 168 slides of which 34 are on stage — about 40
+  minutes — none over the frame. See *A deck from a document* in `docs/DESIGN.md`.
+- **A document laid out as a deck, offline.** `scripts/fit_document.py` reads markdown that was
   never written for a stage — a chapter of a book, a paper, lecture notes — and lays it
   out: split at the headings, pack what is shown until the frame is full, merge the
   neighbours that fit, speak the rest into the notes. It moves words and never changes
@@ -15,8 +31,10 @@ Dates are when the work landed, not when it was released; there are no releases 
   somebody accepted, not a guess. A file already in this tool's own format is refused
   rather than read as prose. One chapter of the recsys p-book, 52 files and 36 542 words,
   comes out as 34 slides on stage — about 39 minutes — with 172 behind them.
-  `scripts/test_fit_document.py` holds it to all of that and runs in `tests/all.sh`; the
-  design, and the half that belongs inside the application, are in
+  `scripts/test_fit_document.py` holds it to all of that and runs in `tests/all.sh`. It
+  estimates where the application measures, so it is the more cautious of the two: 206
+  slides for that chapter against the application's 168. The reasoning, and what is still
+  missing from both, are in
   [docs/proposals/a-deck-from-a-document.md](docs/proposals/a-deck-from-a-document.md).
 - **Pictures.** Photographs, screenshots and plots come in from a file, the clipboard, a
   drop or an address: ＋ Figure → *Picture*, the picture button in the figure editor, or a

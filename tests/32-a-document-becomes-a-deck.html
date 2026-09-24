@@ -1,0 +1,232 @@
+<!doctype html><meta charset=utf-8><body style="margin:0">
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,90000);
+
+async function open_(){
+  const f=document.createElement('iframe');
+  f.style.cssText='width:1280px;height:800px;border:0;position:absolute;left:-9999px;top:0';
+  f.src='/index.html';
+  document.body.appendChild(f);
+  await new Promise(r=>{f.onload=r;setTimeout(r,9000);});
+  const d=f.contentDocument;
+  for(let i=0;i<70;i++){await wait(120);if(d.querySelectorAll('#nav .item').length)break;}
+  await wait(400);
+  return f;
+}
+
+/* a document written to be read: frontmatter, headings, a great deal of prose,
+   and nothing a slide needs */
+const DOC=`---
+title: "How Computers Understand Similarity"
+type: spine
+teaser: "A machine has no intuition for similarity, so how does it compute one?"
+diagram: fig-embeddings
+highlights:
+  - "Proximity in the space is behaviour, not category"
+  - "Networks find qualities handcrafted features miss"
+---
+
+A long opening paragraph explaining the problem in the author's own words, which is
+far too much prose to project and belongs in the speaker notes where it can be said
+out loud rather than read off the wall by everybody at once, slowly, in silence.
+
+## The Legacy Approach
+
+Early systems relied on explicit labels, and the paragraph saying so is prose that
+nobody should have to read from the back of a lecture theatre while it is spoken.
+
+| Method | Cost | Scale |
+|---|---|---|
+| tags | manual | poor |
+| embeddings | learned | good |
+
+## The Modern Approach
+
+1. Feed the network pairs of items
+2. It learns to place similar things near each other
+3. Every item ends up with a vector of its own
+
+![the space](/images/fig-space.svg)
+
+## Nothing But Prose
+
+This section carries no list and no table and no figure at all, only this one
+paragraph, so the slide it becomes would otherwise be a title over an empty frame.
+`;
+const ASIDE=`---
+title: "A Story About Netflix"
+type: sidebar
+teaser: "The prize, and what it actually proved."
+---
+
+## The Prize
+
+Forty thousand teams entered and the winner used matrix factorisation.
+`;
+const OURS=`# A Section
+
+### 1. \`[S]\` A slide already
+
+*Summary:* this file is already a deck.
+
+- and it must import the way it always did
+`;
+const SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450"><rect width="800" height="450" fill="#eee"/></svg>';
+const file=(name,text)=>({name,text:async()=>text});
+
+addEventListener('load',async()=>{
+ const f=await open_();
+ const W=f.contentWindow,d=f.contentDocument,w=W.__api;
+ try{
+  // ---------- what a document says ----------
+  const {fm,body}=w.docFm(DOC);
+  ok('frontmatter reads a plain key',fm.title==='How Computers Understand Similarity',fm.title);
+  ok('and a list',(fm['highlights[]']||[]).length===2,String((fm['highlights[]']||[]).length));
+  ok('the body starts after it',body.trim().startsWith('A long opening'),body.trim().slice(0,16));
+  ok('a path becomes the deck\'s own reference',w.docFigrefs(body).includes('![[fig-space]]'));
+
+  const units=w.docUnits(w.docFigrefs(body),'fill',fm);
+  ok('a unit per ## heading, plus what came before the first',units.length===4,String(units.length));
+  ok('the heading is the unit\'s name',units[1].title==='The Legacy Approach',String(units[1].title));
+  const legacy=units[1];
+  ok('a table stays on the slide',legacy.shown.some(b=>b.kind==='table'));
+  ok('the prose beside it is spoken',legacy.said.some(b=>/back of a lecture/.test(b.src))&&
+     !legacy.shown.some(b=>/back of a lecture/.test(b.src)));
+  ok('the drawing the frontmatter names is on the first slide',
+     units[0].shown.some(b=>b.kind==='fig'&&/fig-embeddings/.test(b.src)));
+  ok('but one the body already places is not placed twice',
+     w.docUnits(w.docFigrefs(body),'fill',{diagram:'fig-space'})[0]
+       .shown.filter(b=>b.kind==='fig'&&/fig-space/.test(b.src)).length===0);
+  ok('so is the author\'s own summary of their own section',
+     units[0].shown.some(b=>b.kind==='list'&&/Proximity in the space/.test(b.src)));
+  ok('which leaves the opening prose to be spoken',
+     units[0].said.some(b=>/far too much prose/.test(b.src))&&
+     !units[0].shown.some(b=>/far too much prose/.test(b.src)));
+
+  const prose=units[3];
+  ok('a slide always shows something',prose.shown.length===1&&prose.shown[0].kind==='para',
+     String(prose.shown.length));
+  ok('the purpose line is the author\'s own sentence, not a written one',
+     units[1].sum&&body.includes(units[1].sum.slice(0,30)),String(units[1].sum).slice(0,40));
+
+  // ---------- what fits is measured ----------
+  const doc={rel:'01-spine-x.md',fm,body:w.docFigrefs(body),group:'Ch',sub:fm.title};
+  const made=w.fitDocSlides(doc,{grain:'fill',stage:'',reveal:false});
+  ok('the document became slides',made.length>=1,String(made.length));
+  ok('every one of them holds something',made.every(m=>m.blocks.length||m.title));
+  ok('and none of them is over the frame',
+     made.every(m=>!w.docOver(m.title,m.blocks)),
+     made.filter(m=>w.docOver(m.title,m.blocks)).map(m=>m.title).join(', '));
+
+  const one=w.fitDocSlides(doc,{grain:'section',stage:'',reveal:false});
+  ok('a slide per ## makes more of them than filling does',one.length>=made.length,
+     one.length+' against '+made.length);
+  ok('and every heading is a title of its own',
+     one.some(m=>m.title==='The Legacy Approach')&&one.some(m=>m.title==='The Modern Approach'));
+  ok('merging puts the heading on the slide as a sub-head, never drops it',
+     made.length===one.length||made.some(m=>m.blocks.some(b=>b.kind==='head'&&/Legacy|Modern|Prose/.test(b.src))));
+
+  // ---------- clicks ----------
+  const rev=w.fitReveal([{kind:'head',src:'#### H'},{kind:'list',src:'- a'},{kind:'table',src:'|a|'}]);
+  ok('a step goes between the blocks',rev.filter(b=>b.kind==='step').length===1,
+     String(rev.filter(b=>b.kind==='step').length));
+  ok('but never between a sub-head and what it introduces',rev[1].kind==='list',rev[1].kind);
+
+  // ---------- on stage ----------
+  ok('a frontmatter convention keeps a document on stage',w.docOnStage(doc,'type=spine'));
+  ok('and takes another off it',!w.docOnStage({rel:'b.md',fm:{type:'sidebar'}},'type=spine'));
+  ok('a path pattern does the same',w.docOnStage(doc,'-spine-')&&!w.docOnStage({rel:'b.md',fm:{}},'-spine-'));
+  ok('nothing said means everything is on stage',w.docOnStage({rel:'b.md',fm:{}},''));
+
+  // ---------- the plan, and the wizard over it ----------
+  const before=Object.keys(w.S.figs).length;
+  await w.importWizard([file('ch1/01-spine-a.md',DOC),file('ch1/02-sidebar-b.md',ASIDE),
+                        {name:'fig-space.svg',text:async()=>SVG},
+                        {name:'fig-embeddings.svg',text:async()=>SVG}]);
+  for(let i=0;i<60;i++){await wait(150);if(d.getElementById('fwRows')&&d.querySelectorAll('#fwRows .brow').length)break;}
+  const rows=[...d.querySelectorAll('#fwRows .brow')];
+  ok('the plan is drawn before anything is applied',rows.length>0,String(rows.length));
+  ok('and nothing has been applied',w.S.slides.length!==rows.length||Object.keys(w.S.figs).length===before,
+     w.S.slides.length+' slides, '+Object.keys(w.S.figs).length+' figures');
+  ok('the drawing was only lent for the measuring',Object.keys(w.S.figs).length===before,
+     String(Object.keys(w.S.figs).length));
+  const rep=d.getElementById('fwRep').textContent;
+  ok('the report says not a word was lost',/not a word lost/.test(rep),rep.replace(/\s+/g,' ').slice(0,90));
+  ok('and how full a slide is',/%/.test(rep));
+
+  const n0=rows.length;
+  d.querySelector('#fwGrain button[data-g="section"]').click();
+  for(let i=0;i<60;i++){await wait(150);if(d.querySelectorAll('#fwRows .brow').length!==n0)break;}
+  ok('changing where a slide ends redraws the plan',
+     d.querySelectorAll('#fwRows .brow').length>=n0,
+     d.querySelectorAll('#fwRows .brow').length+' against '+n0);
+  d.querySelector('#fwGrain button[data-g="fill"]').click();
+  for(let i=0;i<60;i++){await wait(150);if(d.querySelectorAll('#fwRows .brow').length===n0)break;}
+
+  d.querySelector('#fwStage').value='-spine-';
+  d.getElementById('fwStage').dispatchEvent(new W.Event('input'));
+  for(let i=0;i<60;i++){await wait(150);if(d.querySelectorAll('#fwRows .brow.fwoff').length)break;}
+  ok('a convention takes the rest off the stage, without dropping it',
+     d.querySelectorAll('#fwRows .brow.fwoff').length>0&&
+     d.querySelectorAll('#fwRows .brow').length===n0,
+     d.querySelectorAll('#fwRows .brow.fwoff').length+' of '+d.querySelectorAll('#fwRows .brow').length);
+
+  const row=d.querySelector('#fwRows .brow');
+  row.click(); await wait(200);
+  ok('a row opens the slide as the room would see it',!!row.querySelector('.pvwrap .stage h2'),
+     (row.querySelector('.pvwrap .stage h2')||{}).textContent);
+  row.click(); await wait(120);
+  ok('and closes again',!row.querySelector('.pvwrap'));
+
+  const planned=d.querySelectorAll('#fwRows .brow').length;
+  const hidden=d.querySelectorAll('#fwRows .brow.fwoff').length;
+  d.getElementById('fwGo').click();
+  for(let i=0;i<70;i++){await wait(150);if(w.S.slides.length===planned)break;}
+  ok('the plan is what arrives',w.S.slides.length===planned,w.S.slides.length+' of '+planned);
+  ok('the hidden ones came in hidden, not dropped',
+     w.S.slides.filter(s=>s.skip).length===hidden,
+     w.S.slides.filter(s=>s.skip).length+' of '+hidden);
+  ok('the drawings came with them',!!w.S.figs['fig-space']&&!!w.S.figs['fig-embeddings']);
+  ok('the prose is in the notes',w.S.slides.some(s=>/far too much prose/.test(s.notes||'')));
+  ok('and not on a slide',!w.S.slides.some(s=>/far too much prose/.test(s.body||'')));
+  ok('the teaser became what the slide is for',
+     w.S.slides.some(s=>/no intuition for similarity/.test(s.summary||'')));
+  ok('every slide has something on it',w.S.slides.every(s=>(s.body||'').trim()),
+     String(w.S.slides.filter(s=>!(s.body||'').trim()).length));
+  ok('a figure is a block in the body, like anything else',
+     w.S.slides.some(s=>/!\[\[fig-space/.test(s.body||'')));
+
+  // ---------- not a word of it is lost ----------
+  const words=t=>String(t||'').replace(/!\[\[[^\]]*\]\]/g,' ').replace(/\[([^\]]*)\]\([^)]*\)/g,' $1 ')
+    .replace(/[#*`>|_~$]/g,' ').split(/\s+/).filter(Boolean);
+  const after={};
+  w.S.slides.forEach(s=>[s.title,s.body,s.notes,s.summary].forEach(t=>
+    words(t).forEach(x=>after[x]=(after[x]||0)+1)));
+  const src={};
+  [w.docFigrefs(w.docFm(DOC).body),w.docFigrefs(w.docFm(ASIDE).body)].forEach(t=>
+    words(t).forEach(x=>src[x]=(src[x]||0)+1));
+  const missing=Object.keys(src).filter(x=>(after[x]||0)<src[x]);
+  ok('not a word of the document is lost',missing.length===0,missing.slice(0,6).join(' '));
+
+  // ---------- a deck is not a document ----------
+  const was=w.S.slides.length;
+  await w.importWizard([file('01-tour.md',OURS)]);
+  await wait(500);
+  ok('this tool\'s own markdown goes the way it always did, with no plan over it',
+     !d.getElementById('fwRows')&&!!d.querySelector('.dlg'),
+     d.querySelector('.dlg h3')?d.querySelector('.dlg h3').textContent:'no dialog');
+  A_close(d);
+
+  f.remove();
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+function A_close(d){const v=d.getElementById('veil');if(v)v.classList.remove('on');}
+</script>

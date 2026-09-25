@@ -5,6 +5,16 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **`⋯ → Fit every slide…`** — the same pass over a deck that is already a deck: one
+  imported before this existed, one pasted together, one that grew a paragraph at a time.
+  It runs behind a plan, because it changes the slide count and that is not news for a
+  toast. A slide that fits is left alone, and so are the columns of a slide somebody
+  arranged — a column break or a named layout, which Tidy sets neither of; its prose is
+  still spoken. A text scale and a centring flag are Tidy's dials, not decisions. On the
+  ISD keynote, 27 of its 37 slides are left alone, five are split, three have their prose
+  moved, and two are reported as beyond rescue. `Split it` on the overflow warning does the
+  same to one slide. A long unordered list is the one block that may be continued on the
+  next slide; an ordered one starts again at 1 over there, so it is not.
 - **Formulas: what it takes was measured, not chosen by taste.** 720 distinct formulas out of
   the recsys p-book and two decks — it refused 67 of them and refuses **none** now.
   `\begin{cases}`, `\begin{pmatrix}` and the rest of the matrix family, `aligned`, `array`,

@@ -828,6 +828,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
       <button id="bHist">Version history</button>
       <button id="bSave">Export…</button>
       <button id="bTidyAll">Tidy every slide…</button>
+      <button id="bFitAll">Fit every slide…</button>
       <button id="bDeck">Deck settings…</button>
       <button id="bCfg2">AI usage…</button>
       <div class="popfoot" id="appStamp"></div>
@@ -2855,6 +2856,23 @@ function fitReveal(list){
   });
   return out;
 }
+/* A block is the unit and nothing is cut in half — except a long *unordered*
+   list, which is a run of items and can be continued on the next slide. An
+   ordered one cannot: an <ol> starts again at 1 over there. Half a table or
+   half a code block is worse than a small one. */
+const fitOrdered=src=>/^\s*\d+[.)]\s/.test(String(src).trimStart());
+function fitRuns(b,over){
+  if(b.kind!=='list'||fitOrdered(b.src)||!over([b]))return[b];
+  const items=b.src.split('\n').filter(l=>l.trim());
+  const out=[];let cur=[];
+  const as=ls=>({kind:'list',src:ls.join('\n')});
+  items.forEach(l=>{
+    cur.push(l);
+    if(cur.length>1&&over([as(cur)])){cur.pop();out.push(as(cur));cur=[l];}
+  });
+  if(cur.length)out.push(as(cur));
+  return out.length?out:[b];
+}
 /* Tidy refuses to choose a layout, because how many columns a slide has is a
    decision somebody made. A slide that arrived from a document has no decision
    behind it — so the choice is made here, by Tidy's own score, and only here. */
@@ -2890,7 +2908,8 @@ function fitDocSlides(doc,opts){
     const home=merging?cur:open(u.title);
     home.said=home.said.concat(u.said);
     if(!home.sum)home.sum=u.sum;
-    const list=(merging&&u.title?[{kind:'head',src:'#### '+u.title}]:[]).concat(u.shown);
+    const list=(merging&&u.title?[{kind:'head',src:'#### '+u.title}]:[])
+      .concat(u.shown.flatMap(b=>fitRuns(b,l=>docOver(u.title||'',l))));
     list.forEach(b=>{
       const keep=cur.title;
       cur.blocks.push(b);
@@ -3138,6 +3157,190 @@ function fitWizard(r,p){
       'Save to a file',()=>saveDeckAs()),700);
   };
   plan();
+}
+
+/* ---------- fitting a deck that is already a deck --------------------------
+   The same pass, over slides rather than documents: one imported before this
+   existed, one pasted together, one that grew a paragraph at a time until it
+   stopped fitting. `Tidy every slide` can run silently because every dial it
+   turns is reversible and none of them changes what the deck is. This changes
+   the slide count, so it runs behind a plan.
+
+   What it will not touch: a slide that fits — there is nothing to decide — and
+   the columns or the layout of a slide where somebody has already decided
+   those. Note which two those are. A text scale and a centring flag are Tidy's
+   dials, not decisions, and treating them as decisions would exempt every deck
+   that has ever been tidied, which is every deck.
+--------------------------------------------------------------------------- */
+function fitProbe(s,list){
+  return Object.assign(clone(s),{body:list.map(b=>b.src).join('\n\n'),
+                                 flags:[],textScale:100});
+}
+function fitOver(s){const m=measureStage(s);return !m||m.over||m.slack<-1;}
+/* a column break or a layout that is not the plain one: Tidy sets neither, and
+   refuses to, so either means a person put it there */
+function fitDecided(s){
+  const bs=blocks(s.body);
+  return s.layout!=='text'||bs.some(b=>b.kind==='col')||bs.some(b=>b.kind==='step');
+}
+const fitSaid=b=>b.kind==='para';
+/* What would become of one slide. Applies nothing. */
+function fitSlidePlan(s){
+  if(!fitOver(s))return{kind:'leave',slides:[s],moved:0};
+  const bs=blocks(s.body);
+  const said=bs.filter(fitSaid);
+  const spoke=list=>list.map(b=>docProse(b.src)).filter(Boolean).join(' ');
+  const count=list=>list.reduce((n,b)=>n+docWords(b.src).length,0);
+  /* Somebody arranged this one. Moving its prose into the notes is still fair —
+     that is where prose is said — but its columns are not this pass's to recut. */
+  if(fitDecided(s)){
+    const keep=bs.filter(b=>!fitSaid(b));
+    if(!said.length||!keep.some(b=>DOC_SHOWN.has(b.kind)))
+      return{kind:'over',slides:[s],moved:0};
+    const c=clone(s);
+    c.body=keep.map(b=>b.src).join('\n\n');
+    c.notes=[(s.notes||'').trim(),spoke(said)].filter(Boolean).join(' ');
+    tidySlide(c);
+    return{kind:fitOver(c)?'over':'speak',slides:[c],moved:count(said)};
+  }
+  let shown=bs.filter(b=>!fitSaid(b)),spoken=said;
+  /* a slide must show something */
+  if(!shown.some(b=>DOC_SHOWN.has(b.kind))&&spoken.length){
+    shown=shown.concat([spoken[0]]);spoken=spoken.slice(1);
+  }
+  const pages=[];let cur=null;
+  const open=()=>{cur={blocks:[]};pages.push(cur);return cur;};
+  shown=shown.flatMap(b=>fitRuns(b,l=>fitOver(fitProbe(s,l))));
+  shown.forEach(b=>{
+    if(!cur)open();
+    cur.blocks.push(b);
+    if(cur.blocks.length>1&&fitOver(fitProbe(s,cur.blocks))){
+      cur.blocks.pop();open();cur.blocks.push(b);
+    }
+  });
+  if(!pages.length)open();
+  const made=pages.map((p,i)=>{
+    const c=clone(s);
+    c.body=p.blocks.map(b=>b.src).join('\n\n');
+    /* the prose is spoken over the slide the paragraph was written on, and a
+       continuation starts with nothing to say rather than with a copy */
+    c.notes=i?'':[(s.notes||'').trim(),spoke(spoken)].filter(Boolean).join(' ');
+    c.flags=[];c.textScale=100;
+    fitArrange(c);
+    return c;
+  });
+  const over=made.some(fitOver);
+  return{kind:over?'over':made.length>1?'split':spoken.length?'speak':'fit',
+         slides:made,moved:count(spoken)};
+}
+const FIT_SAYS={leave:'fits as it is',speak:'the prose is spoken',
+                split:'becomes more than one',fit:'rearranged',
+                over:'still more than one slide holds'};
+/* Not a word is lost, checked over the slides this would touch. */
+function fitDeckLost(rows){
+  const before=new Map(),after=new Map();
+  const add=(m,t)=>docWords(t).forEach(w=>m.set(w,(m.get(w)||0)+1));
+  rows.forEach(r=>{
+    [r.was.title,r.was.body,r.was.notes,r.was.summary].forEach(t=>add(before,t));
+    (r.on?r.plan.slides:[r.was]).forEach(s=>
+      [s.title,s.body,s.notes,s.summary].forEach(t=>add(after,t)));
+  });
+  let lost=0,total=0;const which=[];
+  before.forEach((n,w)=>{total+=n;const short=n-(after.get(w)||0);
+    if(short>0){lost+=short;if(which.length<8)which.push(w);}});
+  return{lost,total,which};
+}
+async function fitDeckWizard(){
+  dialog(`<div class="mdhead">
+      <h3>Fit every slide</h3>
+      <span class="tip" id="fdMsg"><span class="spin"></span> measuring…</span>
+      <span style="flex:1"></span>
+      <button class="b" id="fdNo">Cancel</button>
+      <button class="b p" id="fdGo" disabled>Fit them</button>
+    </div>
+    <div class="bwrap"><div class="bwrev">
+      <p class="tip" style="margin:0 0 10px">Moves what does not fit: prose into the speaker
+        notes, blocks onto a slide of their own. <b>No word is changed and none is lost.</b>
+        A slide that fits is left alone, and so are the columns of one you arranged yourself.
+        One <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the lot.</p>
+      <div class="runout" id="fdRep">measuring…</div>
+      <div id="fdRows" style="margin-top:12px"></div>
+    </div></div>`,'md');
+  const msg=document.getElementById('fdMsg'),rep=document.getElementById('fdRep'),
+        list=document.getElementById('fdRows'),go=document.getElementById('fdGo');
+  document.getElementById('fdNo').onclick=closeDialog;
+
+  const rows=[];
+  for(let i=0;i<S.slides.length;i++){
+    const was=S.slides[i];
+    const plan=fitSlidePlan(clone(was));
+    rows.push({was,plan,on:plan.kind!=='leave'&&plan.kind!=='over'});
+    if(i%6===5||i===S.slides.length-1){
+      msg.innerHTML=`<span class="spin"></span> ${i+1} of ${S.slides.length}`;
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+  document.getElementById('measure')?.remove();
+  if(!document.getElementById('fdRows'))return;            /* cancelled while measuring */
+  msg.textContent='Nothing is applied until you say so.';
+
+  const draw=()=>{
+    const work=rows.filter(r=>r.on);
+    const out=rows.reduce((n,r)=>n+(r.on?r.plan.slides.length:1),0);
+    const lost=fitDeckLost(rows);
+    const stuck=rows.filter(r=>r.plan.kind==='over').length;
+    rep.innerHTML=`<div class="runsum"><b>${work.length}</b> of ${rows.length} slides to change
+        <span class="muted">· ${rows.length} → ${out} slides${
+          stuck?' · '+stuck+' that nothing here can rescue':''}</span></div>
+      <table class="runtab">
+        <tr><td>slides that already fit</td><td class="n">${rows.filter(r=>r.plan.kind==='leave').length}</td></tr>
+        <tr><td>words moving into the speaker notes</td><td class="n">${work.reduce((n,r)=>n+r.plan.moved,0)}</td></tr>
+        <tr><td>slides becoming more than one</td><td class="n">${work.filter(r=>r.plan.slides.length>1).length}</td></tr>
+        <tr><td>${lost.lost?'<b style="color:var(--b)">words missing</b>':'not a word lost, of'}</td>
+            <td class="n">${lost.lost?lost.lost+' ('+lost.which.slice(0,4).join(' ')+')':lost.total}</td></tr>
+      </table>`;
+    list.innerHTML=rows.map((r,i)=>{
+      const n=r.plan.slides.length;
+      return `<div class="brow${r.on?'':' fwoff'}" data-i="${i}">
+        <div class="bline">
+          <span class="bn">${String(i+1).padStart(2,'0')}</span>
+          <span class="bt" style="flex:1">${esc(r.was.title||'Untitled')}</span>
+          ${r.plan.kind==='leave'?'<span class="fwwhat">fits as it is</span>'
+            :`<button class="fwst" data-s="${i}">${r.on?'change it':'leave it'}</button>`}
+          ${r.plan.kind==='over'?'<span class="fwover" title="move something into the notes by hand">over</span>':''}
+        </div>
+        <div class="fwwhat">${esc(FIT_SAYS[r.plan.kind])}${
+          n>1?` — ${n} slides`:''}${r.plan.moved?` · ${r.plan.moved} words spoken`:''}</div>
+      </div>`;}).join('');
+    go.disabled=!work.length;
+    go.textContent=work.length?`Fit ${work.length} slide${work.length>1?'s':''}`:'Nothing to fit';
+    list.querySelectorAll('.fwst').forEach(b=>b.onclick=e=>{
+      e.stopPropagation();rows[+b.dataset.s].on=!rows[+b.dataset.s].on;draw();});
+    list.querySelectorAll('.brow').forEach(el=>el.onclick=e=>{
+      if(e.target.closest('button'))return;
+      const open=el.querySelector('.pvwrap');
+      if(open){[...el.querySelectorAll('.pvwrap')].forEach(x=>x.remove());return;}
+      const r=rows[+el.dataset.i];
+      el.insertAdjacentHTML('beforeend',(r.on?r.plan.slides:[r.was]).map(s=>
+        `<div class="stagewrap pvwrap" style="margin-top:7px"><div class="${stageClass(s)}"${
+          stageStyle(s)}>${stageHtml(s,false)}</div></div>`).join(''));
+      scalePreview(el);
+    });
+  };
+  draw();
+
+  go.onclick=()=>{
+    const work=rows.filter(r=>r.on);
+    if(!work.length)return;
+    snap('fit every slide');
+    const out=[];
+    rows.forEach(r=>out.push(...(r.on?r.plan.slides:[r.was])));
+    S.slides=out;
+    cur=Math.min(cur,S.slides.length-1);
+    normalise();touch();paint();closeDialog();
+    const grew=out.length-rows.length;
+    toast(`${work.length} slides fitted${grew?` — ${rows.length} became ${out.length}`:''}`);
+  };
 }
 
 async function importWizard(files){
@@ -3813,6 +4016,7 @@ function paintBoard(){
       <button data-fix="tidy">Fit it</button>
       <button data-fix="small">Smaller picture</button>
       <button data-fix="notes">Move the tail to the notes</button>
+      <button data-fix="split">Split it</button>
       <button data-fix="hide" class="x" title="Leave it as it is">✕</button></div>
     <div class="offstage notes"><div class="lbl">Speaker notes · not projected</div>
       <div class="noteview" id="noteView">${(s.notes||'').trim()
@@ -3865,6 +4069,22 @@ function paintBoard(){
         bs[bs.indexOf(last)]={kind:'fig',src:figMark(id,Math.max(30,size-15))};
         s.body=bs.map(x=>x.src).join('\n\n');}
       touch();paint();return;}
+    /* the whole pass on one slide: the prose spoken, the rest across as many
+       slides as it takes. The same engine ⋯ → Fit every slide runs. */
+    if(f==='split'){
+      const plan=fitSlidePlan(clone(s));
+      document.getElementById('measure')?.remove();
+      if(plan.kind==='leave'||plan.kind==='over'){
+        toast(plan.kind==='leave'?'It fits — nothing to split'
+          :'Nothing here can rescue it — move something into the notes by hand');
+        return;}
+      snap('split the slide');
+      S.slides.splice(cur,1,...plan.slides);
+      normalise();touch();paint();
+      toast(plan.slides.length>1
+        ? `Became ${plan.slides.length} slides${plan.moved?` · ${plan.moved} words spoken`:''}`
+        : `${plan.moved} words moved into the notes`);
+      return;}
     if(f==='notes'){                       /* the blocks that do not fit become spoken */
       snap('move to notes');
       const tx=document.querySelector('#sheet .stage .tx');
@@ -8107,6 +8327,7 @@ document.addEventListener('click',()=>pop.classList.remove('on'));
 pop.onclick=e=>e.stopPropagation();
 pop.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>pop.classList.remove('on')));
 document.getElementById('bTidyAll').onclick=tidyAllDialog;
+document.getElementById('bFitAll').onclick=fitDeckWizard;
 document.getElementById('bDeck').onclick=deckSettings;
 document.getElementById('bCfg2').onclick=configure;
 document.getElementById('bHelp').onclick=shortcuts;

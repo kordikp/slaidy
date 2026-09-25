@@ -44,7 +44,7 @@ addEventListener('load',async()=>{
   const flag=d.getElementById('overflag');
   const acts=[...flag.querySelectorAll('button')].map(b=>b.dataset.fix);
   ok('the warning offers fixes, and a way to leave it alone',
-     acts.join(',')==='tidy,small,notes,hide',acts.join(','));
+     acts.join(',')==='tidy,small,notes,split,hide',acts.join(','));
 
   flag.querySelector('[data-fix="small"]').click();await wait(250);
   ok('smaller picture shrinks the last figure',/!\[\[fig-panel-1\|85%\]\]/.test(w.S.slides[i].body),

@@ -3,6 +3,9 @@
 const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+/* cut by characters: half of a surrogate pair in the DOM takes the renderer
+   down, and the file then reports nothing rather than one bad line */
+const CUT=(s,n)=>[...String(s)].slice(0,n).join('');
 const spill=()=>{if(!document.getElementById('out'))
   document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
     '\nERROR the file stopped here — it hung rather than finished</pre>');};
@@ -222,6 +225,103 @@ addEventListener('load',async()=>{
      !d.getElementById('fwRows')&&!!d.querySelector('.dlg'),
      d.querySelector('.dlg h3')?d.querySelector('.dlg h3').textContent:'no dialog');
   A_close(d);
+
+  // ---------- the same pass over a deck that is already a deck ----------
+  // Tidy every slide can run silently, because every dial it turns is
+  // reversible. This changes the slide count, so it runs behind a plan.
+  const P=n=>Array.from({length:n},(_,i)=>
+    'A paragraph of prose number '+(i+1)+' that says something at length and is here to be '+
+    'spoken rather than read off a wall by a room full of people at once, slowly.').join('\n\n');
+  const LIST=n=>Array.from({length:n},(_,i)=>'- bullet number '+(i+1)+' of this list').join('\n');
+  const mk=(o)=>Object.assign({tag:'S',group:'G',sub:null,title:'T',layout:'text',
+    body:'',notes:'',summary:'',skip:false,flags:[],textScale:100},o);
+  const deck=[
+    mk({title:'It fits',body:'- one\n- two\n- three'}),
+    mk({title:'Prose and a table',body:P(12)+'\n\n| a | b |\n|---|---|\n| 1 | 2 |',notes:'said already.'}),
+    mk({title:'Far too many bullets',body:LIST(40)}),
+    mk({title:'Arranged by hand',layout:'two',body:LIST(14)+'\n\n<!-- col -->\n\n'+P(10)}),
+    mk({title:'It builds',body:LIST(30)+'\n\n<!-- step -->\n\n'+LIST(30)}),
+  ];
+  w.S={id:'fitdeck',title:'Fit deck',slides:deck.map(x=>JSON.parse(JSON.stringify(x))),
+       figs:w.S.figs,meta:{},style:{},assets:w.S.assets};
+  w.normalise();w.cur=0;w.paint();await wait(250);
+
+  const plan0=w.fitSlidePlan(JSON.parse(JSON.stringify(w.S.slides[0])));
+  ok('a slide that fits is left alone',plan0.kind==='leave'&&plan0.slides.length===1,plan0.kind);
+  const plan1=w.fitSlidePlan(JSON.parse(JSON.stringify(w.S.slides[1])));
+  ok('prose moves into the notes',/spoken rather than read/.test(plan1.slides[0].notes),
+     CUT(plan1.slides[0].notes,50));
+  ok('and off the slide',!/spoken rather than read/.test(plan1.slides[0].body));
+  ok('what it already said is kept in front of it',/^said already\./.test(plan1.slides[0].notes));
+  ok('the table stays on the slide',/\| a \| b \|/.test(plan1.slides[0].body));
+  const plan2=w.fitSlidePlan(JSON.parse(JSON.stringify(w.S.slides[2])));
+  ok('a slide with too much on it becomes more than one',plan2.slides.length>1,
+     String(plan2.slides.length));
+  ok('each of them fits',plan2.slides.every(s=>!w.fitOver(s)),
+     String(plan2.slides.filter(s=>w.fitOver(s)).length)+' still over');
+  ok('a continuation repeats the title rather than inventing one',
+     plan2.slides.every(s=>s.title==='Far too many bullets'),
+     plan2.slides.map(s=>s.title).join(' | '));
+  ok('and every bullet is still somewhere',
+     plan2.slides.map(s=>s.body).join('\n').includes('bullet number 40'));
+  const plan3=w.fitSlidePlan(JSON.parse(JSON.stringify(w.S.slides[3])));
+  ok('a slide somebody arranged keeps its columns',
+     plan3.slides.length===1&&/<!-- col -->/.test(plan3.slides[0].body)&&plan3.slides[0].layout==='two',
+     plan3.kind+' · '+plan3.slides.length);
+  ok('but its prose is still spoken',/spoken rather than read/.test(plan3.slides[0].notes));
+  ok('a slide that builds is not repacked',
+     w.fitSlidePlan(JSON.parse(JSON.stringify(w.S.slides[4]))).slides.length===1);
+  ok('a text scale is not a decision — Tidy sets it',
+     !w.fitDecided(mk({textScale:74,flags:['center']})),'');
+  ok('a column break is one',w.fitDecided(mk({body:'a\n\n<!-- col -->\n\nb'})));
+
+  // the wizard over the whole deck
+  const bagOf=list=>{const m={};list.forEach(s=>[s.title,s.body,s.notes,s.summary]
+    .forEach(x=>words(x).forEach(k=>m[k]=(m[k]||0)+1)));return m;};
+  const bagBefore=bagOf(w.S.slides);
+  const nBefore=w.S.slides.length;
+  w.fitDeckWizard();
+  for(let i=0;i<80;i++){await wait(150);if(d.querySelectorAll('#fdRows .brow').length)break;}
+  ok('the plan is drawn before anything happens',
+     d.querySelectorAll('#fdRows .brow').length===nBefore&&w.S.slides.length===nBefore,
+     d.querySelectorAll('#fdRows .brow').length+' rows, '+w.S.slides.length+' slides');
+  const deckRep=d.getElementById('fdRep').textContent.replace(/\s+/g,' ');
+  ok('the report says not a word will be lost',/not a word lost/.test(deckRep),CUT(deckRep,100));
+  ok('and how many slides already fit',/slides that already fit/.test(deckRep));
+  ok('the one that fits offers nothing to change',
+     !d.querySelectorAll('#fdRows .brow')[0].querySelector('.fwst'));
+  const deckRow=d.querySelectorAll('#fdRows .brow')[2];
+  deckRow.click();await wait(250);
+  ok('a row shows every slide it would make',deckRow.querySelectorAll('.pvwrap .stage h2').length>1,
+     String(deckRow.querySelectorAll('.pvwrap').length));
+  deckRow.click();await wait(120);
+  const offBtn=d.querySelectorAll('#fdRows .brow')[1].querySelector('.fwst');
+  offBtn.click();await wait(200);
+  ok('a slide can be told to stay as it is',
+     d.querySelectorAll('#fdRows .brow')[1].classList.contains('fwoff'));
+  offBtn.click();await wait(200);
+  d.getElementById('fdGo').click();
+  for(let i=0;i<80;i++){await wait(150);if(w.S.slides.length!==nBefore)break;}
+  ok('the deck grew by what the plan said',w.S.slides.length>nBefore,
+     nBefore+' → '+w.S.slides.length);
+  const bagAfter=bagOf(w.S.slides);
+  const gone=Object.keys(bagBefore).filter(k=>(bagAfter[k]||0)<bagBefore[k]);
+  ok('and not a word of the deck is lost',gone.length===0,gone.slice(0,6).join(' '));
+  ok('every slide on it fits now, or was one nothing could rescue',
+     w.S.slides.filter(s=>w.fitOver(s)).length<=1,
+     String(w.S.slides.filter(s=>w.fitOver(s)).length)+' over');
+  w.undo();await wait(300);
+  ok('one undo puts the deck back',w.S.slides.length===nBefore,String(w.S.slides.length));
+
+  // ---------- and the same on one slide, from the warning ----------
+  w.cur=2;w.paint();await wait(300);
+  const before2=w.S.slides.length;
+  d.querySelector('#overflag button[data-fix="split"]').click();
+  await wait(400);
+  ok('Split it does the same to the slide in front of you',w.S.slides.length>before2,
+     before2+' → '+w.S.slides.length);
+  w.undo();await wait(250);
+  ok('and that undoes too',w.S.slides.length===before2);
 
   f.remove();
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}

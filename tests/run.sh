@@ -47,6 +47,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   snapDiff,history_,snapshot,downloadDeck,recentDecks,heldDecks,banner,deckLinks,DESIGN_SYS,get SUGG(){return SUGG},
   docFm,docFigrefs,docProse,docWords,docUnits,docOver,fitReveal,fitArrange,fitDocSlides,docOnStage,
   withFigs,fitPlan,fitLost,fitReport,fitWhat,fitWizard,DECK_MD,DOC_SHOWN,tidySlide,tidyScore,splitBody,clone,
+  fitProbe,fitOver,fitDecided,fitSlidePlan,fitDeckLost,fitDeckWizard,FIT_SAYS,fitRuns,fitOrdered,
   deleteSlide,duplicateSlide,sectionMenu,newSection,runOf,srcEditor,feEditText,scalePreview,tex2mml,slideRanges,block,inl,
   get BLOCKIX(){return BLOCKIX},set BLOCKIX(v){BLOCKIX=v},SNIP,analyseSlide,briefWizard,
   splitBody,trimSvg,feContentBox,feTrimCanvas,feResetCanvas,feSetCanvas,checkSvg,fePanel,figSys,FIG_SYS,configure,feCropToSelection,

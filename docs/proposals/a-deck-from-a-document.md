@@ -1,13 +1,11 @@
 # A deck from a document
 
-**Most of this is now built.** The import path — the three dials, the plan you read before
-anything moves, the measured pass behind it — is in the application, and
-`scripts/fit_document.py` does the same pass offline for a folder and a shell. What is
-**not** built is listed under *What is still missing* at the end: the deck-wide
-`Fit every slide…`, *Split it* on the overflow warning, and revealing a list one item at a
-time. This file is still the reasoning: why it looks like this, and what it must never do.
-Numbers in it were measured, and the command or the test that produces each one is beside
-it.
+**This is built.** The import path with its three dials and its plan, the deck-wide
+`⋯ → Fit every slide…`, `Split it` on the overflow warning, and `scripts/fit_document.py`
+for a folder and a shell. What is left is under *What is still missing* at the end, and it
+is small. This file is still the reasoning: why it looks like this, and what it must never
+do. Numbers in it were measured, and the command or the test that produces each one is
+beside it.
 
 ---
 
@@ -60,9 +58,14 @@ Three invariants, each of them testable:
    notes. The multiset of words in is a subset of the multiset of words out.
 2. **A second pass changes nothing.** Fit is idempotent, so running it again — on import,
    on the whole deck, on one slide — is safe.
-3. **A decision already made is left alone.** A slide carrying a column break, a named
-   layout, a text scale or flags has been arranged by someone. Fit proposes *leave it* for
-   those and you have to ask for more.
+3. **A decision already made is left alone.** A column break or a layout that is not the
+   plain one: Tidy sets neither, and refuses to, so either means a person put it there. Such
+   a slide still has its prose moved into the notes — that is where prose is said — but its
+   cut is not this pass's to make again.
+
+   > This rule said *a text scale or flags* too, before it was tried. That is wrong: those
+   > are Tidy's own dials, so the rule would have exempted every deck that has ever been
+   > tidied, which is every deck.
 
 ## What a document already says
 
@@ -229,13 +232,14 @@ So: the same engine, three entry points, and the deck-wide one runs behind a pla
 - **Importing a document** — *built.* `⋯ → Import markdown…`, or a drop anywhere in the
   window. Markdown that is already this tool's own slides goes the way it always did;
   anything else is a document, and a document gets the dials and the plan.
-- **`⋯ → Fit every slide…`** — *not built.* Beside `Tidy every slide…`, for a deck that
-  already exists: one imported before this landed, one pasted together, one that grew.
-  Slides that fit are proposed as *leave alone*, which is most of a deck that has been
-  worked on.
-- **The overflow warning**, per slide — *not built.* It already offers *fit the slide*,
-  *shrink the picture* and *move what is over the edge into the notes*. It gains
-  **Split it**, which is rules 2 to 5 on one slide.
+- **`⋯ → Fit every slide…`** — *built.* Beside `Tidy every slide…`, for a deck that already
+  exists: one imported before this landed, one pasted together, one that grew. Slides that
+  fit are proposed as *leave alone*, which is most of a deck that has been worked on — on
+  the ISD keynote, **27 of 37**. It splits five, speaks the prose of three, and says of two
+  that nothing here can rescue them. 37 slides become 42, 99 words move, none are lost.
+- **The overflow warning**, per slide — *built.* Beside *fit the slide*, *shrink the
+  picture* and *move what is over the edge into the notes*, it now offers **Split it**,
+  which is rules 2 to 5 on the slide in front of you.
 
 **The plan** is modelled on the brief wizard's review, because that interaction is right and
 already exists: one row per slide it would make, grouped by source unit, showing the title,
@@ -344,6 +348,9 @@ One file, as always, and almost all of it is reuse. What landed:
 | `withFigs` | lends the incoming drawings to the deck for one measurement | — |
 | `fitPlan`, `fitLost`, `fitReport`, `fitWhat` | the plan, applying nothing | the above |
 | `fitWizard` | the three dials, the plan, the preview | `briefWizard()`'s review, `stageHtml`, `scalePreview` |
+| `fitRuns` | the one block that may be continued: a long unordered list | `fitOver` |
+| `fitDecided`, `fitSlidePlan` | what would become of one slide already in a deck | the above |
+| `fitDeckLost`, `fitDeckWizard` | the deck-wide plan, applying nothing | — |
 
 `tidySlide` gained one line: it takes a slide as well as an index, so a slide can be
 arranged before it is in the deck. `importWizard` gained one branch: markdown that is
@@ -351,15 +358,14 @@ already this tool's own slides goes the way it always did.
 
 ## What is still missing
 
-1. **`⋯ → Fit every slide…`**, the deck-wide pass over slides that are already in a deck.
-   The engine is the same; what it needs is the rule that a slide somebody arranged is
-   proposed as *leave alone* — a column break, a named layout, a text scale or flags all
-   say someone has been here.
-2. **Split it** on the overflow warning, for one slide at a time.
-3. **Revealing a list one item at a time**, which needs the renderer change above.
-4. **Bitmaps.** A document's `.png` screenshots are still ignored by the import; they
+1. **Revealing a list one item at a time**, which needs the renderer change above.
+2. **Bitmaps.** A document's `.png` screenshots are still ignored by the import; they
    should go through `picImport` with their alt text as the picture's description.
-5. **A `mermaid` fence drawn as a figure**, offered in the plan rather than assumed.
+3. **A `mermaid` fence drawn as a figure**, offered in the plan rather than assumed.
+4. **A block bigger than a slide.** A table of thirty rows, or an ordered list of twenty,
+   is reported as *still more than one slide holds* and left alone: a table cut in half is
+   worse than a small one, and an `<ol>` starts again at 1 on the next slide. An unordered
+   list is the one block that is a run of items, and that one is continued.
 
 ## Open questions
 

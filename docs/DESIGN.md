@@ -1154,6 +1154,24 @@ That chapter — 52 documents, 36 542 words — comes out as **168 slides, 34 of
 about 40 minutes**, with 134 behind them, none over the frame and not a word of it gone. The
 slides on stage carry a median of 79 body words against the keynote's 97.
 
+**And over a deck that is already a deck.** `⋯ → Fit every slide…`, beside `Tidy every
+slide…`, runs the same pass over slides rather than documents: one imported before this
+existed, one pasted together, one that grew a paragraph at a time until it stopped fitting.
+`Split it` on the overflow warning does one slide.
+
+Two things it will not touch, and which two matters. **A slide that fits** — there is nothing
+to decide. And **the columns or the layout of a slide somebody arranged**: a column break or
+a layout that is not the plain one, because Tidy sets neither and refuses to. Its prose is
+still moved into the notes, since that is where prose is said, but the cut is not this pass's
+to make again. A text scale and a centring flag are *not* decisions — they are Tidy's dials,
+and treating them as decisions would exempt every deck that has ever been tidied, which is
+every deck. (The proposal said otherwise before this was measured.)
+
+On the ISD keynote, 37 slides arranged by hand over months: ten are past the frame, and the
+plan leaves **27 of the 37 alone**, splits five, speaks the prose of three, and says of two
+that nothing here can rescue them — a single block bigger than a slide is the author's to
+cut. 37 slides become 42, 99 words move into the notes, and not one is lost.
+
 `scripts/fit_document.py` does the same pass offline, for a folder and a shell. It estimates
 where the application measures — a line budget calibrated on the keynote instead of a hidden
 stage — so it is more cautious: 206 slides for the same chapter rather than 168. What is

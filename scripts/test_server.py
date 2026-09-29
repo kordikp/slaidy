@@ -135,6 +135,54 @@ try:
     os.remove(tmpdeck)
     check("with the real state, a deck in a temporary directory is a test's and is not remembered", r.stdout.strip() == "False", r.stdout.strip() or r.stderr[-200:])
 
+    # a PDF straight from the server, with no print dialog in the way
+    page = ("<!doctype html><style>@page{size:297mm 167mm;margin:0}body{margin:0}"
+            ".p{width:297mm;height:167mm;break-after:page;background:#10223A;"
+            "print-color-adjust:exact;-webkit-print-color-adjust:exact}</style>"
+            + "<div class=p></div>" * 3).encode()
+    def post_pdf(origin):
+        r = urllib.request.Request("http://127.0.0.1:%d/api/pdf" % PORT, data=page, method="POST",
+                                   headers={"Content-Type": "text/html", "Origin": origin})
+        try:
+            with urllib.request.urlopen(r, timeout=200) as resp:
+                return resp.status, resp.headers.get("Content-Type"), resp.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get("Content-Type"), e.read()
+    st, _, _ = post_pdf("http://evil.example")
+    check("the PDF route only answers the page it serves", st == 403, str(st))
+    has = call("GET", "/api/deck")[1].get("pdf")
+    if has:
+        st, ct, b = post_pdf("http://localhost:%d" % PORT)
+        check("the PDF route answers with a PDF", st == 200 and ct == "application/pdf" and b[:5] == b"%PDF-",
+              "%s %s %r" % (st, ct, b[:40]))
+        pages = len(__import__("re").findall(rb"/Type\s*/Page[^s]", b))
+        check("one page per page it was sent", pages == 3, "%d pages" % pages)
+        check("and nothing is left waiting to be printed", not call("GET", "/__print/x.html")[0] == 200)
+    else:
+        print("SKIP no Chrome or Chromium here, so the PDF route falls back to the print dialog")
+
+    # a browser that breaks says why, to the page and to the terminal
+    fake = os.path.join(tmp, "fake-chrome")
+    open(fake, "w").write("#!/bin/sh\necho 'the fake browser broke' >&2\nexit 3\n")
+    os.chmod(fake, 0o755)
+    srv2 = subprocess.Popen([sys.executable, os.path.join(ROOT, "scripts", "serve.py"), tmp, str(PORT + 1), first],
+                            env=dict(env, CHROME_BIN=fake, SLAIDY_CHROME=""),
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    try:
+        time.sleep(0.8)
+        r = urllib.request.Request("http://127.0.0.1:%d/api/pdf" % (PORT + 1), data=page, method="POST",
+                                   headers={"Content-Type": "text/html", "Origin": "http://localhost:%d" % (PORT + 1)})
+        try:
+            urllib.request.urlopen(r, timeout=30); st, j = 200, {}
+        except urllib.error.HTTPError as e:
+            st, j = e.code, json.load(e)
+        check("a browser that fails is a 500 that says why",
+              st == 500 and "the fake browser broke" in j.get("error", ""), "%s %s" % (st, j))
+    finally:
+        srv2.terminate()
+    err = srv2.stderr.read().decode()
+    check("and the terminal says so too", "pdf failed" in err and "fake browser broke" in err, err[-200:])
+
 finally:
     srv.terminate()
     shutil.rmtree(tmp, ignore_errors=True)

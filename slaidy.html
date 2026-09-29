@@ -581,6 +581,7 @@ body.presenting #nudge,body.presenting #toast,body.presenting #swipehint{display
  padding:8px 15px;border-radius:var(--r6);font-size:12.5px;opacity:0;transition:.2s;pointer-events:none;z-index:70;
  box-shadow:0 6px 20px rgba(10,12,16,.24)}
 #toast.on{opacity:1}
+#toast .spin{border-color:rgba(255,255,255,.3);border-top-color:#fff;margin-right:7px}
 kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
 
 /* ---------- figure editor ---------- */
@@ -740,6 +741,9 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 @media print{
   @page{size:297mm 167mm;margin:0}
   body{background:#fff;overflow:visible}
+  /* browsers drop backgrounds when printing unless told not to, which turns a
+     dark slide into dark-on-white or white-on-white */
+  #printroot,#printroot *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #bar,#work,#show,#prog,#count,#notes,#grid,#veil,#drop,#welcome,#toast{display:none!important}
   #printroot{display:block!important}
 }
@@ -1349,6 +1353,11 @@ function downloadDeck(name){
 addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
   clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),1900);}
+/* A toast that stays, with a spinner, until the work it names is done — for the
+   few things that take longer than a toast is on screen. Returns the "done". */
+function busy(m){const t=document.getElementById('toast');
+  t.innerHTML='<span class="spin"></span>'+esc(m);t.classList.add('on');clearTimeout(toast.t);
+  return ()=>{if(t.querySelector('.spin'))t.classList.remove('on');};}
 
 /* ---------- SVG scoping: the whole reason figures used to break the page ----------
    An inlined <svg> carries its own <style>. Those rules are GLOBAL — a class such as
@@ -6453,8 +6462,10 @@ function save(){
    <p class="tip" style="margin-top:8px"><code>deck.meta.json</code> carries the title, the event details and
    the visual style. Put it in <code>slides/</code> and <code>build_bundle.py</code> picks it up, so rebuilding
    from markdown never loses these settings.</p>
-   <p class="tip" style="margin-top:14px">PDF opens the browser print dialog — choose
-   <b>Save as PDF</b> and leave margins at none. One slide per landscape page.</p>
+   <p class="tip" style="margin-top:14px">One slide per landscape page, hidden slides left out.
+   Started with <code>studio.sh</code>, the PDF downloads straight away. Opened any other way, it
+   goes through the browser print dialog — choose <b>Save as PDF</b>; Chrome and Edge pick the
+   page size and margins up on their own, elsewhere set margins to none.</p>
    <div class="rw" style="margin-top:8px">
      <button class="b" id="ePdfN">PDF with speaker notes</button></div>`);
   document.getElementById('ePdf').onclick=()=>{closeDialog();toPdf(false);};
@@ -6512,17 +6523,72 @@ function save(){
 function printSlide(s,withNotes){
   const notes=withNotes&&(s.notes||'').trim()
     ?`<div class="pn"><b>Notes.</b> ${notesHtml(s.notes.trim())}</div>`:'';
-  return `<section class="psl${withNotes?' withnotes':''}">
+  /* the page takes the slide's own paper, so a slide that overrides it does not
+     print with a strip of the deck colour around it; a page with notes keeps the
+     deck paper, so the notes stay readable under a dark slide */
+  return `<section class="psl${withNotes?' withnotes':''}"${withNotes?'':stageStyle(s)}>
     <div class="${stageClass(s)}"${stageStyle(s)}>${stageHtml(s,false)}</div>${notes}</section>`;
 }
 
-function toPdf(withNotes){
-  const host=document.getElementById('printroot');
-  toast('Building '+S.slides.length+' pages…');
-  host.innerHTML=S.slides.map(s=>printSlide(s,withNotes)).join('');
-  setTimeout(()=>{window.print();},450);
+/* The pages as a document of their own, for the server to print: the app's own
+   styles and the deck's colours, and nothing else on the page. */
+function pdfDoc(pages){
+  const css=[...document.querySelectorAll('style')].map(x=>x.textContent).join('\n');
+  const q=t=>esc(t).replace(/"/g,'&quot;');
+  return `<!doctype html><html style="${q(document.documentElement.style.cssText)}"><head>
+<meta charset="utf-8"><base href="${q(location.href)}"><title>${esc(pdfName(false).slice(0,-4))}</title>
+<style>${css}</style></head><body><div id="printroot">${pages}</div></body></html>`;
 }
-addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTML='';});
+function pdfName(withNotes){
+  const t=((S.title||'').trim()||'slides').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  return t+(withNotes?' (notes)':'')+'.pdf';
+}
+/* Served by studio.sh, the server prints the pages with a headless browser and
+   the PDF simply downloads: no dialog, no margins or background box to get
+   wrong. Opened as a file, or with no browser on that machine for the server to
+   use, it is the browser's own print dialog, as before. */
+async function toPdf(withNotes){
+  const host=document.getElementById('printroot');
+  /* a second click while the first is still printing would make two files; the
+     spinner already says it is on its way */
+  if(toPdf.running)return;
+  const v=S.slides.filter(s=>!s.skip);
+  if(!v.length){toast('Every slide is hidden — nothing to print');return;}
+  const pages=v.map(s=>printSlide(s,withNotes)).join('');
+  let why='';
+  const say=(m,...x)=>console.info('[pdf] '+m,...x);
+  if(location.protocol!=='file:'){
+    toPdf.running=true;
+    const done=busy('Making the PDF — '+v.length+' pages…');
+    const t0=performance.now(),body=pdfDoc(pages);
+    say(`asking ${new URL('api/pdf',location.href)} for ${v.length} pages (${Math.round(body.length/1024)} kB of HTML)`);
+    try{
+      const r=await fetch('api/pdf',{method:'POST',headers:{'Content-Type':'text/html'},body});
+      const ct=r.headers.get('content-type')||'';
+      say(`the server answered ${r.status} ${ct} after ${Math.round(performance.now()-t0)} ms`);
+      if(r.ok&&/pdf/.test(ct)){
+        const a=document.createElement('a'),name=pdfName(withNotes),blob=await r.blob();
+        a.href=URL.createObjectURL(blob);a.download=name;a.click();
+        setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+        say(`saved ${name}, ${Math.round(blob.size/1024)} kB`);
+        toast('Saved '+name);return;
+      }
+      if(/json/.test(ct)){const j=(await r.json())||{};why=j.error||'';
+        console.error('[pdf] the server could not make it:',why,j.browser?'(browser: '+j.browser+')':'');}
+      else if(r.status===404||r.status===405||r.status===501)
+        say('this server cannot make PDFs — it is not studio.sh, or an older one');
+      else console.error('[pdf] unexpected answer',r.status,(await r.text()).slice(0,300));
+    }catch(e){console.error('[pdf] could not reach the server:',e);}
+    finally{toPdf.running=false;done();}
+    say('falling back to the print dialog');
+  }else say('opened as a file, so there is no server to make it: using the print dialog');
+  const done=busy(why?why+' — opening the print dialog':'Building '+v.length+' pages…');
+  host.innerHTML=pages;
+  /* Save as PDF names the file after the page title, so give it the deck's name */
+  document.title=pdfName(withNotes).slice(0,-4);
+  setTimeout(()=>{done();window.print();},450);
+}
+addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTML='';titleTab();});
 
 /* ---------- present ---------- */
 function fit(){

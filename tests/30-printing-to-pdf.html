@@ -1,0 +1,60 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  let printed=0;W.print=()=>{printed++;};
+  const host=d.getElementById('printroot'),n=w.S.slides.length;
+  const pages=()=>[...host.querySelectorAll('.psl')];
+
+  // --- hidden slides stay out ---
+  w.toggleSkip(1);w.toggleSkip(3);await wait(80);
+  W.toPdf(false);await wait(600);
+  ok('the dialog opens',printed===1);
+  ok('one page per shown slide',pages().length===n-2,pages().length+' pages for '+(n-2)+' shown');
+  ok('and the notes stay out',!host.querySelector('.pn'));
+  ok('the file is named after the deck',d.title===(w.S.title||'').trim()||d.title==='slides',d.title);
+  W.dispatchEvent(new Event('afterprint'));await wait(50);
+  ok('the pages go once it is printed',host.innerHTML==='');
+  ok('and the tab gets its name back',/SlAIdy$/.test(d.title),d.title);
+
+  // --- a slide's own paper reaches the edge of the page ---
+  const s=w.S.slides[0],old=s.style;
+  s.style=Object.assign({},s.style,{paper:'#10223A'});
+  W.toPdf(false);await wait(600);
+  ok('the page takes the slide paper',getComputedStyle(pages()[0]).backgroundColor==='rgb(16, 34, 58)',
+     getComputedStyle(pages()[0]).backgroundColor);
+  const other=pages()[1];
+  ok('the others keep the deck paper',getComputedStyle(other).backgroundColor!=='rgb(16, 34, 58)');
+  W.dispatchEvent(new Event('afterprint'));await wait(50);
+
+  // the handout still has notes under the slide, on the deck paper
+  W.toPdf(true);await wait(600);
+  ok('the handout also skips hidden slides',pages().length===n-2);
+  ok('and keeps the deck paper for the notes',getComputedStyle(pages()[0]).backgroundColor!=='rgb(16, 34, 58)');
+  W.dispatchEvent(new Event('afterprint'));await wait(50);
+  s.style=old;
+
+  // printing keeps backgrounds rather than leaving it to a checkbox
+  const css=[...d.styleSheets].flatMap(x=>{try{return [...x.cssRules]}catch(e){return []}})
+    .filter(r=>r.media&&[...r.media].includes('print')).map(r=>r.cssText).join(' ');
+  ok('backgrounds print as they are',/print-color-adjust:\s*exact/.test(css));
+
+  // nothing to print is said, not printed
+  const all=w.S.slides.map(x=>x.skip);w.S.slides.forEach(x=>x.skip=true);printed=0;
+  W.toPdf(false);await wait(600);
+  ok('an all-hidden deck prints nothing',printed===0&&!pages().length);
+  w.S.slides.forEach((x,i)=>x.skip=all[i]);
+  w.toggleSkip(1);w.toggleSkip(3);
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

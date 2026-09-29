@@ -740,6 +740,9 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 @media print{
   @page{size:297mm 167mm;margin:0}
   body{background:#fff;overflow:visible}
+  /* browsers drop backgrounds when printing unless told not to, which turns a
+     dark slide into dark-on-white or white-on-white */
+  #printroot,#printroot *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #bar,#work,#show,#prog,#count,#notes,#grid,#veil,#drop,#welcome,#toast{display:none!important}
   #printroot{display:block!important}
 }
@@ -6454,7 +6457,8 @@ function save(){
    the visual style. Put it in <code>slides/</code> and <code>build_bundle.py</code> picks it up, so rebuilding
    from markdown never loses these settings.</p>
    <p class="tip" style="margin-top:14px">PDF opens the browser print dialog — choose
-   <b>Save as PDF</b> and leave margins at none. One slide per landscape page.</p>
+   <b>Save as PDF</b>. One slide per landscape page, hidden slides left out. Chrome and Edge pick
+   the page size and margins up on their own; elsewhere, set margins to none.</p>
    <div class="rw" style="margin-top:8px">
      <button class="b" id="ePdfN">PDF with speaker notes</button></div>`);
   document.getElementById('ePdf').onclick=()=>{closeDialog();toPdf(false);};
@@ -6512,17 +6516,24 @@ function save(){
 function printSlide(s,withNotes){
   const notes=withNotes&&(s.notes||'').trim()
     ?`<div class="pn"><b>Notes.</b> ${notesHtml(s.notes.trim())}</div>`:'';
-  return `<section class="psl${withNotes?' withnotes':''}">
+  /* the page takes the slide's own paper, so a slide that overrides it does not
+     print with a strip of the deck colour around it; a page with notes keeps the
+     deck paper, so the notes stay readable under a dark slide */
+  return `<section class="psl${withNotes?' withnotes':''}"${withNotes?'':stageStyle(s)}>
     <div class="${stageClass(s)}"${stageStyle(s)}>${stageHtml(s,false)}</div>${notes}</section>`;
 }
 
 function toPdf(withNotes){
   const host=document.getElementById('printroot');
-  toast('Building '+S.slides.length+' pages…');
-  host.innerHTML=S.slides.map(s=>printSlide(s,withNotes)).join('');
+  const v=S.slides.filter(s=>!s.skip);
+  if(!v.length){toast('Every slide is hidden — nothing to print');return;}
+  toast('Building '+v.length+' pages…');
+  host.innerHTML=v.map(s=>printSlide(s,withNotes)).join('');
+  /* Save as PDF names the file after the page title, so give it the deck's name */
+  document.title=(S.title||'').trim()||'slides';
   setTimeout(()=>{window.print();},450);
 }
-addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTML='';});
+addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTML='';titleTab();});
 
 /* ---------- present ---------- */
 function fit(){

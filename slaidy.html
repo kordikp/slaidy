@@ -6556,21 +6556,32 @@ async function toPdf(withNotes){
   if(!v.length){toast('Every slide is hidden — nothing to print');return;}
   const pages=v.map(s=>printSlide(s,withNotes)).join('');
   let why='';
+  const say=(m,...x)=>console.info('[pdf] '+m,...x);
   if(location.protocol!=='file:'){
     toPdf.running=true;
     const done=busy('Making the PDF — '+v.length+' pages…');
+    const t0=performance.now(),body=pdfDoc(pages);
+    say(`asking ${new URL('api/pdf',location.href)} for ${v.length} pages (${Math.round(body.length/1024)} kB of HTML)`);
     try{
-      const r=await fetch('api/pdf',{method:'POST',headers:{'Content-Type':'text/html'},body:pdfDoc(pages)});
-      if(r.ok&&/pdf/.test(r.headers.get('content-type')||'')){
-        const a=document.createElement('a'),name=pdfName(withNotes);
-        a.href=URL.createObjectURL(await r.blob());a.download=name;a.click();
+      const r=await fetch('api/pdf',{method:'POST',headers:{'Content-Type':'text/html'},body});
+      const ct=r.headers.get('content-type')||'';
+      say(`the server answered ${r.status} ${ct} after ${Math.round(performance.now()-t0)} ms`);
+      if(r.ok&&/pdf/.test(ct)){
+        const a=document.createElement('a'),name=pdfName(withNotes),blob=await r.blob();
+        a.href=URL.createObjectURL(blob);a.download=name;a.click();
         setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+        say(`saved ${name}, ${Math.round(blob.size/1024)} kB`);
         toast('Saved '+name);return;
       }
-      if(/json/.test(r.headers.get('content-type')||''))why=((await r.json())||{}).error||'';
-    }catch(e){}
+      if(/json/.test(ct)){const j=(await r.json())||{};why=j.error||'';
+        console.error('[pdf] the server could not make it:',why,j.browser?'(browser: '+j.browser+')':'');}
+      else if(r.status===404||r.status===405||r.status===501)
+        say('this server cannot make PDFs — it is not studio.sh, or an older one');
+      else console.error('[pdf] unexpected answer',r.status,(await r.text()).slice(0,300));
+    }catch(e){console.error('[pdf] could not reach the server:',e);}
     finally{toPdf.running=false;done();}
-  }
+    say('falling back to the print dialog');
+  }else say('opened as a file, so there is no server to make it: using the print dialog');
   const done=busy(why?why+' — opening the print dialog':'Building '+v.length+' pages…');
   host.innerHTML=pages;
   /* Save as PDF names the file after the page title, so give it the deck's name */

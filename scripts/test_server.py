@@ -161,6 +161,28 @@ try:
     else:
         print("SKIP no Chrome or Chromium here, so the PDF route falls back to the print dialog")
 
+    # a browser that breaks says why, to the page and to the terminal
+    fake = os.path.join(tmp, "fake-chrome")
+    open(fake, "w").write("#!/bin/sh\necho 'the fake browser broke' >&2\nexit 3\n")
+    os.chmod(fake, 0o755)
+    srv2 = subprocess.Popen([sys.executable, os.path.join(ROOT, "scripts", "serve.py"), tmp, str(PORT + 1), first],
+                            env=dict(env, CHROME_BIN=fake, SLAIDY_CHROME=""),
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    try:
+        time.sleep(0.8)
+        r = urllib.request.Request("http://127.0.0.1:%d/api/pdf" % (PORT + 1), data=page, method="POST",
+                                   headers={"Content-Type": "text/html", "Origin": "http://localhost:%d" % (PORT + 1)})
+        try:
+            urllib.request.urlopen(r, timeout=30); st, j = 200, {}
+        except urllib.error.HTTPError as e:
+            st, j = e.code, json.load(e)
+        check("a browser that fails is a 500 that says why",
+              st == 500 and "the fake browser broke" in j.get("error", ""), "%s %s" % (st, j))
+    finally:
+        srv2.terminate()
+    err = srv2.stderr.read().decode()
+    check("and the terminal says so too", "pdf failed" in err and "fake browser broke" in err, err[-200:])
+
 finally:
     srv.terminate()
     shutil.rmtree(tmp, ignore_errors=True)

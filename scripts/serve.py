@@ -218,29 +218,103 @@ def find_chrome():
     return found
 
 
-def render_pdf(url):
-    """Print one page to PDF with a headless browser; the bytes, or raise."""
+def render_pdf(url, log=lambda m: None):
+    """Print one page to PDF with a headless browser; the bytes, or raise.
+
+    The browser is driven over its DevTools pipe and hands the PDF back on it,
+    rather than being asked to write a file with --print-to-pdf: a Chromium
+    installed as a snap has a /tmp of its own, so the file it wrote was never
+    where this server looked for it, and every export failed with a 500."""
+    import base64, select
     chrome = find_chrome()
     if not chrome:
         raise RuntimeError("no Chrome or Chromium on this machine")
     work = tempfile.mkdtemp(prefix="slaidy-pdf-")
-    out = os.path.join(work, "out.pdf")
+    # the browser reads commands on fd 3 and answers on fd 4
+    cmd_r, cmd_w = os.pipe()
+    ans_r, ans_w = os.pipe()
+
+    def fds():
+        os.dup2(cmd_r, 3)
+        os.dup2(ans_w, 4)
+
     # a profile of its own, so a Chrome already open with yours does not take
-    # the job over and print nothing
-    cmd = [chrome, "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-           "--user-data-dir=" + os.path.join(work, "profile"),
-           "--no-pdf-header-footer", "--print-to-pdf-no-header",
-           "--virtual-time-budget=8000", "--print-to-pdf=" + out, url]
+    # the job over
+    argv = [chrome, "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+            "--remote-debugging-pipe", "--user-data-dir=" + os.path.join(work, "profile"),
+            "about:blank"]
     if hasattr(os, "geteuid") and os.geteuid() == 0:
-        cmd.insert(1, "--no-sandbox")       # Chrome will not start as root otherwise
+        argv.insert(1, "--no-sandbox")       # Chrome will not start as root otherwise
+    log("pdf: starting %s" % chrome)
+    proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.PIPE, preexec_fn=fds, close_fds=False)
+    os.close(cmd_r)
+    os.close(ans_w)
+    deadline = time.time() + 180
+    buf = [b""]
+    seq = [0]
+
+    def send(method, params=None, session=None):
+        seq[0] += 1
+        m = {"id": seq[0], "method": method, "params": params or {}}
+        if session:
+            m["sessionId"] = session
+        os.write(cmd_w, json.dumps(m).encode() + b"\0")
+        return seq[0]
+
+    def recv(until):
+        """Messages from the browser until one satisfies `until`; that one."""
+        while True:
+            while b"\0" in buf[0]:
+                raw, buf[0] = buf[0].split(b"\0", 1)
+                m = json.loads(raw)
+                if "error" in m and m.get("id"):
+                    raise RuntimeError("the browser refused %s" % m["error"].get("message"))
+                if until(m):
+                    return m
+            left = deadline - time.time()
+            if left <= 0:
+                raise RuntimeError("the browser took more than three minutes")
+            r, _, _ = select.select([ans_r], [], [], min(left, 1.0))
+            if r:
+                chunk = os.read(ans_r, 1 << 20)
+                if not chunk:
+                    err = proc.stderr.read().decode(errors="replace").strip().splitlines()
+                    raise RuntimeError("the browser quit: %s" % (err[-1][:300] if err else
+                                                                 "exit code %s" % proc.poll()))
+                buf[0] += chunk
+
+    def call(method, params=None, session=None):
+        n = send(method, params, session)
+        return recv(lambda m: m.get("id") == n).get("result") or {}
+
     try:
-        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
-        if not os.path.isfile(out) or os.path.getsize(out) == 0:
-            tail = r.stderr.decode(errors="replace").strip().splitlines()[-1:] or ["no output"]
-            raise RuntimeError("%s printed nothing: %s" % (os.path.basename(chrome), tail[0][:300]))
-        with open(out, "rb") as f:
-            return f.read()
+        tid = call("Target.createTarget", {"url": "about:blank"})["targetId"]
+        sid = call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+        call("Page.enable", session=sid)
+        log("pdf: loading the pages")
+        send("Page.navigate", {"url": url}, sid)
+        recv(lambda m: m.get("method") == "Page.loadEventFired")
+        log("pdf: printing")
+        data = call("Page.printToPDF", {"printBackground": True, "preferCSSPageSize": True,
+                                        "displayHeaderFooter": False,
+                                        "marginTop": 0, "marginBottom": 0,
+                                        "marginLeft": 0, "marginRight": 0}, sid)["data"]
+        try:
+            send("Browser.close")
+        except OSError:
+            pass
+        return base64.b64decode(data)
     finally:
+        try:
+            os.close(cmd_w)
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=10)
+        except Exception:
+            proc.kill()
+        os.close(ans_r)
         shutil.rmtree(work, ignore_errors=True)
 
 
@@ -274,7 +348,8 @@ class Handler(SimpleHTTPRequestHandler):
     # could then never fire.
     def do_GET(self):
         if self.path.startswith("/__print/"):
-            b = PRINTS.pop(self.path.split("?")[0][len("/__print/"):].removesuffix(".html"), None)
+            tok = self.path.split("?")[0][len("/__print/"):]
+            b = PRINTS.pop(tok[:-5] if tok.endswith(".html") else tok, None)
             if b is None:
                 return self._json(404, {"error": "nothing to print"})
             self.send_response(200)
@@ -520,11 +595,17 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(413, {"error": "that is not a deck's worth of pages"})
         token = secrets.token_urlsafe(16)
         PRINTS[token] = self.rfile.read(n)
+        def log(m):
+            sys.stderr.write("  %s\n" % m)
+            sys.stderr.flush()
         try:
             pdf = render_pdf("http://127.0.0.1:%d/__print/%s.html"
-                             % (self.server.server_address[1], token))
+                             % (self.server.server_address[1], token), log)
         except Exception as e:
-            return self._json(500, {"error": str(e)})
+            # said in the terminal too, where the person running studio.sh looks
+            log("pdf failed: %s: %s" % (type(e).__name__, e))
+            return self._json(500, {"error": "could not make the PDF: %s" % e,
+                                    "browser": find_chrome()})
         finally:
             PRINTS.pop(token, None)
         sys.stderr.write("  pdf: %.1f MB\n" % (len(pdf) / 1e6))

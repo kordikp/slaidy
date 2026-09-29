@@ -15,7 +15,7 @@ addEventListener('load',async()=>{
   const pages=()=>[...host.querySelectorAll('.psl')];
   // the server that makes the PDF is stood in for: 'ok' answers with a PDF,
   // 'none' is a server with no browser to print with, 'gone' is no server at all
-  let mode='ok',sent=null,saved=[];
+  let mode='ok',sent=null,saved=[],slow=0,calls=0;
   const realFetch=W.fetch;
   W.fetch=(u,o)=>{
     if(!String(u).includes('api/pdf'))return realFetch.call(W,u,o);
@@ -23,7 +23,8 @@ addEventListener('load',async()=>{
     if(mode==='gone')return Promise.reject(new TypeError('Failed to fetch'));
     if(mode==='none')return Promise.resolve(new W.Response(JSON.stringify({error:'no Chrome here'}),
       {status:503,headers:{'Content-Type':'application/json'}}));
-    return Promise.resolve(new W.Response(new W.Blob(['%PDF-1.4 stand-in']),
+    calls++;
+    return wait(slow).then(()=>new W.Response(new W.Blob(['%PDF-1.4 stand-in']),
       {status:200,headers:{'Content-Type':'application/pdf'}}));
   };
   const click=W.HTMLAnchorElement.prototype.click;
@@ -41,6 +42,19 @@ addEventListener('load',async()=>{
   ok('and the notes stay out',!doc().querySelector('.pn'));
   ok('the pages carry the app styles',/print-color-adjust:\s*exact/.test(sent||'')&&/@page/.test(sent||''));
   ok('nothing is left on the page',host.innerHTML==='');
+  // a real deck takes a few seconds: it says so until the file is there
+  const t=d.getElementById('toast');
+  slow=4000;calls=0;saved=[];
+  const going=W.toPdf(false);await wait(150);
+  ok('a spinner shows while it is being made',t.classList.contains('on')&&!!t.querySelector('.spin'),t.textContent);
+  await wait(1900);
+  ok('and it is still there after a toast would have gone',t.classList.contains('on')&&!!t.querySelector('.spin'));
+  W.toPdf(false);await wait(50);
+  ok('a second click does not make a second file',calls===1,calls+' requests');
+  await going;await wait(50);
+  ok('the spinner goes once it is saved',!t.querySelector('.spin')&&/Saved/.test(t.textContent),t.textContent);
+  ok('one file',saved.length===1,saved.join(', '));
+  slow=0;
   saved=[];await W.toPdf(true);await wait(100);
   ok('the handout downloads too, under its own name',saved.length===1&&/\(notes\)\.pdf$/.test(saved[0]),saved.join(', '));
   ok('and skips hidden slides',doc().querySelectorAll('.psl').length===n-2);

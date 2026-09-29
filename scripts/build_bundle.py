@@ -5,11 +5,17 @@ Emit a deck bundle for Slide Studio.
   python3 scripts/build_bundle.py --src example/slides --figs example/images \
       --out decks/example.json --title "Slide Studio"
 
-The bundle is {id, title, slides[], figs{id: svg}}. Only figures the deck actually
-references are included, which is what keeps it small.
+The bundle is {id, title, slides[], figs{id: svg}, assets{id: picture}}. Only figures
+the deck actually references are included, which is what keeps it small.
+
+A picture — a photograph, a screenshot, a plot — is a file beside the figures, in
+<figs>/assets/<id>.webp (or .png, .jpg, .gif), and a figure places it with
+<image href="asset:<id>" …/>. What each one shows is in <figs>/assets/assets.json,
+{"<id>": {"desc": "…", "source": "…"}}: that description is what a model reads
+instead of the pixels, so it is part of the source like the markdown is.
 """
 
-import argparse, json, os, re, sys
+import argparse, base64, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -178,6 +184,9 @@ def main():
         for d in (a.figs or [os.path.join(ROOT, "images"), os.path.join(a.src, "..", "images")]):
             if os.path.isdir(d):
                 srcs += [os.path.join(d, f) for f in os.listdir(d) if f.endswith(".svg")]
+                ad = os.path.join(d, "assets")
+                if os.path.isdir(ad):
+                    srcs += [os.path.join(ad, f) for f in os.listdir(ad)]
         src_at = max([os.path.getmtime(f) for f in srcs] or [0])
         if deck_at > src_at:
             import datetime
@@ -222,6 +231,30 @@ def main():
             svg = open(os.path.join(d, fn), encoding="utf-8").read()
             figs[fid] = re.sub(r"<\?xml[^>]*\?>", "", svg).strip()
 
+    # the pictures those figures place, and what each one shows
+    PIC_EXT = {".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg",
+               ".jpeg": "image/jpeg", ".gif": "image/gif"}
+    want = set()
+    for svg in figs.values():
+        want |= set(re.findall(r"asset:(img-[0-9a-f]{12,40})", svg))
+    assets = {}
+    for d in figdirs:
+        ad = os.path.join(d, "assets")
+        if not os.path.isdir(ad):
+            continue
+        about = {}
+        if os.path.isfile(os.path.join(ad, "assets.json")):
+            about = json.load(open(os.path.join(ad, "assets.json"), encoding="utf-8"))
+        for fn in sorted(os.listdir(ad)):
+            pid, ext = os.path.splitext(fn)
+            if pid not in want or pid in assets or ext.lower() not in PIC_EXT:
+                continue
+            entry = {"type": PIC_EXT[ext.lower()],
+                     "data": base64.b64encode(open(os.path.join(ad, fn), "rb").read()).decode()}
+            entry.update({k: v for k, v in (about.get(pid) or {}).items()
+                          if k in ("desc", "name", "source", "w", "h", "added")})
+            assets[pid] = entry
+
     # presentation-level settings live beside the slides, so rebuilding never loses them
     side = os.path.join(a.src, "deck.meta.json")
     extra = {}
@@ -232,18 +265,26 @@ def main():
               "title": extra.get("title") or a.title,
               "meta": extra.get("meta", {}), "style": extra.get("style", {}),
               "slides": slides, "figs": figs}
+    if assets:
+        bundle["assets"] = assets        # last, so a reader of the file meets the slides first
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     json.dump(bundle, open(a.out, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 
     missing = sorted(used - set(figs))
+    lost = sorted(want - set(assets))
     print(f"{a.out}")
     subs = len({s["sub"] for s in slides if s.get("sub")})
     print(f"  {len(slides)} slides · {subs} subsections · {len(figs)}/{len(used)} figures"
           f" · {os.path.getsize(a.out)/1e6:.2f} MB")
     if extra:
         print(f"  settings from {os.path.relpath(side, ROOT)}")
+    if assets:
+        print(f"  {len(assets)} picture{'s' if len(assets) != 1 else ''}"
+              f" · {sum(len(x['data']) * 3 // 4 for x in assets.values()) / 1e6:.2f} MB")
     if missing:
         print(f"  missing: {', '.join(missing[:8])}")
+    if lost:
+        print(f"  pictures missing from assets/: {', '.join(lost[:8])}")
 
 
 if __name__ == "__main__":

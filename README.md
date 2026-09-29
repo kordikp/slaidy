@@ -15,6 +15,10 @@ application, and if the application disappears you still have a deck.
 
 ### [Try it in your browser →](https://kordikp.github.io/slaidy/)
 
+Photographs and screenshots come in as pictures: kept once, described in words, and
+placed in a figure that can draw on top of them. [AGENTS.md](AGENTS.md) is what an
+assistant working on a deck has to respect.
+
 A deck can also live at a URL — `?deck=<address>` opens it and saves back to it,
 which is how a class shares one storage ([docs/REMOTE.md](docs/REMOTE.md)).
 

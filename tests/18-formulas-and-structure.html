@@ -16,6 +16,12 @@ addEventListener('load',async()=>{
   ok('a superscript becomes msup',/<msup>/.test(m('x^2')));
   ok('both at once become msubsup',/<msubsup>/.test(m('x_i^2')));
   ok('a fraction becomes mfrac',/<mfrac>/.test(m('\\frac{a}{b}')));
+  const half=document.createElement('div');half.innerHTML=m('\\hat y=w^\\top h=-0.1,\\qquad L=\\frac12(\\hat y-y)^2=0.245');
+  const fraction=half.querySelector('mfrac');
+  ok('unbraced half has numerator 1 and denominator 2',fraction?.children[0]?.textContent==='1'&&fraction?.children[1]?.textContent==='2',half.innerHTML);
+  ok('the following parenthesis stays outside the fraction',fraction?.nextElementSibling?.textContent==='(',half.innerHTML);
+  ok('an unbraced numeric exponent consumes one digit',m('x^12').includes('<msup><mi>x</mi><mn>1</mn></msup><mn>2</mn>'),m('x^12'));
+  ok('a braced multi-digit exponent remains intact',m('x^{12}').includes('<msup><mi>x</mi><mn>12</mn></msup>'),m('x^{12}'));
   ok('a root becomes msqrt',/<msqrt>/.test(m('\\sqrt{n}')));
   ok('an indexed root becomes mroot',/<mroot>/.test(m('\\sqrt[3]{n}')));
   ok('greek resolves',/α/.test(m('\\alpha')),m('\\alpha'));
@@ -61,6 +67,33 @@ addEventListener('load',async()=>{
   ok('a display formula on one line is one block',mb.length===1&&mb[0].kind==='math');
   const mb2=B('$$\n\\frac{a}{b}\n$$');
   ok('and across lines too',mb2.length===1&&mb2[0].kind==='math',JSON.stringify(mb2.map(x=>x.kind)));
+
+  // Delimiters must behave the same wherever the author puts an equation.
+  const render=md=>{const el=document.createElement('div');el.innerHTML=B(md).map(b=>w.block(b)).join('');return el;};
+  for(const md of ['Loss $$x^2$$ follows.','- Loss $$ x^2 $$','> $$x^2$$',
+      '| Loss |\n|---|\n| $$ x^2 $$ |','$$x^2$$.\n\nFollowing paragraph.',
+      '$$\nx^2\n\n+ y^2\n$$','$$\nx^2\n$$.\n\nFollowing paragraph.']){
+    const el=render(md);
+    ok('display math without stray dollars: '+JSON.stringify(md),
+       el.querySelectorAll('math[display="block"]').length===1&&!el.textContent.includes('$')&&!el.querySelector('.tex'),el.innerHTML);
+    if(md.includes('Following'))ok('text after a formula stays outside MathML',
+       !el.querySelector('math').textContent.includes('Following')&&el.textContent.includes('Following paragraph.'));
+  }
+  const pair=render('$$x^2$$ and $$y^2$$');
+  ok('two display equations on one line remain separate',pair.querySelectorAll('math').length===2&&!pair.textContent.includes('$'));
+  const mixed=render('Inline $x^2$, display $$ y^2 $$, then $z^2$.');
+  ok('single and double delimiters do not consume each other',mixed.querySelectorAll('math').length===3&&mixed.querySelectorAll('math[display="block"]').length===1&&!mixed.textContent.includes('$'));
+  for(const md of ['`$$x^2$$`','``$$x^2$$``','```tex\n$$x^2$$\n```']){
+    const el=render(md);
+    ok('math notation inside code stays literal: '+JSON.stringify(md),!el.querySelector('math')&&el.querySelector('code')?.textContent==='$$x^2$$');
+  }
+  const literal=render('Escaped \\$x\\$; \\$\\$x^2\\$\\$.');
+  ok('escaped dollars stay literal',!literal.querySelector('math')&&literal.textContent==='Escaped $x$; $$x^2$$.');
+  const unfinished=render('$$\nx^2');
+  ok('an unfinished display delimiter stays editable text',!unfinished.querySelector('math')&&unfinished.textContent.includes('$$'));
+  const original='Loss $$\\hat y=w^\\top h=-0.1,\\qquad L=\\frac12(\\hat y-y)^2=0.245$$.';
+  const originalView=render(original),originalFrac=originalView.querySelector('mfrac');
+  ok('the reported loss equation works inside prose too',originalFrac?.children[0]?.textContent==='1'&&originalFrac?.children[1]?.textContent==='2'&&!originalView.textContent.includes('$'));
 
   ok('a heading renders as a heading',/<h3 class="bh/.test(w.block(B('#### Head')[0])));
   ok('##### is the smaller one',/<h4 class="bh/.test(w.block(B('##### Small')[0])));

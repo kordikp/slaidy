@@ -64,6 +64,19 @@ def inline(t):
     return t
 
 
+PIC_TYPES = ("image/webp", "image/png", "image/jpeg", "image/gif")
+
+
+def with_pictures(svg, assets):
+    """A figure's pictures written into it: the notes are a page of their own."""
+    def one(m):
+        a = assets.get(m.group(1)) or {}
+        if a.get("type") not in PIC_TYPES or not re.fullmatch(r"[A-Za-z0-9+/]+=*", a.get("data") or ""):
+            return m.group(0)
+        return 'href="data:%s;base64,%s"' % (a["type"], a["data"])
+    return re.sub(r'href="asset:(img-[0-9a-f]{12,40})"', one, svg)
+
+
 def notes_page(deck, name):
     """Every slide, its figure and what you meant to say — on paper."""
     figs = deck.get("figs") or {}
@@ -77,7 +90,8 @@ def notes_page(deck, name):
         pic = ""
         for fid in ids[:1]:
             if fid in figs:
-                pic = '<div class="fig">%s</div>' % re.sub(r"<\?xml[^>]*\?>", "", figs[fid])
+                pic = '<div class="fig">%s</div>' % with_pictures(
+                    re.sub(r"<\?xml[^>]*\?>", "", figs[fid]), deck.get("assets") or {})
         note = (s.get("notes") or "").strip()
         key = ""
         for line in (s.get("body") or "").split("\n"):

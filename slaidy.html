@@ -6456,9 +6456,10 @@ function save(){
    <p class="tip" style="margin-top:8px"><code>deck.meta.json</code> carries the title, the event details and
    the visual style. Put it in <code>slides/</code> and <code>build_bundle.py</code> picks it up, so rebuilding
    from markdown never loses these settings.</p>
-   <p class="tip" style="margin-top:14px">PDF opens the browser print dialog — choose
-   <b>Save as PDF</b>. One slide per landscape page, hidden slides left out. Chrome and Edge pick
-   the page size and margins up on their own; elsewhere, set margins to none.</p>
+   <p class="tip" style="margin-top:14px">One slide per landscape page, hidden slides left out.
+   Started with <code>studio.sh</code>, the PDF downloads straight away. Opened any other way, it
+   goes through the browser print dialog — choose <b>Save as PDF</b>; Chrome and Edge pick the
+   page size and margins up on their own, elsewhere set margins to none.</p>
    <div class="rw" style="margin-top:8px">
      <button class="b" id="ePdfN">PDF with speaker notes</button></div>`);
   document.getElementById('ePdf').onclick=()=>{closeDialog();toPdf(false);};
@@ -6523,14 +6524,46 @@ function printSlide(s,withNotes){
     <div class="${stageClass(s)}"${stageStyle(s)}>${stageHtml(s,false)}</div>${notes}</section>`;
 }
 
-function toPdf(withNotes){
+/* The pages as a document of their own, for the server to print: the app's own
+   styles and the deck's colours, and nothing else on the page. */
+function pdfDoc(pages){
+  const css=[...document.querySelectorAll('style')].map(x=>x.textContent).join('\n');
+  const q=t=>esc(t).replace(/"/g,'&quot;');
+  return `<!doctype html><html style="${q(document.documentElement.style.cssText)}"><head>
+<meta charset="utf-8"><base href="${q(location.href)}"><title>${esc(pdfName(false).slice(0,-4))}</title>
+<style>${css}</style></head><body><div id="printroot">${pages}</div></body></html>`;
+}
+function pdfName(withNotes){
+  const t=((S.title||'').trim()||'slides').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  return t+(withNotes?' (notes)':'')+'.pdf';
+}
+/* Served by studio.sh, the server prints the pages with a headless browser and
+   the PDF simply downloads: no dialog, no margins or background box to get
+   wrong. Opened as a file, or with no browser on that machine for the server to
+   use, it is the browser's own print dialog, as before. */
+async function toPdf(withNotes){
   const host=document.getElementById('printroot');
   const v=S.slides.filter(s=>!s.skip);
   if(!v.length){toast('Every slide is hidden — nothing to print');return;}
-  toast('Building '+v.length+' pages…');
-  host.innerHTML=v.map(s=>printSlide(s,withNotes)).join('');
+  const pages=v.map(s=>printSlide(s,withNotes)).join('');
+  let why='';
+  if(location.protocol!=='file:'){
+    toast('Making the PDF — '+v.length+' pages…');
+    try{
+      const r=await fetch('api/pdf',{method:'POST',headers:{'Content-Type':'text/html'},body:pdfDoc(pages)});
+      if(r.ok&&/pdf/.test(r.headers.get('content-type')||'')){
+        const a=document.createElement('a'),name=pdfName(withNotes);
+        a.href=URL.createObjectURL(await r.blob());a.download=name;a.click();
+        setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+        toast('Saved '+name);return;
+      }
+      if(/json/.test(r.headers.get('content-type')||''))why=((await r.json())||{}).error||'';
+    }catch(e){}
+  }
+  toast(why?why+' — opening the print dialog':'Building '+v.length+' pages…');
+  host.innerHTML=pages;
   /* Save as PDF names the file after the page title, so give it the deck's name */
-  document.title=(S.title||'').trim()||'slides';
+  document.title=pdfName(withNotes).slice(0,-4);
   setTimeout(()=>{window.print();},450);
 }
 addEventListener('afterprint',()=>{document.getElementById('printroot').innerHTML='';titleTab();});

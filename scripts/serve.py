@@ -17,7 +17,7 @@ Then nothing leaves the machine — the deck, the figures and the prompts all st
 
 Env: OPENAI_KEY (or OPENAI_API_KEY), OPENAI_BASE_URL, STUDIO_MODEL (default gpt-5.6-sol)
 """
-import json, os, random, shutil, sys, tempfile, time, urllib.error, urllib.request
+import json, os, random, secrets, shutil, subprocess, sys, tempfile, time, urllib.error, urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from functools import partial
 
@@ -182,6 +182,68 @@ def app_stamp():
 ROOT_DIR = ["."]
 
 
+# ---- a PDF without the print dialog ------------------------------------------
+# The browser can only print through its dialog, and every choice in it —
+# paper, margins, background graphics — is one more way to get a bad PDF. A
+# browser started here, headless, prints the same pages straight to a file.
+# Any Chrome, Chromium, Edge or Brave will do; without one the page falls back
+# to the dialog, which is what it did before.
+PRINTS = {}          # token -> the pages to print, handed out once
+_CHROME = []
+
+
+def find_chrome():
+    if _CHROME:
+        return _CHROME[0]
+    found = None
+    for c in (os.environ.get("SLAIDY_CHROME"), os.environ.get("CHROME_BIN")):
+        if c:
+            found = shutil.which(c) or (c if os.path.isfile(c) and os.access(c, os.X_OK) else None)
+            if found:
+                break
+    if not found:
+        for n in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser",
+                  "microsoft-edge", "brave-browser"):
+            found = shutil.which(n)
+            if found:
+                break
+    if not found:
+        for c in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+                  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"):
+            if os.path.isfile(c):
+                found = c
+                break
+    _CHROME.append(found)
+    return found
+
+
+def render_pdf(url):
+    """Print one page to PDF with a headless browser; the bytes, or raise."""
+    chrome = find_chrome()
+    if not chrome:
+        raise RuntimeError("no Chrome or Chromium on this machine")
+    work = tempfile.mkdtemp(prefix="slaidy-pdf-")
+    out = os.path.join(work, "out.pdf")
+    # a profile of its own, so a Chrome already open with yours does not take
+    # the job over and print nothing
+    cmd = [chrome, "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+           "--user-data-dir=" + os.path.join(work, "profile"),
+           "--no-pdf-header-footer", "--print-to-pdf-no-header",
+           "--virtual-time-budget=8000", "--print-to-pdf=" + out, url]
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        cmd.insert(1, "--no-sandbox")       # Chrome will not start as root otherwise
+    try:
+        r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
+        if not os.path.isfile(out) or os.path.getsize(out) == 0:
+            tail = r.stderr.decode(errors="replace").strip().splitlines()[-1:] or ["no output"]
+            raise RuntimeError("%s printed nothing: %s" % (os.path.basename(chrome), tail[0][:300]))
+        with open(out, "rb") as f:
+            return f.read()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 class Handler(SimpleHTTPRequestHandler):
     # Nothing here is worth caching and one thing is actively harmful: the app is
     # served from a fresh temporary directory every run, at the same address, so
@@ -211,6 +273,16 @@ class Handler(SimpleHTTPRequestHandler):
     # file had just changed — and the "your unsaved edits are newer" rescue
     # could then never fire.
     def do_GET(self):
+        if self.path.startswith("/__print/"):
+            b = PRINTS.pop(self.path.split("?")[0][len("/__print/"):].removesuffix(".html"), None)
+            if b is None:
+                return self._json(404, {"error": "nothing to print"})
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+            return
         if DECK and self.path.split("?")[0].rstrip("/") in ("/deck.json", "/api/deck"):
             # Open: a path the window's file dialog gave the page. From here on
             # that file is the deck, the same as if studio.sh had been given it.
@@ -236,7 +308,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "size": st.st_size if st else 0,
                     "ai": ({"model": MODEL, "host": host, "local": LOCAL}
                            if (KEY or LOCAL) else None),
-                    "app": app_stamp(), "recent": recent()})
+                    "app": app_stamp(), "recent": recent(), "pdf": bool(find_chrome())})
             try:
                 with open(DECK, "rb") as f:
                     b = f.read()
@@ -348,13 +420,16 @@ class Handler(SimpleHTTPRequestHandler):
                                 "path": shown(DECK), "abs": DECK})
 
     def do_POST(self):
-        if self.path.rstrip("/") != "/api/generate":
+        path = self.path.split("?")[0].rstrip("/")
+        if path not in ("/api/generate", "/api/pdf"):
             return self._json(404, {"error": "no such endpoint"})
         # the proxy exists to keep the key off the page; it is not an open relay
         if self.headers.get("Origin") and self.headers.get("Origin") not in (
                 "http://localhost:%d" % self.server.server_address[1],
                 "http://127.0.0.1:%d" % self.server.server_address[1]):
             return self._json(403, {"error": "this endpoint only answers the page it serves"})
+        if path == "/api/pdf":
+            return self._pdf()
         if not KEY and not LOCAL:
             return self._json(503, {"error":
                 "No OPENAI_KEY on the machine running studio.sh. Put one in .env, or point "
@@ -434,6 +509,31 @@ class Handler(SimpleHTTPRequestHandler):
 
         return self._json(502, {"error": "%s — tried 3 times over a few seconds. The endpoint is "
                                          "not always there; give it a moment." % last})
+
+    def _pdf(self):
+        """POST /api/pdf: the page sends the pages it would have printed, a
+        headless browser prints them, and the PDF goes back as the answer."""
+        if not find_chrome():
+            return self._json(503, {"error": "no Chrome or Chromium on the machine running studio.sh"})
+        n = int(self.headers.get("Content-Length") or 0)
+        if not n or n > 128 * 1024 * 1024:
+            return self._json(413, {"error": "that is not a deck's worth of pages"})
+        token = secrets.token_urlsafe(16)
+        PRINTS[token] = self.rfile.read(n)
+        try:
+            pdf = render_pdf("http://127.0.0.1:%d/__print/%s.html"
+                             % (self.server.server_address[1], token))
+        except Exception as e:
+            return self._json(500, {"error": str(e)})
+        finally:
+            PRINTS.pop(token, None)
+        sys.stderr.write("  pdf: %.1f MB\n" % (len(pdf) / 1e6))
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Length", str(len(pdf)))
+        self.end_headers()
+        self.wfile.write(pdf)
+
 
 def main():
     global DECK

@@ -13,22 +13,55 @@ addEventListener('load',async()=>{
   let printed=0;W.print=()=>{printed++;};
   const host=d.getElementById('printroot'),n=w.S.slides.length;
   const pages=()=>[...host.querySelectorAll('.psl')];
+  // the server that makes the PDF is stood in for: 'ok' answers with a PDF,
+  // 'none' is a server with no browser to print with, 'gone' is no server at all
+  let mode='ok',sent=null,saved=[];
+  const realFetch=W.fetch;
+  W.fetch=(u,o)=>{
+    if(!String(u).includes('api/pdf'))return realFetch.call(W,u,o);
+    sent=o&&o.body;
+    if(mode==='gone')return Promise.reject(new TypeError('Failed to fetch'));
+    if(mode==='none')return Promise.resolve(new W.Response(JSON.stringify({error:'no Chrome here'}),
+      {status:503,headers:{'Content-Type':'application/json'}}));
+    return Promise.resolve(new W.Response(new W.Blob(['%PDF-1.4 stand-in']),
+      {status:200,headers:{'Content-Type':'application/pdf'}}));
+  };
+  const click=W.HTMLAnchorElement.prototype.click;
+  W.HTMLAnchorElement.prototype.click=function(){if(this.download){saved.push(this.download);return;}return click.call(this);};
+  const doc=()=>{const x=d.createElement('div');x.innerHTML=new DOMParser().parseFromString(sent||'','text/html')
+    .getElementById('printroot')?.innerHTML||'';return x;};
 
-  // --- hidden slides stay out ---
+  // --- served by studio.sh: the PDF downloads, no dialog ---
   w.toggleSkip(1);w.toggleSkip(3);await wait(80);
-  W.toPdf(false);await wait(600);
-  ok('the dialog opens',printed===1);
-  ok('one page per shown slide',pages().length===n-2,pages().length+' pages for '+(n-2)+' shown');
-  ok('and the notes stay out',!host.querySelector('.pn'));
-  ok('the file is named after the deck',d.title===(w.S.title||'').trim()||d.title==='slides',d.title);
-  W.dispatchEvent(new Event('afterprint'));await wait(50);
-  ok('the pages go once it is printed',host.innerHTML==='');
-  ok('and the tab gets its name back',/SlAIdy$/.test(d.title),d.title);
+  await W.toPdf(false);await wait(100);
+  ok('no print dialog',printed===0,printed+' dialogs');
+  ok('the PDF downloads, named after the deck',saved.length===1&&saved[0]===((w.S.title||'').trim()||'slides')+'.pdf',saved.join(', '));
+  ok('the server gets one page per shown slide',doc().querySelectorAll('.psl').length===n-2,
+     doc().querySelectorAll('.psl').length+' pages for '+(n-2)+' shown');
+  ok('and the notes stay out',!doc().querySelector('.pn'));
+  ok('the pages carry the app styles',/print-color-adjust:\s*exact/.test(sent||'')&&/@page/.test(sent||''));
+  ok('nothing is left on the page',host.innerHTML==='');
+  saved=[];await W.toPdf(true);await wait(100);
+  ok('the handout downloads too, under its own name',saved.length===1&&/\(notes\)\.pdf$/.test(saved[0]),saved.join(', '));
+  ok('and skips hidden slides',doc().querySelectorAll('.psl').length===n-2);
+
+  // --- no server to make it: the browser's own dialog, as before ---
+  for(const m of ['gone','none']){
+    mode=m;printed=0;saved=[];
+    await W.toPdf(false);await wait(600);
+    ok('with '+(m==='gone'?'no server':'no browser on the server')+' the dialog opens instead',printed===1&&!saved.length);
+    ok('one page per shown slide',pages().length===n-2,pages().length+' pages for '+(n-2)+' shown');
+    ok('and the notes stay out',!host.querySelector('.pn'));
+    ok('the file is named after the deck',d.title===((w.S.title||'').trim()||'slides'),d.title);
+    W.dispatchEvent(new Event('afterprint'));await wait(50);
+    ok('the pages go once it is printed',host.innerHTML==='');
+    ok('and the tab gets its name back',/SlAIdy$/.test(d.title),d.title);
+  }
 
   // --- a slide's own paper reaches the edge of the page ---
   const s=w.S.slides[0],old=s.style;
   s.style=Object.assign({},s.style,{paper:'#10223A'});
-  W.toPdf(false);await wait(600);
+  await W.toPdf(false);await wait(600);
   ok('the page takes the slide paper',getComputedStyle(pages()[0]).backgroundColor==='rgb(16, 34, 58)',
      getComputedStyle(pages()[0]).backgroundColor);
   const other=pages()[1];
@@ -36,7 +69,7 @@ addEventListener('load',async()=>{
   W.dispatchEvent(new Event('afterprint'));await wait(50);
 
   // the handout still has notes under the slide, on the deck paper
-  W.toPdf(true);await wait(600);
+  await W.toPdf(true);await wait(600);
   ok('the handout also skips hidden slides',pages().length===n-2);
   ok('and keeps the deck paper for the notes',getComputedStyle(pages()[0]).backgroundColor!=='rgb(16, 34, 58)');
   W.dispatchEvent(new Event('afterprint'));await wait(50);
@@ -48,11 +81,12 @@ addEventListener('load',async()=>{
   ok('backgrounds print as they are',/print-color-adjust:\s*exact/.test(css));
 
   // nothing to print is said, not printed
-  const all=w.S.slides.map(x=>x.skip);w.S.slides.forEach(x=>x.skip=true);printed=0;
-  W.toPdf(false);await wait(600);
-  ok('an all-hidden deck prints nothing',printed===0&&!pages().length);
+  const all=w.S.slides.map(x=>x.skip);w.S.slides.forEach(x=>x.skip=true);printed=0;sent=null;
+  await W.toPdf(false);await wait(600);
+  ok('an all-hidden deck prints nothing',printed===0&&!pages().length&&sent===null);
   w.S.slides.forEach((x,i)=>x.skip=all[i]);
   w.toggleSkip(1);w.toggleSkip(3);
+  W.fetch=realFetch;W.HTMLAnchorElement.prototype.click=click;
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

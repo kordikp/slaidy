@@ -135,6 +135,32 @@ try:
     os.remove(tmpdeck)
     check("with the real state, a deck in a temporary directory is a test's and is not remembered", r.stdout.strip() == "False", r.stdout.strip() or r.stderr[-200:])
 
+    # a PDF straight from the server, with no print dialog in the way
+    page = ("<!doctype html><style>@page{size:297mm 167mm;margin:0}body{margin:0}"
+            ".p{width:297mm;height:167mm;break-after:page;background:#10223A;"
+            "print-color-adjust:exact;-webkit-print-color-adjust:exact}</style>"
+            + "<div class=p></div>" * 3).encode()
+    def post_pdf(origin):
+        r = urllib.request.Request("http://127.0.0.1:%d/api/pdf" % PORT, data=page, method="POST",
+                                   headers={"Content-Type": "text/html", "Origin": origin})
+        try:
+            with urllib.request.urlopen(r, timeout=200) as resp:
+                return resp.status, resp.headers.get("Content-Type"), resp.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get("Content-Type"), e.read()
+    st, _, _ = post_pdf("http://evil.example")
+    check("the PDF route only answers the page it serves", st == 403, str(st))
+    has = call("GET", "/api/deck")[1].get("pdf")
+    if has:
+        st, ct, b = post_pdf("http://localhost:%d" % PORT)
+        check("the PDF route answers with a PDF", st == 200 and ct == "application/pdf" and b[:5] == b"%PDF-",
+              "%s %s %r" % (st, ct, b[:40]))
+        pages = len(__import__("re").findall(rb"/Type\s*/Page[^s]", b))
+        check("one page per page it was sent", pages == 3, "%d pages" % pages)
+        check("and nothing is left waiting to be printed", not call("GET", "/__print/x.html")[0] == 200)
+    else:
+        print("SKIP no Chrome or Chromium here, so the PDF route falls back to the print dialog")
+
 finally:
     srv.terminate()
     shutil.rmtree(tmp, ignore_errors=True)

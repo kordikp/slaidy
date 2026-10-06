@@ -77,6 +77,15 @@ def with_pictures(svg, assets):
     return re.sub(r'href="asset:(img-[0-9a-f]{12,40})"', one, svg)
 
 
+def note_html(note):
+    """A note, with the part for each click labelled when it has clicks."""
+    parts = [p.strip() for p in re.split(r"\n?[ \t]*<!--\s*step\s*-->[ \t]*\n?", note)]
+    if len(parts) < 2:
+        return '<p class="note">%s</p>' % inline(note)
+    return "".join('<p class="note"><b>click %d</b> · %s</p>' % (i + 1, inline(p) or "—")
+                   for i, p in enumerate(parts))
+
+
 def notes_page(deck, name):
     """Every slide, its figure and what you meant to say — on paper."""
     figs = deck.get("figs") or {}
@@ -103,7 +112,7 @@ def notes_page(deck, name):
             '<p class="t">%s</p>%s%s%s</div></div>' % (
                 " skip" if s.get("skip") else "", s.get("n") or 0,
                 html.escape(s.get("title") or ""), pic,
-                ('<p class="note">%s</p>' % inline(note)) if note
+                note_html(note) if note
                 else '<p class="note none">no note</p>',
                 ('<p class="key">%s</p>' % inline(key)) if key else ""))
     title = deck.get("title") or name

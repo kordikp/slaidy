@@ -18,7 +18,15 @@ a request inside the app.
 In a slide, `![[fig-id]]` places a figure and `<!-- step -->` holds what follows
 for the next click (Beamer's `\pause`). In a figure, `data-step="n"` means "there
 from click n" and `data-until="m"` means "gone at click m". Nothing declares how
-many clicks a slide has: it is derived, so do not add a count.
+many clicks a slide has: it is derived, so do not add a count. In the speaker
+notes (`*Delivery note:*`, which runs to the end of the slide), a `<!-- step -->`
+starts the part said at the next click.
+
+A slide may carry a `*Data:* {…}` line: one line of JSON with fields the editor
+does not use but someone else does — Tiny's `tiny` on a chatbot slide, for one.
+Keep it, keep it on one line, and change it only when asked. A deck's
+`meta.advance` (seconds per slide) makes it advance by itself, as a PechaKucha
+does; the clicks of a slide share its time.
 
 ## Pictures: what you must respect
 

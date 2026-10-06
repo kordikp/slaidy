@@ -962,6 +962,44 @@ a worse way to set a number than a number field.
 * Empty means from the start, and never — so it writes no attribute rather than
   `data-step="1"`, and a figure with no steps stays a figure with no steps.
 
+### Notes that follow the clicks
+
+A slide that builds up over fourteen clicks used to show all fourteen notes at once. Its
+notes are split the way its body is: a `<!-- step -->` in the notes starts what to say at the
+next click. The projector shows the part for the click it is on and keeps the others in view,
+quieter, because a speaker glances ahead. Everywhere else (the editor, the PDF with notes, the
+notes page) every part is shown and labelled with its click. The PDF has one page per click,
+so each page carries its own click's part. The Beamer importer writes stepped figures' notes
+this way, read off the labels of what each click adds.
+
+The markdown form needed a fix first. `*Delivery note:*` was read as one line, so a note with
+a second paragraph lost it in a round trip, and nobody had noticed because no note had one. A
+note now runs to the next structural line (another `*Field:*`, a `**Figure:**`, a rule, a
+heading), which in practice is the end of the slide, where `slideMd` writes it.
+
+### A talk that keeps its own time
+
+A PechaKucha is twenty slides of twenty seconds, and the organisers' player moves on whether
+the speaker is ready or not. Rehearsing that against a stopwatch is the wrong exercise, so the
+deck can keep the time itself: `meta.advance` is seconds per slide, set in Deck settings, or
+`?auto=20` in the address for a player that is not yours. A slide with clicks shares its time
+between them, so a figure that builds up still lands within its twenty seconds. The clock
+starts with the projector, `A` pauses and resumes, moving by hand restarts the count on the
+click you land on, and it stops at the end rather than looping. The amber bar along the
+bottom is the time left, grey while paused. Nothing else changes: the same deck presents by
+hand when the setting is empty.
+
+### Data a slide carries for someone else
+
+slaidy4tiny puts what Tiny needs on a chatbot slide (the bot, the question, the minutes, the
+concepts) in a `tiny` field the editor has no control for. JSON kept it; markdown dropped it,
+and so did *Edit as markdown*. Any field the editor does not know now goes out as one line,
+`*Data:* {"tiny": {…}}`, and comes back from the import, from `build_bundle.py` and from
+editing a slide as markdown. A data field can never overwrite one of the editor's own (title,
+body, layout…), and a line that is not valid JSON is ignored rather than fatal. One line,
+because a person reading the markdown should be able to skip it, and a diff should show it
+changing as one thing.
+
 ### Pictures: bytes kept once, a name in the drawing
 
 Not everything is a drawing. A photograph of the rig, a screenshot or a plot of a

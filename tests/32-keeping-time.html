@@ -1,0 +1,83 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1280px;height:800px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const f=document.getElementById('f');
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'\nERROR the file stopped here</pre>');};
+const __watchdog=setTimeout(spill,55000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  // ---------- a deck that keeps its own time ----------
+  // A PechaKucha moves on every twenty seconds whether the speaker is ready or
+  // not. The deck says how long a slide stays; a slide with clicks shares it.
+  w.S.slides=[
+   {tag:'S',group:'G',sub:null,title:'Built up',layout:'text',flags:[],textScale:100,skip:false,summary:'',
+    body:'- one\n\n<!-- step -->\n\n- two\n\n<!-- step -->\n\n- three',
+    notes:'Say the first thing.\n\n<!-- step -->\n\nNow the second.\n\n<!-- step -->\n\nAnd the third.'},
+   {tag:'S',group:'G',sub:null,title:'Plain',layout:'text',flags:[],textScale:100,skip:false,summary:'',body:'- just this',notes:'Only one thing to say.'},
+   {tag:'S',group:'G',sub:null,title:'Last',layout:'text',flags:[],textScale:100,skip:false,summary:'',body:'- the end',notes:''}];
+  w.normalise();w.cur=0;w.paint();await wait(100);
+
+  ok('a deck without a time advances by hand',w.autoSeconds()===0);
+  w.S.meta=w.S.meta||{};w.S.meta.advance=3;
+  ok('the deck says how long a slide stays',w.autoSeconds()===3);
+
+  await w.present(true);await wait(150);
+  ok('the clock starts with the projector',w.AUTO.on===true);
+  ok('and shows the time left',d.getElementById('auto').style.display==='block');
+  ok('a slide with three clicks gives each a third',Math.abs(w.AUTO.per-1000)<1,String(w.AUTO.per));
+
+  // notes follow the click
+  w.notesOn=true;
+  const now=()=>{const n=d.querySelector('#notes .nstep.now');return n?n.textContent:'';};
+  ok('the notes show the part for this click',/Say the first thing/.test(now()),now());
+  await wait(1100);
+  ok('after its share, the next click',w.cur===0&&w.overlay===2,w.cur+':'+w.overlay);
+  ok('and the notes move with it',/Now the second/.test(now()),now());
+  await wait(1000);
+  ok('then the third',w.cur===0&&w.overlay===3,w.cur+':'+w.overlay);
+  await wait(1000);
+  ok('then the next slide, with its whole time',w.cur===1&&w.overlay===1&&Math.abs(w.AUTO.per-3000)<1,w.cur+':'+w.overlay+' '+w.AUTO.per);
+
+  // A pauses: nothing moves
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'a',bubbles:true}));
+  ok('A pauses',w.AUTO.on===false);
+  await wait(4000);
+  ok('and a paused deck stays put',w.cur===1,String(w.cur));
+  ok('the bar says it is paused',d.getElementById('auto').classList.contains('paused'));
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'a',bubbles:true}));
+  ok('A resumes',w.AUTO.on===true);
+  await wait(3100);
+  ok('and carries on where it was',w.cur===2,String(w.cur));
+  await wait(3200);
+  ok('it stops at the end rather than looping',w.cur===2&&w.AUTO.on===false,w.cur+' '+w.AUTO.on);
+
+  // moving by hand restarts the count where you land
+  w.present(false);await wait(100);
+  ok('leaving the projector stops the clock',w.AUTO.on===false&&d.getElementById('auto').style.display==='none');
+  w.cur=0;w.overlay=1;await w.present(true);await wait(700);
+  w.advance(1);await wait(400);
+  ok('a manual click restarts the count on the click it lands on',w.cur===0&&w.overlay===2,w.cur+':'+w.overlay);
+  await wait(800);
+  ok('so it is not cut short',w.overlay===3||w.cur===0,w.cur+':'+w.overlay);
+  w.present(false);await wait(80);
+
+  // the rest of the app shows every part of the notes, labelled
+  const all=w.notesSteps(w.S.slides[0].notes);
+  ok('elsewhere every part is shown, labelled by click',(all.match(/class="nk"/g)||[]).length===3&&!/&lt;!--/.test(all),all.slice(0,160));
+  ok('a note without clicks stays one note',!/nstep/.test(w.notesSteps('Just this.')));
+  ok('and the marker never shows as text',!/step --/.test(w.notesSteps('a\n<!-- step -->\nb')));
+  const page=w.printSlide(w.S.slides[0],true,2);
+  ok('a printed page per click carries that click\'s note highlighted',/class="nstep now"><span class="nk">click 2/.test(page),page.slice(0,200));
+
+  delete w.S.meta.advance;await w.present(true);await wait(100);
+  ok('without a time the projector does not start a clock',w.AUTO.on===false&&d.getElementById('auto').style.display==='none');
+  w.present(false);
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

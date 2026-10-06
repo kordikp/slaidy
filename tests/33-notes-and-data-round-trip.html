@@ -1,0 +1,43 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1280px;height:800px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const f=document.getElementById('f');
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'\nERROR the file stopped here</pre>');};
+const __watchdog=setTimeout(spill,55000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  // ---------- what markdown has to carry ----------
+  // Notes with paragraphs — and the <!-- step --> that gives each click its own
+  // part — and data this editor has no field for, such as Tiny's on a chatbot
+  // slide, must come back from markdown as they went in.
+  const tiny={bot:'co-kdyby',minutes:5,question:'Co kdyby zítra přestal fungovat internet?',concepts:['internet','paket']};
+  const s={n:3,tag:'S',group:'Hodina',sub:null,title:'🤖 Co kdyby',layout:'text',flags:['center'],textScale:100,skip:false,summary:'',
+    body:'- otázka\n\n<!-- step -->\n\n- druhá',notes:'First, the question.\n\nA second paragraph.\n\n<!-- step -->\n\nThen the twist.',tiny};
+  const md='# Hodina\n\n'+w.slideMd(s);
+  ok('the data goes out as one line of JSON',/^\*Data:\* \{"tiny":/m.test(md),md);
+  const back=w.importMarkdown('x.md',md)[0];
+  ok('and comes back as it was',JSON.stringify(back.tiny)===JSON.stringify(tiny),JSON.stringify(back.tiny));
+  ok('notes keep their paragraphs and clicks',back.notes===s.notes,JSON.stringify(back.notes));
+  ok('the body is only the body',back.body===s.body&&!/Data:|Delivery note|twist/.test(back.body),JSON.stringify(back.body));
+  ok('a field of the editor\'s own cannot be overwritten by data',
+     w.importMarkdown('x.md','# G\n\n### 1. `[S]` T\n\n*Data:* {"title":"hijack","x":1}\n\nbody\n')[0].title==='T');
+  ok('broken JSON is ignored, not fatal',
+     w.importMarkdown('x.md','# G\n\n### 1. `[S]` T\n\n*Data:* {nope}\n\nbody\n')[0].body==='body');
+  ok('a single-line note still reads as before',
+     w.importMarkdown('x.md','# G\n\n### 1. `[S]` T\n\nbody\n\n*Delivery note:* say it slowly.\n')[0].notes==='say it slowly.');
+  ok('a note stops at the next structural line',
+     w.importMarkdown('x.md','# G\n\n### 1. `[S]` T\n\n*Delivery note:* say it.\n\n**Figure:** `fig-a` · figure\n')[0].notes==='say it.');
+
+  // editing a slide as markdown keeps the data too
+  w.S.slides=[JSON.parse(JSON.stringify(s))];w.normalise();w.cur=0;w.paint();await wait(150);
+  const edited=w.mdParse(w.slideMd(w.S.slides[0]).replace('- druhá','- třetí'),w.S.slides[0])[0];
+  ok('editing a slide as markdown keeps its data',edited&&JSON.stringify(edited.tiny)===JSON.stringify(tiny)&&/třetí/.test(edited.body));
+ }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

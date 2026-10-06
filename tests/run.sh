@@ -34,6 +34,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   fig,measureStage,toggleSkip,liveIdx,liveStats,clock,
   picImport,picAdd,picOk,picHash,stored,live,portable,picRefs,picNotes,picGuard,picGc,picNormalise,
   picFigureSvg,picIntoSlide,fePutPicture,feAddPicture,picPortably,figsOf,mergeFigs,svgToPng,articleHtml,persist,normalise,
+  slideMd,importMarkdown,  autoSeconds,autoToggle,notesSteps,notesParts,printSlide,get AUTO(){return AUTO},
   stepsOf,applySteps,advance,figSteps,get overlay(){return overlay},set overlay(v){overlay=v},
   feStepsIn,feStepOf,feStepBar,feStepPaint,feSetStep,
   get S(){return S},set S(v){S=v},get cur(){return cur},set cur(v){cur=v},get FE(){return FE},

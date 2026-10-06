@@ -534,6 +534,15 @@ body.presenting #nudge,body.presenting #toast,body.presenting #swipehint{display
 @keyframes fadeout{0%,60%{opacity:1}100%{opacity:0}}
 #prog{position:fixed;left:0;right:0;bottom:0;height:2px;background:#161A22;z-index:52;display:none}
 #prog i{display:block;height:100%;background:var(--d-accent);width:0;transition:width .2s}
+/* the time left on this slide, when the deck keeps its own time */
+#auto{position:fixed;left:0;right:0;bottom:2px;height:3px;z-index:52;display:none;pointer-events:none}
+#auto i{display:block;height:100%;width:100%;background:#F59E0B;transform-origin:left center;transform:scaleX(1)}
+#auto.paused i{background:#6B7280}
+/* notes of a slide with clicks: the part for this click, the rest quieter */
+.nstep{margin-top:6px;padding-left:9px;border-left:2px solid transparent}
+.nstep .nk{font:10.5px ui-monospace,monospace;opacity:.7;margin-right:6px}
+.nstep.now{border-left-color:var(--d-accent)}
+.nstep.past,.nstep.next{opacity:.45}
 #count{position:fixed;right:14px;bottom:11px;color:#4E5666;font:11.5px ui-monospace,monospace;z-index:52;
  display:none;font-variant-numeric:tabular-nums}
 #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:#0E1219;color:#98A2B4;
@@ -842,7 +851,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 </div>
 
 <div id="show"><div id="deck"></div></div>
-<div id="prog"><i></i></div><div id="count"></div>
+<div id="prog"><i></i></div><div id="auto"><i></i></div><div id="count"></div>
 <div id="turn">Turn the phone sideways for a bigger slide</div>
 <div id="notes"></div><div id="grid"></div>
 <div id="veil"><div class="dlg" id="dlg"></div></div>
@@ -1907,6 +1916,19 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'
 /* Notes carry links to the papers behind the slide. They have to be clickable
    while presenting, and while writing — so the field renders as text until you
    click into it. A bare URL counts as a link too. */
+/* Notes follow the clicks the way the body does: a <!-- step --> in the notes
+   starts what to say at the next click. The projector shows the part for the
+   click it is on and keeps the rest in view, quieter; every other view shows
+   all of it, each part labelled with its click. */
+const NOTE_STEP=/\n?[ \t]*<!--\s*step\s*-->[ \t]*\n?/;
+const notesParts=t=>String(t||'').split(NOTE_STEP).map(x=>x.trim());
+function notesSteps(t,at){
+  const parts=notesParts(t);
+  if(parts.length<2)return notesHtml(parts[0]);
+  const now=at?Math.min(at,parts.length):0;
+  return parts.map((p,i)=>`<div class="nstep${now?(i+1===now?' now':i+1<now?' past':' next'):''}">`+
+    `<span class="nk">click ${i+1}</span>${notesHtml(p)||'—'}</div>`).join('');
+}
 function notesHtml(t){
   let h=inl(t||'');
   h=h.replace(/(^|[\s(])((?:https?:\/\/)[^\s<)]+[^\s<).,;:])/g,
@@ -2401,6 +2423,11 @@ function parseStyle(str){
   });
   return Object.keys(out).length?out:undefined;
 }
+const NOTE_MD=/^\*(?:Delivery note|Transition)[^:]*:\*[ \t]*(.*(?:\n(?!\*[A-Z][^\n*]*:\*|\*\*Figure:\*\*|---[ \t]*$|#{1,3}\s).*)*)/gm;
+/* what a slide is made of, as far as this editor knows; anything else on a slide
+   is somebody else's data and is carried, not dropped */
+const SLIDE_KEYS=new Set(['n','tag','group','sub','title','layout','textScale','body','notes','summary',
+  'skip','flags','style','fig','figScale']);
 function importMarkdown(name,text){
   const slides=[];
   const act=(text.match(/^#\s+(.+)$/m)||[])[1]||name.replace(/\.md$/,'');
@@ -2414,7 +2441,15 @@ function importMarkdown(name,text){
       const end=i+1<hits.length?hits[i+1].index:text.length;
       let bd=text.slice(m.index+m[0].length,end);
       const f=bd.match(/^\*\*Figure:\*\*\s*(?:↺\s*)?`([a-zA-Z0-9._-]+)`[ \t]*(?:·[ \t]*([a-z-]+))?[ \t]*(?:·[ \t]*(\d{2,3})%)?[^\n]*$/m);
-      const nt=[...bd.matchAll(/^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$/gm)].map(x=>x[1]).join(' ');
+      /* a note runs to the next line that is structure again, so it can have
+         paragraphs — and the <!-- step --> that gives each click its own part */
+      const nts=[...bd.matchAll(NOTE_MD)].map(x=>x[1].trim()).filter(Boolean);
+      const nt=nts.join(nts.some(x=>x.includes('\n'))?'\n\n':' ');
+      /* fields this editor has no control for travel as one line of JSON */
+      const data={};
+      for(const x of bd.matchAll(/^\*Data:\*[ \t]*(\{.*\})[ \t]*$/gm)){
+        try{const v=JSON.parse(x[1]);if(v&&typeof v==='object'&&!Array.isArray(v))
+          for(const k in v)if(!SLIDE_KEYS.has(k))data[k]=v[k];}catch(e){}}
       const sm=bd.match(/^\*Summary:\*\s*(.+)$/m);
       const sk=/^\*Skip:\*\s*(?:yes|true|1|ano)\b/mi.test(bd);
       const tsm=bd.match(/^\*Text:\*\s*(\d{2,3})%/m);
@@ -2422,9 +2457,10 @@ function importMarkdown(name,text){
       const flm=bd.match(/^\*Flags:\*\s*(.+)$/m);
       const lym=bd.match(/^\*Layout:\*\s*([a-zA-Z0-9_-]+)/m);
       const fl=flm?flm[1].split(',').map(x=>x.trim()).filter(Boolean):[];
-      bd=bd.replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
+      bd=bd.replace(NOTE_MD,'').replace(/^\*Data:\*.*$/gm,'')
+           .replace(/^\*Summary:\*.*$/gm,'').replace(/^\*Skip:\*.*$/gm,'').replace(/^\*Flags:\*.*$/gm,'')
            .replace(/^\*Text:\*.*$/gm,'').replace(/^\*Style:\*.*$/gm,'').replace(/^\*Layout:\*.*$/gm,'')
-           .replace(/^\*\*Figure:\*\*.*$/gm,'').replace(/^\*(?:Delivery note|Transition)[^:]*:\*.*$/gm,'')
+           .replace(/^\*\*Figure:\*\*.*$/gm,'')
            .replace(/^---\s*$/gm,'')
            /* #, ## and a numbered ### structure the file; a bare ### and #### and
               deeper are a heading inside the slide and must survive the round trip */
@@ -2433,7 +2469,7 @@ function importMarkdown(name,text){
                    layout:f?(LAYS()[f[2]]?f[2]:'figure'):(lym&&LAYS()[lym[1]]?lym[1]:'text'),
                    body:bd,notes:nt,
                    figScale:f&&f[3]?+f[3]:100,summary:sm?sm[1].trim():'',skip:sk,flags:fl,
-                   textScale:tsm?+tsm[1]:100,style:parseStyle(stm?stm[1]:'')});
+                   textScale:tsm?+tsm[1]:100,style:parseStyle(stm?stm[1]:''),...data});
     });
     return slides;
   }
@@ -3194,7 +3230,7 @@ function paintBoard(){
       <button data-fix="hide" class="x" title="Leave it as it is">✕</button></div>
     <div class="offstage notes"><div class="lbl">Speaker notes · not projected</div>
       <div class="noteview" id="noteView">${(s.notes||'').trim()
-        ? notesHtml(s.notes)
+        ? notesSteps(s.notes)
         : '<span class="ph">What to say, what to emphasise, what to skip when time is short.</span>'}</div>
       <textarea id="fNote" class="hidden">${esc(s.notes||'')}</textarea></div>`;
   const h=sh.querySelector('.hd');h.textContent=s.title;
@@ -3217,7 +3253,7 @@ function paintBoard(){
     clearTimeout(nt.t);nt.t=setTimeout(()=>{if(!proposal)paintSide();},500);};
   nt.onblur=()=>{
     nt.classList.add('hidden');nv.classList.remove('hidden');
-    nv.innerHTML=(s.notes||'').trim()?notesHtml(s.notes)
+    nv.innerHTML=(s.notes||'').trim()?notesSteps(s.notes)
       :'<span class="ph">What to say, what to emphasise, what to skip when time is short.</span>';
   };
   document.getElementById('overflag').onclick=e=>{
@@ -6603,6 +6639,10 @@ function deckSettings(){
      <div class="fld"><label>Title</label><input id="dsT" value="${esc(S.title||'')}"></div>
      ${F.map(([k,l])=>`<div class="fld"><label>${l}</label>
         <input data-m="${k}" value="${esc(M[k]||'')}"></div>`).join('')}
+     <div class="fld"><label>Advance by itself every … seconds</label>
+        <input id="dsAdv" type="number" min="1" max="600" step="1" value="${esc(M.advance||'')}" placeholder="by hand"></div>
+     <div class="tip">Empty: you click. A PechaKucha is 20. Clicks within a slide share its time;
+       <kbd>A</kbd> pauses while presenting.</div>
    </div>
    <div class="sec"><div class="sect">Style</div>
      <div class="fld"><label>Accent</label><input data-s="accent" type="color" value="${style('accent')}"></div>
@@ -6647,6 +6687,9 @@ function deckSettings(){
     }
     snap('layouts');S.meta.layouts=v;touch();paint();
     layMsg.textContent=`${Object.keys(v).length} of your own, on top of the nine built in.`;};
+  document.getElementById('dsAdv').onchange=e=>{
+    const v=Math.round(+e.target.value);snap('advance');
+    if(v>0)S.meta.advance=Math.min(600,v);else delete S.meta.advance;touch();};
   document.querySelectorAll('.dlg [data-m]').forEach(i=>i.onchange=()=>{
     snap('deck details');S.meta[i.dataset.m]=i.value.trim();touch();});
   document.querySelectorAll('.dlg [data-s]').forEach(i=>i.oninput=()=>{
@@ -6702,7 +6745,8 @@ function shortcuts(){
    ['amber','it has a table'],['grey','nothing on it yet'],
    ['§while presenting',''],
    ['H','walk through the hidden ones too, for a rehearsal'],
-   ['N','speaker notes'],['O','the overview grid'],
+   ['N','speaker notes — on a slide with clicks, the part for this click'],['O','the overview grid'],
+   ['A','pause or resume a deck that advances by itself (⋯ → Deck settings)'],
    ['§in the figure editor',''],
    ['click','select the whole object'],['double-click','step inside it'],['drag','move what is selected'],
    ['drag empty space','lasso — takes what you enclose, Alt for what you touch'],
@@ -7096,6 +7140,9 @@ function slideMd(s){
   if((s.summary||'').trim())m+=`*Summary:* ${s.summary.trim()}\n\n`;
   if(s.flags&&s.flags.length)m+=`*Flags:* ${s.flags.join(', ')}\n\n`;
   if(s.skip)m+=`*Skip:* yes\n\n`;
+  /* data this editor does not understand, such as Tiny's on a chatbot slide */
+  const data={};for(const k in s)if(!SLIDE_KEYS.has(k)&&s[k]!==undefined&&typeof s[k]!=='function')data[k]=s[k];
+  if(Object.keys(data).length)m+=`*Data:* ${JSON.stringify(data)}\n\n`;
   m+=(s.body||'').trim()+'\n';
   if((s.notes||'').trim())m+=`\n*Delivery note:* ${s.notes.trim()}\n`;
   return m;
@@ -7184,7 +7231,7 @@ function save(){
    own print engine, so there is no dependency and no upload. */
 function printSlide(s,withNotes,at){
   const notes=withNotes&&(s.notes||'').trim()
-    ?`<div class="pn"><b>Notes.</b> ${notesHtml(s.notes.trim())}</div>`:'';
+    ?`<div class="pn"><b>Notes.</b> ${notesSteps(s.notes.trim(),at)}</div>`:'';
   /* the page takes the slide's own paper, so a slide that overrides it does not
      print with a strip of the deck colour around it; a page with notes keeps the
      deck paper, so the notes stay readable under a dark slide */
@@ -7290,8 +7337,57 @@ function paintDeck(){
     `${(at<0?cur:at)+1} / ${R.length}${steps>1?` · ${overlay}/${steps}`:''}${s.skip?' · hidden':''}`;
   const has=figBlocks(s).some(f=>S.figs[f.id]);
   const n=(s.notes||'').trim()||(has?String(s.body||'').replace(/[#*`>|]/g,'').slice(0,900):'—');
-  document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${notesHtml(n)}`;
+  document.getElementById('notes').innerHTML=`<b>${esc(s.title)}</b><br>${notesSteps(n,overlay)}`;
+  autoFresh();
   fit();
+}
+
+/* ---------- a talk that keeps its own time ---------------------------------
+   A PechaKucha is twenty slides of twenty seconds, and the room's player moves
+   on whether the speaker is ready or not. The deck says how long a slide stays
+   (meta.advance, in seconds) or the address does (?auto=20); a slide with
+   clicks shares its time between them, so a figure that builds up still lands
+   within its twenty seconds. A pauses and resumes; moving by hand restarts the
+   count on wherever you land. It stops at the last click of the last slide. */
+const AUTO={on:false,timer:null,key:'',per:0,left:0,t0:0};
+function autoSeconds(){
+  const q=parseFloat(new URLSearchParams(location.search).get('auto'));
+  const v=Number.isFinite(q)&&q>0?q:+((S.meta||{}).advance||0);
+  return Number.isFinite(v)&&v>0?Math.min(600,Math.max(1,v)):0;
+}
+function autoBar(){
+  const b=document.getElementById('auto');if(!b)return;
+  const i=b.firstElementChild,frac=AUTO.per?Math.max(0,AUTO.left/AUTO.per):1;
+  b.style.display=showing&&autoSeconds()?'block':'none';
+  b.classList.toggle('paused',!AUTO.on);
+  i.style.transition='none';i.style.transform=`scaleX(${frac})`;
+  if(AUTO.on&&AUTO.left>0){void i.offsetWidth;
+    i.style.transition=`transform ${AUTO.left}ms linear`;i.style.transform='scaleX(0)';}
+}
+function autoRun(){
+  clearTimeout(AUTO.timer);AUTO.t0=Date.now();
+  AUTO.timer=setTimeout(()=>{
+    AUTO.timer=null;AUTO.left=0;
+    const R=liveIdx();
+    if(cur===R[R.length-1]&&overlay>=stepsOf(S.slides[cur])){AUTO.on=false;autoBar();toast('The end — the clock has stopped');return;}
+    advance(1);
+  },Math.max(0,AUTO.left));
+  autoBar();
+}
+/* a new slide or click gets the full share; a repaint of the same one keeps its count */
+function autoFresh(){
+  const sec=autoSeconds(),s=S.slides[cur];
+  if(!showing||!sec||!s){clearTimeout(AUTO.timer);AUTO.timer=null;autoBar();return;}
+  const key=cur+':'+overlay;
+  if(key===AUTO.key&&AUTO.per)return;
+  AUTO.key=key;AUTO.per=sec*1000/stepsOf(s);AUTO.left=AUTO.per;
+  if(AUTO.on)autoRun();else{clearTimeout(AUTO.timer);AUTO.timer=null;autoBar();}
+}
+function autoToggle(){
+  if(!autoSeconds())return toast('This deck advances by hand — set seconds per slide in ⋯ → Deck settings');
+  if(AUTO.on){AUTO.on=false;clearTimeout(AUTO.timer);AUTO.timer=null;
+    AUTO.left=Math.max(0,AUTO.left-(Date.now()-AUTO.t0));autoBar();toast('Paused — A resumes');}
+  else{AUTO.on=true;if(!AUTO.per){AUTO.key='';autoFresh();}else autoRun();toast(`Advancing every ${autoSeconds()} s — A pauses`);}
 }
 
 /* Asked for, not waited on. Full screen is a request the browser may refuse,
@@ -7356,6 +7452,10 @@ async function present(on){
   document.getElementById('prog').style.display=on?'block':'none';
   document.getElementById('count').style.display=on?'block':'none';
   if(!on){document.getElementById('notes').classList.remove('on');document.getElementById('grid').classList.remove('on');notesOn=gridOn=false;}
+  /* a deck that keeps its own time starts its clock with the projector */
+  AUTO.on=on&&!!autoSeconds();AUTO.key='';AUTO.per=0;
+  if(!on){clearTimeout(AUTO.timer);AUTO.timer=null;autoBar();}
+  else if(AUTO.on)setTimeout(()=>toast(`Advancing every ${autoSeconds()} s — A pauses`),400);
   on?paintDeck():paint();
 }
 function paintGrid(){
@@ -7395,6 +7495,7 @@ document.addEventListener('keydown',e=>{
       if(!h){toast('No slides are hidden');return;}
       showHidden=!showHidden;paintDeck();
       toast(showHidden?`Showing all ${S.slides.length}, hidden included`:`${h} hidden`);}
+    else if(e.key==='a'||e.key==='A'){e.preventDefault();autoToggle();}
     else if(e.key==='n'||e.key==='N'){notesOn=!notesOn;document.getElementById('notes').classList.toggle('on',notesOn);fit();}
     else if(e.key==='o'||e.key==='O'){gridOn=!gridOn;document.getElementById('grid').classList.toggle('on',gridOn);if(gridOn)paintGrid();}
     else if(e.key==='f'||e.key==='F'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(x){}}

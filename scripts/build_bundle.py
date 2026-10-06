@@ -31,7 +31,15 @@ LAY_WAS = {"figure": "text", "split-l": "two", "split-r": "two",
 # A layout the figure line cannot carry — two columns, a cover — says so outright
 LAY_RE = re.compile(r"^\*Layout:\*\s*([A-Za-z0-9_-]+)", re.M)
 FIG_NONE_RE = re.compile(r"^\*\*Figure:\*\*\s*(?:none|žádná).*$", re.M | re.I)
-NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*\s*(.+)$", re.M)
+# A note runs from its marker to the next line that is structure again — another
+# *Field:*, a **Figure:**, a rule or a heading — so a note can have paragraphs,
+# and the <!-- step --> that gives each click its own part.
+NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*[ \t]*(.*(?:\n(?!\*[A-Z][^\n*]*:\*|\*\*Figure:\*\*|---[ \t]*$|#{1,3}\s).*)*)", re.M)
+# Data the editor has no field for — an integration's own, such as Tiny's on a
+# chatbot slide — travels as one line of JSON, so a round trip keeps it.
+DATA_RE = re.compile(r"^\*Data:\*[ \t]*(\{.*\})[ \t]*$", re.M)
+KNOWN = {"n", "tag", "group", "sub", "title", "layout", "textScale", "body", "notes", "summary",
+         "skip", "flags", "style", "fig", "figScale"}
 SUM_RE = re.compile(r"^\*Summary:\*\s*(.+)$", re.M)
 SKIP_RE = re.compile(r"^\*Skip:\*\s*(\S+)[^\n]*$", re.M)      # hidden when presenting
 FLAGS_RE = re.compile(r"^\*Flags:\*\s*([^\n]+)$", re.M)        # keep = never auto-hide, ours = our own work
@@ -60,6 +68,9 @@ FM_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
 # A section name per file. Anything not listed here is derived from the filename,
 # so "04-how-it-works.md" becomes "How It Works".
+# The section names of the deck this tool was first written for. Any other deck
+# names its own in slides/deck.meta.json: {"groups": {"01-the-shift.md": "The shift"}};
+# a file named in neither gets a name from its filename.
 GROUPS = {
     "01-prologue.md": "Prologue",
     "02-act1-four-rooms.md": "I · Four Rooms",
@@ -89,7 +100,17 @@ def parse_slides(text, group):
         stop = marks[i + 1][1] if i + 1 < len(marks) else len(text)
         body = text[b:stop]
         f = FIG_RE.search(body)
-        notes = " ".join(x.strip() for x in NOTE_RE.findall(body))
+        parts = [x.strip() for x in NOTE_RE.findall(body) if x.strip()]
+        notes = ("\n\n" if any("\n" in x for x in parts) else " ").join(parts)
+        data = {}
+        for m in DATA_RE.finditer(body):
+            try:
+                v = json.loads(m.group(1))
+            except ValueError:
+                continue
+            if isinstance(v, dict):
+                data.update({k: x for k, x in v.items() if k not in KNOWN})
+        body = DATA_RE.sub("", body)
         sm = SUM_RE.search(body)
         sk = SKIP_RE.search(body)
         fl = FLAGS_RE.search(body)
@@ -130,7 +151,8 @@ def parse_slides(text, group):
                        "body": body, "notes": notes, "summary": sm.group(1).strip() if sm else "",
                        "skip": bool(sk) and sk.group(1).lower() in ("yes", "true", "1", "ano"),
                        **({"style": parse_style(st.group(1))} if st and parse_style(st.group(1)) else {}),
-                       "flags": [x.strip() for x in fl.group(1).split(",") if x.strip()] if fl else []})
+                       "flags": [x.strip() for x in fl.group(1).split(",") if x.strip()] if fl else [],
+                       **data})
     return slides
 
 
@@ -201,11 +223,17 @@ def main():
 
     figdirs = a.figs or [os.path.join(ROOT, "images"), os.path.join(a.src, "..", "images")]
 
+    # presentation-level settings live beside the slides, so rebuilding never loses them
+    side = os.path.join(a.src, "deck.meta.json")
+    extra = json.load(open(side, encoding="utf-8")) if os.path.isfile(side) else {}
+    own_groups = extra.get("groups") or {}
+
     slides = []
     files = sorted(f for f in os.listdir(a.src) if f.endswith(".md"))
     for f in files:
         text = open(os.path.join(a.src, f), encoding="utf-8").read()
-        group = GROUPS.get(f) or re.sub(r"^\d+[-_]", "", f[:-3]).replace("-", " ").title()
+        group = (own_groups.get(f) or GROUPS.get(f)
+                 or re.sub(r"^\d+[-_]", "", f[:-3]).replace("-", " ").title())
         slides += (parse_slides(text, group) if SLIDE_RE.search(text)
                    else from_generic(text, f[:-3], group))
 
@@ -255,11 +283,6 @@ def main():
                           if k in ("desc", "name", "source", "w", "h", "added")})
             assets[pid] = entry
 
-    # presentation-level settings live beside the slides, so rebuilding never loses them
-    side = os.path.join(a.src, "deck.meta.json")
-    extra = {}
-    if os.path.isfile(side):
-        extra = json.load(open(side, encoding="utf-8"))
 
     bundle = {"id": a.id or os.path.basename(a.out).rsplit(".", 1)[0],
               "title": extra.get("title") or a.title,

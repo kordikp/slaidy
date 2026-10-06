@@ -19,3 +19,6 @@ demo/vercel/.vercel/
 .env
 .env.*
 !.env.example
+tools/drawio/vendor/viewer.min.js
+tools/drawio/vendor/*.part
+tools/drawio/__pycache__/

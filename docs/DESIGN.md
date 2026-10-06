@@ -345,7 +345,9 @@ sits in the middle, and — only to rescue an overflow — the body size. **It n
 word.** The panel tidies the slide in front of you; `⋯ → Tidy every slide` does the deck.
 One undo reverses either.
 
-**Export.** PDF through the browser's own print engine (nothing is uploaded), markdown
+**Export.** PDF through a browser's own print engine (nothing is uploaded): under
+`studio.sh` the local server prints it with a headless Chrome and it downloads with no
+dialog; opened any other way it goes through the print dialog. Markdown
 in the shape you started with, one `.json` bundle carrying slides and figures, or the deck
 **as an article**: the figure, what you would have said about it, then the line meant to
 land. Hidden slides stay out.

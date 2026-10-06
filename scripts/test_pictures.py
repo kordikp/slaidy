@@ -57,6 +57,40 @@ pub = importlib.util.module_from_spec(spec); spec.loader.exec_module(pub)
 page = pub.notes_page(json.load(open(out)), "t")
 check("the notes page carries the picture itself", "data:image/png;base64," in page and "asset:" not in page)
 
+# --- add: picture files into a source folder, named as the app would name them ---
+spec2 = importlib.util.spec_from_file_location("assets", os.path.join(ROOT, "scripts", "assets.py"))
+assets = importlib.util.module_from_spec(spec2); spec2.loader.exec_module(assets)
+app = open(os.path.join(ROOT, "slaidy.html"), encoding="utf-8").read()
+fn = app[app.index("function picHash(s){"):]
+fn = fn[:fn.index("\n}\n") + 3]
+samples = ["", "AAAA", base64.b64encode(PNG).decode(), "x" * 5000]
+node = subprocess.run(["node", "-e", fn + "process.stdout.write(JSON.stringify(%s.map(picHash)))" % json.dumps(samples)],
+                      capture_output=True, text=True)
+if node.returncode == 0:
+    check("the Python picHash names a picture exactly as the app does",
+          json.loads(node.stdout) == [assets.pic_hash(x) for x in samples], node.stdout[:120])
+else:
+    print("SKIP no node to compare picHash with")
+figs2 = os.path.join(tmp, "figs2")
+src_png = os.path.join(tmp, "dot.png"); open(src_png, "wb").write(PNG)
+r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "assets.py"), "add", figs2, src_png, "--desc", "a dot"],
+                   capture_output=True, text=True)
+pid = assets.pic_hash(base64.b64encode(PNG).decode())
+check("add keeps a small picture's own bytes, under the app's name for them",
+      os.path.isfile(os.path.join(figs2, "assets", pid + ".png")), r.stdout + r.stderr)
+check("and records what it shows", json.load(open(os.path.join(figs2, "assets", "assets.json")))[pid]["desc"] == "a dot")
+check("and prints the <image> that places it", 'href="asset:%s"' % pid in r.stdout)
+try:
+    from PIL import Image
+    big = os.path.join(tmp, "big.png"); Image.new("RGB", (4000, 1000), (200, 30, 30)).save(big)
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "assets.py"), "add", figs2, big],
+                       capture_output=True, text=True)
+    made = [f for f in os.listdir(os.path.join(figs2, "assets")) if f.endswith(".webp")]
+    w = json.load(open(os.path.join(figs2, "assets", "assets.json")))[made[0][:-5]]["w"] if made else 0
+    check("a large picture is shrunk to the longest edge the app keeps, as WebP", made and w == 1920, r.stdout)
+except ImportError:
+    print("SKIP no Pillow: shrinking is not tested here")
+
 shutil.rmtree(tmp, ignore_errors=True)
 print(f"\n{'all good' if not bad else f'{bad} failed'}")
 sys.exit(1 if bad else 0)

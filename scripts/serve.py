@@ -221,6 +221,23 @@ def find_chrome():
 def render_pdf(url, log=lambda m: None):
     """Print one page to PDF with a headless browser; the bytes, or raise.
 
+    A Chrome with no usable sandbox — Ubuntu 23.10 and later restrict the user
+    namespaces it needs unless an AppArmor profile allows them, which is the
+    case on GitHub's runners and on some desktops — quits at once. The page
+    printed here is the one this server just served, so that start is retried
+    once without the sandbox rather than failing every export."""
+    try:
+        return _render_pdf(url, log, sandbox=True)
+    except RuntimeError as e:
+        if "sandbox" not in str(e).lower():
+            raise
+        log("pdf: the browser has no usable sandbox here; once more without it")
+        return _render_pdf(url, log, sandbox=False)
+
+
+def _render_pdf(url, log, sandbox):
+    """One attempt; see render_pdf.
+
     The browser is driven over its DevTools pipe and hands the PDF back on it,
     rather than being asked to write a file with --print-to-pdf: a Chromium
     installed as a snap has a /tmp of its own, so the file it wrote was never
@@ -243,7 +260,7 @@ def render_pdf(url, log=lambda m: None):
     argv = [chrome, "--headless", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
             "--remote-debugging-pipe", "--user-data-dir=" + os.path.join(work, "profile"),
             "about:blank"]
-    if hasattr(os, "geteuid") and os.geteuid() == 0:
+    if not sandbox or (hasattr(os, "geteuid") and os.geteuid() == 0):
         argv.insert(1, "--no-sandbox")       # Chrome will not start as root otherwise
     log("pdf: starting %s" % chrome)
     proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -280,7 +297,9 @@ def render_pdf(url, log=lambda m: None):
                 chunk = os.read(ans_r, 1 << 20)
                 if not chunk:
                     err = proc.stderr.read().decode(errors="replace").strip().splitlines()
-                    raise RuntimeError("the browser quit: %s" % (err[-1][:300] if err else
+                    # the line that names the cause is not always the last one
+                    why = next((x for x in err if "sandbox" in x.lower()), err[-1] if err else "")
+                    raise RuntimeError("the browser quit: %s" % (why[:300] if why else
                                                                  "exit code %s" % proc.poll()))
                 buf[0] += chunk
 

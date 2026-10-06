@@ -10,24 +10,29 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 fail=0
 step(){ printf '\n\033[1m%s\033[0m\n' "$1"; }
+# a Python check: what failed, and its last line. (`| tail -3` used to hide which
+# check it was — CI said "2 failed" and nothing else.)
+py(){ local out s; out="$(python3 "$@" 2>&1)"; s=$?
+  printf '%s\n' "$out" | grep -E '^(FAIL|ERROR)|Traceback|Error:' | head -20
+  printf '%s\n' "$out" | tail -1; return $s; }
 
 step "Names the test hook uses, and the browser floor"
 python3 tests/preflight.py || fail=1
 
 step "The markdown round trip"
-python3 scripts/test_roundtrip.py | tail -3 || fail=1
+py scripts/test_roundtrip.py || fail=1
 
 step "The local server and the deck file"
-python3 scripts/test_server.py | tail -3 || fail=1
+py scripts/test_server.py || fail=1
 
 step "Publishing a deck to the web"
-python3 scripts/test_publish.py | tail -3 || fail=1
+py scripts/test_publish.py || fail=1
 
 step "Pictures from the source folder to the deck and back"
-python3 scripts/test_pictures.py | tail -3 || fail=1
+py scripts/test_pictures.py || fail=1
 
 step "One file with the deck in it, opened from a disk"
-python3 scripts/test_onefile.py | tail -3 || fail=1
+py scripts/test_onefile.py || fail=1
 
 step "The browser suite"
 tests/run.sh || fail=1

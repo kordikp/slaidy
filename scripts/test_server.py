@@ -161,6 +161,37 @@ try:
     else:
         print("SKIP no Chrome or Chromium here, so the PDF route falls back to the print dialog")
 
+    # a browser with no usable sandbox (Ubuntu 23.10+ without an AppArmor profile,
+    # GitHub's runners) is started once more without it, and the export still works
+    real = srv_chrome = __import__("shutil").which("google-chrome") or __import__("shutil").which("chromium") \
+        or os.environ.get("CHROME_BIN") and __import__("shutil").which(os.environ["CHROME_BIN"])
+    if has and real:
+        nosb = os.path.join(tmp, "chrome-without-sandbox")
+        open(nosb, "w").write('#!/bin/sh\ncase " $* " in *" --no-sandbox "*) exec "%s" "$@";; esac\n'
+                              'echo "[0101/000000:FATAL:zygote_host_impl_linux.cc(127)] No usable sandbox!" >&2\n'
+                              'echo "#0 0x55d0 base::debug::CollectStackTrace()" >&2\nexit 133\n' % real)
+        os.chmod(nosb, 0o755)
+        srv3 = subprocess.Popen([sys.executable, os.path.join(ROOT, "scripts", "serve.py"), tmp, str(PORT + 2), first],
+                                env=dict(env, CHROME_BIN=nosb, SLAIDY_CHROME=""),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            for _ in range(50):
+                try:
+                    urllib.request.urlopen("http://127.0.0.1:%d/api/deck" % (PORT + 2), timeout=2); break
+                except Exception:
+                    time.sleep(0.2)
+            r = urllib.request.Request("http://127.0.0.1:%d/api/pdf" % (PORT + 2), data=page, method="POST",
+                                       headers={"Content-Type": "text/html", "Origin": "http://localhost:%d" % (PORT + 2)})
+            try:
+                with urllib.request.urlopen(r, timeout=200) as resp:
+                    st3, b3 = resp.status, resp.read()
+            except urllib.error.HTTPError as e:
+                st3, b3 = e.code, e.read()
+            check("a browser with no usable sandbox is started once more without it",
+                  st3 == 200 and b3[:5] == b"%PDF-", "%s %r" % (st3, b3[:120]))
+        finally:
+            srv3.terminate()
+
     # a browser that breaks says why, to the page and to the terminal
     fake = os.path.join(tmp, "fake-chrome")
     open(fake, "w").write("#!/bin/sh\necho 'the fake browser broke' >&2\nexit 3\n")
@@ -169,7 +200,12 @@ try:
                             env=dict(env, CHROME_BIN=fake, SLAIDY_CHROME=""),
                             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     try:
-        time.sleep(0.8)
+        # wait until it answers, rather than a fixed pause a slow machine overruns
+        for _ in range(50):
+            try:
+                urllib.request.urlopen("http://127.0.0.1:%d/api/deck" % (PORT + 1), timeout=2); break
+            except Exception:
+                time.sleep(0.2)
         r = urllib.request.Request("http://127.0.0.1:%d/api/pdf" % (PORT + 1), data=page, method="POST",
                                    headers={"Content-Type": "text/html", "Origin": "http://localhost:%d" % (PORT + 1)})
         try:

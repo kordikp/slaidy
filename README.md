@@ -144,25 +144,31 @@ take away the editing. This does both.
 | **Draw** | figures are SVG, written into the body like any other block: draw one by hand, paste SVG, or have it generated — a generated one is measured, thin lines and labels inside their boxes, and drawn again if it fails — then edit it in place: select a shape, move it, join two boxes with an arrow that re-routes itself |
 | **Ask** | say what a slide is for and it writes the slide; ask what it would change and it answers with a list you can strike lines out of; the work waits on its slide while you move on |
 | **Arrange** | pick a shape for the slide — one column, two, three, a cover; the deck holds the shapes and can carry your own |
-| **Present** | `P` for full screen, `N` for notes, `O` for the grid, `H` to rehearse the hidden slides too, tap or swipe on a phone |
+| **Build up** | `<!-- step -->` in a slide holds what follows for the next click, Beamer's `\pause`; a figure's shapes carry the click they arrive on (and leave at), so a diagram builds up in place, and the speaker notes can have a part per click |
+| **Present** | `P` for full screen, `N` for notes — the part for this click — `O` for the grid, `H` to rehearse the hidden slides too, tap or swipe on a phone; a deck can keep its own time (a PechaKucha's 20 seconds a slide), `A` pauses it |
 | **Carry** | select slides in the list, `Ctrl-C`, and `Ctrl-V` them into another deck — the figures travel with them |
-| **Export** | PDF, markdown, one `.json` bundle, or the whole deck as an article with the figures rasterised |
+| **Picture** | a photo, a screenshot or a plot of a result: paste or drop it, kept once in the deck and described in words, with arrows and labels drawn on top |
+| **Export** | PDF (one page per click, straight to a file under `studio.sh`), markdown, one `.json` bundle, one HTML file with the deck inside that opens from a disk, or the whole deck as an article with the figures rasterised |
 | **Keep** | every save writes the file on disk; twelve version snapshots; one `Ctrl-Z` per gesture; it reopens the deck you had |
 
 Everything works without the AI. Nothing the AI does lands without you taking it.
 
-## Why there are no bitmaps
+## Drawings first, pictures when nothing else will do
 
-A figure here is SVG, and only SVG. You cannot drop a PNG on a slide and have it become the
-picture. That is not an omission.
+A figure here is SVG — a drawing — and that is the default for a reason: the whole deck is text
+— markdown for the words, SVG for the drawings — because **everybody working on it has to be
+able to read it**. You, when you come back to a talk a year later and want to know what a
+diagram claims. Git, when it shows you what changed. And the AI, when you ask it to make a
+figure sparser or to swap two boxes: it can only do that to a drawing it can read.
 
-The whole deck is text — markdown for the words, SVG for the drawings — because **both of you
-have to be able to read it**. You, when you come back to a talk a year later and want to know
-what a diagram claims. Git, when it shows you what changed. And the AI, when you ask it to make
-a figure sparser or to swap two boxes: it can only do that to a drawing it can read. A bitmap is
-opaque to all three. It can be shown and it can be scaled, and that is all — nobody can edit it,
-nobody can diff it, and asking a model to change it means asking it to draw a new one from
-scratch and hope.
+Some things cannot be drawn: the photo of the rig, a screenshot, the plot your experiment
+produced. Those come in as **pictures** — pasted, dropped, chosen from a file or fetched from an
+address — and are kept so that they stay out of the text's way: once per deck, shrunk to the
+1920 pixels a projector can show, named by their content, and placed in a figure by name, so a
+figure holding a photo is still a few hundred characters a model can read and change. What a
+model is told about a picture is **the description its author wrote** — never the pixels — and
+it may crop it, size it, grey it and draw on top of it, but not change it: a measured plot is
+evidence. [AGENTS.md](AGENTS.md) is that contract, for any assistant working on a deck.
 
 The compactness follows from the same choice rather than being a separate feature:
 
@@ -191,7 +197,12 @@ The parts worth knowing before you change anything:
 - **[.env.example](.env.example)** — every way of pointing it at a model, local or hosted.
 - **`scripts/`** — `serve.py` and `window.py` are what `studio.sh` runs; `publish.py`,
   `commentary.py` and `check_links.py` are the way to the web; `build_bundle.py` turns a
-  folder of markdown into a deck.
+  folder of markdown into a deck and `onefile.py` a deck into one HTML file that opens from a
+  disk; `assets.py` lists, adds and describes pictures without reading their bytes; `qr.py`
+  makes a QR code as a figure; `shots.mjs` photographs every slide, every click if you ask.
+- **[tools/drawio/](tools/drawio/README.md)** — a Beamer lecture with draw.io figures, back to
+  editable vectors: the drawings recovered from the PNGs, a series of saves merged into one
+  figure that clicks through, and the LaTeX imported as slides.
 
 ## Thanks
 

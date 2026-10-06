@@ -5,6 +5,35 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **A deck that keeps its own time.** ⋯ → Deck settings → *Advance by itself every … seconds*
+  (`meta.advance`), or `?auto=20` in the address: the projector moves on by itself, a slide
+  with clicks sharing its time between them, with a bar showing what is left. `A` pauses and
+  resumes; moving by hand restarts the count; it stops at the end. Made for a PechaKucha
+  (20 × 20 s), first used for *Agents in the Field — PoliRural+*.
+- **Speaker notes per click.** A `<!-- step -->` in the notes starts what to say at the next
+  click. The projector's notes show the part for the click it is on, the printed page for a
+  click carries that click's part, and the notes page labels them. `tools/drawio/tex2deck.py`
+  writes the notes of a stepped figure this way.
+- **Data a slide carries for someone else.** Fields the editor has no control for — Tiny's
+  `tiny` on a chatbot slide in slaidy4tiny — now survive markdown: they go out as one
+  `*Data:* {…}` line and come back from `build_bundle.py`, the import and *Edit as markdown*.
+- **Section names from the deck.** `deck.meta.json` may carry `"groups": {"01-file.md": "Name"}`;
+  `build_bundle.py` used to know only one deck's section names.
+- **Tools that three projects had each written for themselves.** `scripts/assets.py add`
+  brings picture files into a source folder as the app would (1920 px, WebP, SlAIdy's own
+  content name, `--trim` for logos); `scripts/qr.py` makes a QR code as a figure;
+  `scripts/shots.mjs` photographs a deck slide by slide, `--steps` click by click.
+- **`tools/drawio/`** — a Beamer lecture with draw.io figures back to editable vectors: the
+  drawings recovered from the PNGs, a series of saves merged into one figure whose shapes
+  carry their click, the LaTeX imported as slides. From the Matrix Factorization lecture
+  (FIT CTU); the draw.io viewer is fetched on first use rather than kept in git.
+
+### Fixed
+- **Notes with more than one line** lost every line after the first in a markdown round trip
+  (the app's import and `build_bundle.py` both read only the first line of
+  `*Delivery note:*`). A note now runs to the next structural line.
+
+### Added
 - **Pictures.** Photographs, screenshots and plots come in from a file, the clipboard, a
   drop or an address: ＋ Figure → *Picture*, the picture button in the figure editor, or a
   paste straight onto a slide. A picture is kept once in the deck, shrunk to 1920 px and

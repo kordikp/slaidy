@@ -1964,7 +1964,7 @@ const TEX_SYM={
   oplus:'⊕',otimes:'⊗',odot:'⊙',
   top:'⊤',bot:'⊥',intercal:'⊺',dagger:'†',
   langle:'⟨',rangle:'⟩',lfloor:'⌊',rfloor:'⌋',lceil:'⌈',rceil:'⌉',
-  '|':'∣',backslash:'\\',
+  mid:'∣','{':'{','}':'}','|':'‖',Vert:'‖',lVert:'‖',rVert:'‖',backslash:'\\',
   hat:'^',
   quad:' ',qquad:'  ',',':' ',';':' ',':':' ',' ':' '
 };
@@ -1983,7 +1983,13 @@ function texTokens(t){
     if(c==='\\'){
       const m=/^\\([a-zA-Z]+|.)/.exec(t.slice(i));
       if(!m)throw new Error('stray backslash');
-      out.push({t:'cmd',v:m[1]});i+=m[0].length;continue;
+      out.push({t:'cmd',v:m[1]});i+=m[0].length;
+      // \text{subject to}: the argument is prose, spaces included, not a formula.
+      if(/^(text|textrm|mbox)$/.test(m[1])&&t[i]==='{'){
+        let depth=0,j=i;for(;j<t.length;j++){if(t[j]==='{')depth++;else if(t[j]==='}'&&!--depth)break;}
+        out.push({t:'raw',v:t.slice(i+1,j)});i=j+1;
+      }
+      continue;
     }
     if(c==='{'||c==='}'||c==='^'||c==='_'||c==='&'){out.push({t:c});i++;continue;}
     if(/\s/.test(c)){i++;continue;}
@@ -2034,8 +2040,9 @@ function texAtom(tk){
   if(x.t==='id') return `<mi>${x.v}</mi>`;
   if(x.t==='op'){
     if(x.v==='(' ||x.v===')'||x.v==='['||x.v===']'||x.v==='|')
-      return `<mo stretchy="false">${esc(x.v)}</mo>`;
-    return `<mo>${esc(x.v)}</mo>`;
+      return `<mo stretchy="false" lspace="0" rspace="0">${esc(x.v)}</mo>`;  // TeX: delimiters carry no spacing
+    // TeX's "-" is a minus sign (U+2212), not the shorter hyphen the character itself draws.
+    return `<mo>${esc(x.v==='-'?'−':x.v)}</mo>`;
   }
   if(x.t==='{'){return texWrap(texParse(tk,'}'));}
   if(x.t==='cmd'){
@@ -2053,19 +2060,37 @@ function texAtom(tk){
     }
     if(TEX_VAR[c])
       return `<mi mathvariant="${TEX_VAR[c]}">${texGroup(tk).join('').replace(/<\/?m[a-z]+[^>]*>/g,'')}</mi>`;
+    if((c==='text'||c==='textrm'||c==='mbox')&&tk[0]&&tk[0].t==='raw')return `<mtext>${esc(tk.shift().v)}</mtext>`;
     if(c==='text'||c==='textrm'||c==='operatorname')
       return `<mtext>${texGroup(tk).join('').replace(/<\/?m[a-z]+[^>]*>/g,'')}</mtext>`;
     if(TEX_ACC[c])return `<mover accent="true">${texWrap(texGroup(tk))}<mo>${TEX_ACC[c]}</mo></mover>`;
     if(TEX_BIG[c])return `<mo class="big">${TEX_BIG[c]}</mo>`;
     if(TEX_FN.includes(c))return `<mi mathvariant="normal">${c}</mi>`;
-    if(c==='left'||c==='right'){
-      const d=tk.shift();
-      if(!d)throw new Error('\\'+c+' with nothing after it');
-      if(d.t==='cmd'&&d.v==='.')return '';
-      return `<mo>${esc(d.v||'')}</mo>`;
+    /* \left( … \right) is one group: both fences stretch together, symmetric about the
+       axis. As loose siblings only the last one in the row stretched, so ")" outgrew "(". */
+    if(c==='left'){
+      // As in TeX, the fences grow only around tall content (fractions, limits, roots,
+      // matrices); around flat content a stretched glyph is twice as wide and looks loose.
+      const opened=tk.shift(),inner=[];
+      while(tk.length&&!(tk[0].t==='cmd'&&tk[0].v==='right')){if(tk[0].t==='}')throw new Error('\\left without \\right');inner.push(texAtomSup(tk));}
+      if(!tk.length)throw new Error('\\left without \\right');
+      tk.shift();
+      const body=inner.join(''),tall=/<mfrac|<munder|<mover>|<msqrt|<mroot|<mtable|class="big"/.test(body);
+      const fence=d=>{
+        if(!d)throw new Error('\\left/\\right with nothing after it');
+        if(d.t==='cmd'&&d.v==='.')return '';
+        return `<mo fence="true" ${tall?'stretchy="true" symmetric="true"':'stretchy="false" lspace="0" rspace="0"'}>${esc(d.t==='cmd'&&TEX_SYM[d.v]!==undefined?TEX_SYM[d.v]:(d.v||''))}</mo>`;
+      };
+      return `<mrow>${fence(opened)}${body}${fence(tk.shift())}</mrow>`;
     }
+    if(c==='right')throw new Error('\\right without \\left');
     if(c==='\\')return '<mspace linebreak="newline"/>';
-    if(TEX_SYM[c]!==undefined)return `<mo>${esc(TEX_SYM[c])}</mo>`;
+    // A bare delimiter keeps its size, as in TeX: only \left…\right stretches. Stretchy,
+    // the opening one grew with the row and the closing one did not.
+    // Greek letters and ∂, ℓ, ∞ are variables (<mi>), not operators: as <mo> they took
+    // operator spacing, the stray gaps in "φ (", "λ ∑" and "( ρ".
+    if(TEX_SYM[c]!==undefined&&/^[\u0370-\u03FF∂ℓ∞ℏ]$/.test(TEX_SYM[c]))return `<mi>${esc(TEX_SYM[c])}</mi>`;
+    if(TEX_SYM[c]!==undefined)return /^[‖|{}⌊⌋⌈⌉⟨⟩]$/.test(TEX_SYM[c])?`<mo stretchy="false" lspace="0" rspace="0">${esc(TEX_SYM[c])}</mo>`:`<mo>${esc(TEX_SYM[c])}</mo>`;
     throw new Error('\\'+c+' is not one this understands');
   }
   if(x.t==='^'||x.t==='_')throw new Error('a stray '+x.t);

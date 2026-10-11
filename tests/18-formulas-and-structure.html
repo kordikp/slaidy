@@ -45,6 +45,23 @@ addEventListener('load',async()=>{
   ok('and says why',/title="[^"]+"/.test(bad));
   ok('unbalanced braces do not throw',/class="tex"/.test(m('\\frac{a')),m('\\frac{a').slice(0,50));
 
+  // brackets and spacing as TeX sets them (they were wrong in lecture slides)
+  const D=x=>{const el=document.createElement('div');el.style.cssText='font-size:32px;position:absolute;left:0;top:0';el.innerHTML=w.tex2mml(x,true);document.body.appendChild(el);return el};
+  const sum=D('y=\\varphi\\left(\\sum_{i=1}^{n} w_i x_i + b\\right)'),fences=[...sum.querySelectorAll('mo[fence]')];
+  const hgt=e=>e?.getBoundingClientRect().height||0;
+  ok('\\left( … \\right) is one group of two fences',fences.length===2&&fences[0].parentElement===fences[1].parentElement,sum.innerHTML.slice(0,90));
+  ok('and both brackets are as tall, around a sum',fences.length===2&&Math.abs(hgt(fences[0])-hgt(fences[1]))<0.5&&hgt(fences[0])>40,fences.map(hgt).join(' vs '));
+  const flat=D('\\left(I + J\\right)^\\top'),ff=[...flat.querySelectorAll('mo[fence]')];
+  ok('around flat content the bracket keeps its normal size',ff.length===2&&ff.every(x=>x.getAttribute('stretchy')==='false'),flat.innerHTML.slice(0,90));
+  const norm=D('\\min_B \\|X-XB\\|^2'),bars=[...norm.querySelectorAll('mo')].filter(x=>x.textContent==='‖');
+  ok('a bare \\| is a double bar of one size, open and close alike',bars.length===2&&Math.abs(hgt(bars[0])-hgt(bars[1]))<0.5,bars.map(hgt).join(' vs '));
+  ok('Greek letters are variables, without operator spacing',/<mi>φ<\/mi>/.test(m('\\varphi(x)'))&&/<mi>λ<\/mi>/.test(m('\\lambda')),m('\\varphi(x)'));
+  ok('a minus is a minus sign, not a hyphen',m('K-1').includes('<mo>\u2212</mo>'),m('K-1'));
+  ok('\\text keeps its spaces',m('\\text{subject to}').includes('<mtext>subject to</mtext>'),m('\\text{subject to}'));
+  ok('set braces and the conditional bar',m('\\{0,1\\}').includes('{</mo>')&&m('q(x \\mid y)').includes('<mo>∣</mo>'),m('\\{0,1\\}'));
+  ok('a \\left without \\right is reported, not drawn',/class="tex"/.test(m('\\left( x')));
+  for(const el of [sum,flat,norm])el.remove();
+
   // ---------- inline maths in a slide ----------
   const html=w.inl('the query embedding $\\mathbf{e}_q$ and $5 < x$');
   ok('inline $…$ renders as maths',(html.match(/<math/g)||[]).length===2,html.slice(0,80));

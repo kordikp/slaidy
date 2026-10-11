@@ -4,6 +4,16 @@ Dates are when the work landed, not when it was released; there are no releases 
 
 ## Unreleased
 
+### Fixed
+- **Formulas set like TeX.** `\left( … \right)` is one group, so its two brackets are always
+  the same size; they grow only around tall content (sums with limits, fractions, roots), as
+  in TeX. Before, only the bracket that ended the row stretched, and a closing bracket came
+  out larger than the opening one. Bare delimiters (`(`, `|`, `\|`, `\{`, `\lfloor`…) keep
+  their size and carry no spacing; Greek letters and ∂, ℓ, ∞ are variables (`<mi>`), so
+  "φ (" and "λ ∑" lose their stray gaps; `-` is a minus sign; `\text{…}` keeps its
+  spaces; `\|` is a double bar; `\{`, `\}`, `\mid`, `\Vert` are known. Found in the NI-MVI
+  lecture slides.
+
 ### Added
 - **A deck that keeps its own time.** ⋯ → Deck settings → *Advance by itself every … seconds*
   (`meta.advance`), or `?auto=20` in the address: the projector moves on by itself, a slide

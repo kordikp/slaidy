@@ -965,6 +965,9 @@ const LAYOUTS=Object.keys(LAY);          /* what markdown will accept as a name 
 
 let S={id:'untitled',title:'Untitled deck',slides:[],figs:{},meta:{},style:{}};
 let cur=0,dirty=false,showing=false,notesOn=false,gridOn=false;
+/* edited: something was changed since this deck was opened — what makes edits held
+   only by the browser worth asking about later. Opening and autosaving is not editing. */
+let edited=false;
 /* Which click of the current slide the projector is on — Beamer calls it the
    overlay. The right arrow spends it before moving on; the left arrow lands on
    the last step of the slide before, which is what going back to check
@@ -1056,12 +1059,13 @@ const KEY=()=>'deck:'+S.id;
 let lastSaved=null,lastSnap=0,saveErr=null;
 function setStatus(state,info){
   const el=document.getElementById('status');if(!el)return;
-  el.className=state;
+  el.className=state==='local'?'warn':state;
   const where=fileName?' → '+fileName:(info?' · '+info:'');
   el.textContent={
     none:'no deck', busy:'saving…',
     ok:'saved '+(lastSaved?lastSaved.toTimeString().slice(0,5):'')+where,
     warn:'unsaved'+(fileName?' — '+fileName:''),
+    local:'only in this browser '+(lastSaved?lastSaved.toTimeString().slice(0,5):'')+' — not saved',
     bad:'⚠ NOT saved — click to download a backup'
   }[state]||state;
   el.title=state==='bad'?(saveErr||'could not write the deck'):
@@ -1315,14 +1319,29 @@ async function persist(){
      moment it was needed was the one moment it did not run. */
   let where=null;
   picGc();
+  /* The index says whether these edits ever left the browser: "unsynced" until a
+     file, the server or a remote storage has taken them. A start-up that finds
+     unsynced edits older than the deck it was given asks what to do with them,
+     instead of quietly showing the other deck. */
+  const at=Date.now();
   try{ where=await put(KEY(),S);
-       await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now()}); }
+       await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at,unsynced:edited}); }
   catch(e){ where=null; }
   try{
     const toDisk=rmtDeck?await writeRemote():(srvDeck&&srvLinked)?await writeServer():await writeFile();
-    lastSaved=new Date();dirty=false;saveErr=null;
+    lastSaved=new Date();saveErr=null;
+    /* Held only by this browser is not saved: closing the tab must still ask,
+       and a deck published as a link will not show these edits next time. */
+    dirty=!toDisk;
+    if(toDisk)put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at,unsynced:false}).catch(()=>{});
+    else if(edited&&!persist.told){
+      persist.told=true;
+      banner('Your edits are kept only in this browser — the deck you opened does not change. '+
+             'Download a copy (or save it to a file) to keep them.',
+        canFile()?'Save to a file':'Download a copy',()=>canFile()?saveDeckAs():downloadDeck());
+    }
     if(Date.now()-lastSnap>90000){lastSnap=Date.now();snapshot().catch(()=>{});}
-    setStatus('ok',toDisk?null:(where==='local storage'?where:'in this browser only'));
+    setStatus(toDisk?'ok':'local',toDisk?null:(where==='local storage'?where:'in this browser only'));
   }catch(e){
     saveErr=e.message||String(e);
     setStatus('bad');
@@ -1388,12 +1407,13 @@ function applyStyle(){
   r.setProperty('--d-body',style('bodySize')+'px');
 }
 function mark(v){dirty=v;if(v)setStatus('warn');}
-function touch(){mark(true);clearTimeout(touch.t);touch.t=setTimeout(persist,800);}
+function touch(){mark(true);edited=true;clearTimeout(touch.t);touch.t=setTimeout(persist,800);}
 function downloadDeck(name){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));
   a.download=(name||S.id||'deck')+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  if(!name){dirty=false;toast('Downloaded — '+a.download);}
 }
 addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
@@ -7932,7 +7952,7 @@ async function boot(){
   const load=b=>{
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
        meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
-    normalise();cur=0;dirty=false;
+    normalise();cur=0;dirty=false;edited=false;
     /* ?s=N opens at slide N and &step=K at the K-th click of it: a link to one
        moment of a talk, and how a screenshot of that moment is taken */
     const q=new URLSearchParams(location.search),at=parseInt(q.get('s')||'',10);
@@ -8039,11 +8059,50 @@ async function boot(){
   }catch(e){}
   if(!file||!Array.isArray(file.slides))return;
 
-  let mine=null,mineAt=0;
+  let mine=null,mineAt=0,unsynced=false;
   try{
     const ix=await IDB.get('index:'+(file.id||'deck'));
-    if(ix&&ix.at){mineAt=ix.at;mine=await get('deck:'+(file.id||'deck'));}
+    if(ix&&ix.at){mineAt=ix.at;unsynced=!!ix.unsynced;mine=await get('deck:'+(file.id||'deck'));}
   }catch(e){}
+  const body=d=>JSON.stringify([d.title,d.slides,d.figs,d.style]);
+  const differs=!!(mine&&mine.slides&&mine.slides.length&&body(mine)!==body(file));
+
+  /* Edits made here that never left the browser, older than the deck this page
+     was given (a newer build of a published deck, a newer file): they are not
+     thrown away and not hidden. The given deck opens, and a choice is put in
+     front of you — the edits are also kept under their own key until you decide. */
+  if(differs&&unsynced&&!(mineAt>fileAt+1000)){
+    const kept=mine,when=new Date(mineAt).toTimeString().slice(0,5),
+          day=new Date(mineAt).toLocaleDateString();
+    try{await put('rescue:'+(file.id||'deck')+':'+mineAt,{t:mineAt,title:kept.title,n:kept.slides.length,deck:kept});}catch(e){}
+    load(file);
+    {
+      dialog(`<h3>Unsaved edits in this browser</h3>
+        <p>You edited this deck here on ${esc(day)} at ${esc(when)}. Those edits never left this browser,
+        and the version you just opened is newer, so it does not contain them. Nothing has been thrown away.</p>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <button class="b pri" id="uKeep">Continue with my edits</button>
+          <button class="b" id="uDl">Download my edits</button>
+          <button class="b" id="uPub">Use the new version, discard my edits</button></div>`);
+      document.getElementById('uKeep').onclick=()=>{load(kept);dirty=true;edited=true;setStatus('local');paint();
+        Promise.all([put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now(),unsynced:true}),
+                     put(KEY(),S)]).catch(()=>{}).then(()=>closeDialog());};
+      document.getElementById('uDl').onclick=()=>{
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([JSON.stringify(kept)],{type:'application/json'}));
+        a.download=(kept.id||'deck')+'-edits-'+new Date(mineAt).toISOString().slice(0,16).replace(/[:T]/g,'')+'.json';
+        a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
+      /* discarding takes a second, deliberate click on the same button */
+      document.getElementById('uPub').onclick=e=>{
+        const b=e.currentTarget;
+        if(!b.dataset.sure){b.dataset.sure='1';
+          b.textContent='Click again to discard the edits from '+when+' (download them first if unsure)';return;}
+        /* written first, closed after: the choice is not made until it is stored */
+        Promise.all([put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at:Date.now(),unsynced:false}),
+                     put(KEY(),S)]).catch(()=>{}).then(()=>closeDialog());};
+    }
+    return;
+  }
 
   if(mine&&mine.slides&&mine.slides.length&&mineAt>fileAt+1000){
     load(mine);

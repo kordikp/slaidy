@@ -86,16 +86,22 @@ for t in "${FILES[@]}"; do
   # rather than whatever the previous one left behind
   cp tests/fixture.json "$WORK/real-deck.json"
   prof="$WORK/prof-$t"
+  if grep -q 'data-realtime' "tests/$t.html"; then
+    # reloads + browser storage: virtual time would fire storage timeouts first
+    out=$(CHROME_BIN="$CHROME" timeout 180 node tests/realtime.mjs "http://localhost:$PORT/$t.html" 150000 2>/dev/null)
+  else
   out=$(timeout 180 "$CHROME" --headless --disable-gpu --no-sandbox --virtual-time-budget=70000 \
         --user-data-dir="$prof" \
         --dump-dom "http://localhost:$PORT/$t.html" 2>/dev/null \
         | sed -n '/<pre id="out">/,/<\/pre>/p' | sed 's/<[^>]*>//g')
+  fi
   p=$(grep -cE '^PASS' <<<"$out"); f=$(grep -cE '^(FAIL|ERROR)' <<<"$out")
   # a file that asserts nothing is a broken file, not a clean run — a syntax
   # error in a test used to report "0 passed, 0 failed" and read as success
   if [ "$p" -eq 0 ] && [ "$f" -eq 0 ]; then
     f=1; out="ERROR $t produced no assertions — syntax error, or it never loaded"
   fi
+  [ -n "${VERBOSE:-}" ] && sed 's/^/       · /' <<<"$out"
   pass=$((pass+p)); fail=$((fail+f))
   printf '  %-32s %3d passed  %d failed\n' "$t" "$p" "$f"
   grep -E '^(FAIL|ERROR)' <<<"$out" | sed 's/^/       /'

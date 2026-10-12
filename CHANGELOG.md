@@ -5,6 +5,18 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Fixed
+- **Edits are never lost quietly.** On a page with no file or server behind it — a deck
+  published as a link, a one-file deck — edits are kept in the browser, and they used to be
+  marked *saved*: closing the tab did not ask, and the next build of a published deck opened
+  over them without a word. A colleague lost an edit that way on GitLab Pages. Now an edit
+  held only by the browser stays *unsaved*: the pill says "only in this browser — not saved",
+  a banner offers to download or save it, and closing the tab asks. A page whose deck is
+  newer than such edits opens with a choice — *Continue with my edits*, *Download my edits*,
+  or *Use the new version, discard my edits*, which takes a second deliberate click — and the
+  edits are kept under their own key meanwhile. Opening and autosaving without editing never
+  counts as an edit. `tests/34-edits-never-vanish.html` covers it; it runs in real time
+  (`data-realtime`, `tests/realtime.mjs`), since virtual time fires storage timeouts before
+  browser storage answers. `VERBOSE=1 tests/run.sh …` prints every assertion.
 - **Formulas set like TeX.** `\left( … \right)` is one group, so its two brackets are always
   the same size; they grow only around tall content (sums with limits, fractions, roots), as
   in TeX. Before, only the bracket that ended the row stretched, and a closing bracket came

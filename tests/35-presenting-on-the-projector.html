@@ -1,0 +1,101 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html?35" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  // A lecture: the laptop lid and a projector. Full screen fills the display the
+  // window is on, which is usually the lid — so the deck has to ask for the other.
+  const lid={label:'eDP-1',isInternal:true},hdmi={label:'HDMI-1',isInternal:false};
+  let ext=true,denied=false,refuse=false,asked=0;
+  const sd={screens:[lid,hdmi],currentScreen:lid};
+  Object.defineProperty(W.screen,'isExtended',{configurable:true,get:()=>ext});
+  W.getScreenDetails=async()=>{asked++;if(denied)throw new W.DOMException('denied','NotAllowedError');return sd;};
+  const calls=[];
+  d.documentElement.requestFullscreen=o=>{calls.push(o||{});
+    if(refuse)return Promise.reject(new TypeError('no user activation'));
+    if(o&&o.screen)sd.currentScreen=o.screen;return Promise.resolve();};
+  d.exitFullscreen=()=>Promise.resolve();
+  const last=()=>calls[calls.length-1]||{};
+  const toastText=()=>d.getElementById('toast').textContent;
+  const key=k=>d.dispatchEvent(new W.KeyboardEvent('keydown',{key:k,bubbles:true}));
+  const stop=async()=>{w.present(false);await wait(80);};
+
+  // --- the window is on the lid: P puts the deck on the projector ---
+  w.present(true);await wait(200);
+  ok('P asks for full screen on the projector, not the lid',last().screen===hdmi,(last().screen||{}).label||'no screen named');
+  ok('and says where it went, and how to move it',/HDMI-1/.test(toastText())&&/\bD\b/.test(toastText()),toastText());
+  ok('the deck is presented',w.showing===true);
+
+  // --- D moves it to the next display, and the show goes on ---
+  key('d');await wait(200);
+  ok('D moves it to the lid',last().screen===lid,(last().screen||{}).label);
+  ok('still presenting after the move',w.showing===true);
+  key('d');await wait(200);
+  ok('D again — back on the projector',last().screen===hdmi,(last().screen||{}).label);
+  await stop();
+
+  // a choice made with D holds while the page is open
+  sd.currentScreen=lid;w.screenPick='eDP-1';
+  w.present(true);await wait(200);
+  ok('a display chosen with D is kept for the next P',last().screen===lid,(last().screen||{}).label);
+  await stop();w.screenPick='';
+
+  // --- the window already on the projector stays there ---
+  sd.currentScreen=hdmi;
+  w.present(true);await wait(200);
+  ok('a window already on the projector fills the projector',last().screen===hdmi,(last().screen||{}).label);
+  await stop();
+
+  // --- a browser that does not say which display is built in: the name does ---
+  const lid2={label:'eDP-1',isInternal:false},dp={label:'DP-2',isInternal:false};
+  ok('eDP / LVDS / built-in in the name count as the lid',w.builtIn(lid2)&&w.builtIn({label:'Built-in Retina Display'})&&!w.builtIn(dp));
+  ok('so the projector is still found',w.pickScreen({screens:[lid2,dp],currentScreen:lid2})===dp);
+  ok('two monitors on a desk, neither built in: it stays where it is',
+     w.pickScreen({screens:[dp,hdmi],currentScreen:dp})===dp);
+
+  // --- the browser's question took longer than the click lasts ---
+  sd.currentScreen=lid;refuse=true;calls.length=0;
+  w.present(true);await wait(200);
+  const turn=d.getElementById('turn');
+  ok('a refused request says how to finish it',turn.classList.contains('on')&&/HDMI-1/.test(turn.textContent),turn.textContent);
+  refuse=false;key('ArrowRight');await wait(200);
+  ok('and the next key puts it on the projector',last().screen===hdmi&&!turn.classList.contains('on'),
+     calls.length+' asks, last on '+((last().screen||{}).label||'—'));
+  await stop();
+
+  // --- not allowed to use other displays: it fills this one and says how to move it ---
+  w.SD=null;denied=true;sd.currentScreen=lid;calls.length=0;
+  w.present(true);await wait(200);
+  ok('denied: full screen here, as before',calls.length===1&&!last().screen);
+  ok('and a line says how to move the window',/Shift/.test(toastText()),toastText());
+  key('d');await wait(200);
+  ok('D says why it cannot',/may not use the other display/.test(toastText()),toastText());
+  await stop();denied=false;w.SD=null;
+
+  // --- one display, or mirrored: exactly as before, nobody is asked anything ---
+  ext=false;asked=0;calls.length=0;
+  w.present(true);await wait(200);
+  ok('one display: nothing is asked about displays',asked===0,asked+' asks');
+  ok('and full screen is asked for as it always was',calls.length===1&&!last().screen);
+  key('d');await wait(150);
+  ok('D says there is only one',/One display/.test(toastText()),toastText());
+  await stop();ext=true;
+
+  // --- a browser without the API (Firefox, Safari) ---
+  const api=W.getScreenDetails;delete W.getScreenDetails;W.getScreenDetails=undefined;w.SD=null;calls.length=0;
+  w.present(true);await wait(200);
+  ok('no API: full screen here',calls.length===1&&!last().screen);
+  ok('with the keys that move the window',/Win\/Super \+ Shift/.test(toastText()),toastText());
+  await stop();W.getScreenDetails=api;
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

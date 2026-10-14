@@ -145,7 +145,7 @@ take away the editing. This does both.
 | **Ask** | say what a slide is for and it writes the slide; ask what it would change and it answers with a list you can strike lines out of; the work waits on its slide while you move on |
 | **Arrange** | pick a shape for the slide — one column, two, three, a cover; the deck holds the shapes and can carry your own |
 | **Build up** | `<!-- step -->` in a slide holds what follows for the next click, Beamer's `\pause`; a figure's shapes carry the click they arrive on (and leave at), so a diagram builds up in place, and the speaker notes can have a part per click |
-| **Present** | `P` for full screen, `N` for notes — the part for this click — `O` for the grid, `H` to rehearse the hidden slides too, tap or swipe on a phone; a deck can keep its own time (a PechaKucha's 20 seconds a slide), `A` pauses it |
+| **Present** | `P` for full screen — with a projector plugged in, on the projector, and `D` moves it to the other display (Chrome and Edge; elsewhere a line says how to move the window) — `N` for notes — the part for this click — `O` for the grid, `H` to rehearse the hidden slides too, tap or swipe on a phone; a deck can keep its own time (a PechaKucha's 20 seconds a slide), `A` pauses it |
 | **Carry** | select slides in the list, `Ctrl-C`, and `Ctrl-V` them into another deck — the figures travel with them |
 | **Picture** | a photo, a screenshot or a plot of a result: paste or drop it, kept once in the deck and described in words, with arrows and labels drawn on top |
 | **Export** | PDF (one page per click, straight to a file under `studio.sh`), markdown, one `.json` bundle, one HTML file with the deck inside that opens from a disk, or the whole deck as an article with the figures rasterised |

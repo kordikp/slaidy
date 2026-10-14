@@ -972,7 +972,7 @@ const layName=k=>(LAYS()[k]||{}).label||k;
 const LAYOUTS=Object.keys(LAY);          /* what markdown will accept as a name */
 
 let S={id:'untitled',title:'Untitled deck',slides:[],figs:{},meta:{},style:{}};
-let cur=0,dirty=false,showing=false,notesOn=false,gridOn=false;
+let cur=0,dirty=false,showing=false,fsGuard=false,notesOn=false,gridOn=false;
 /* edited: something was changed since this deck was opened — what makes edits held
    only by the browser worth asking about later. Opening and autosaving is not editing. */
 let edited=false;
@@ -6797,6 +6797,7 @@ function shortcuts(){
    ['green','words alone'],['blue','words and a picture'],['purple','a picture alone'],
    ['amber','it has a table'],['grey','nothing on it yet'],
    ['§while presenting',''],
+   ['D','move it to the other display — the projector, or back'],
    ['H','walk through the hidden ones too, for a rehearsal'],
    ['N','speaker notes — on a slide with clicks, the part for this click'],['O','the overview grid'],
    ['A','pause or resume a deck that advances by itself (⋯ → Deck settings)'],
@@ -7468,17 +7469,15 @@ function advance(d){
   }
   paintDeck();
 }
-function armFullscreen(){
-  if(document.fullscreenElement)return;
+function armFullscreen(line){
+  if((document.fullscreenElement&&!line)||armFullscreen.on)return;
+  armFullscreen.on=true;
   const t=document.getElementById('turn');
-  if(t){t.textContent='Click, or press any key, to fill the screen';
+  if(t){t.textContent=line||'Click, or press any key, to fill the screen';
         t.classList.remove('on');void t.offsetWidth;t.classList.add('on');}
-  const go=()=>{
-    off();
-    try{const p=document.documentElement.requestFullscreen({navigationUI:'hide'});
-        if(p&&p.catch)p.catch(()=>{});}catch(e){}
-  };
+  const go=()=>{off();if(showing)fillScreen(true);};
   const off=()=>{
+    armFullscreen.on=false;
     document.removeEventListener('pointerdown',go,true);
     document.removeEventListener('keydown',go,true);
     if(t)t.classList.remove('on');
@@ -7486,10 +7485,66 @@ function armFullscreen(){
   document.addEventListener('pointerdown',go,true);
   document.addEventListener('keydown',go,true);
 }
+
+/* ---------- which display ----------
+   Full screen fills the display the window is on, and with a projector plugged
+   in that is usually the laptop: the lecture came up on the lid, full screen,
+   and a full-screen window cannot be dragged anywhere. Chrome and Edge can be
+   asked for another display (the browser asks once whether the page may use
+   them), so P puts the deck on the projector — the display that is not built
+   into the laptop — and D moves it to the next one. Elsewhere the line says how
+   to move the window. A choice made with D holds until the page is closed; the
+   next lecture starts from the rule again, not from a rehearsal at home. */
+let SD=null,screenPick='';
+const builtIn=s=>!!s&&(s.isInternal||/^(eDP|LVDS|DSI)|built-?in|internal/i.test(s.label||''));
+const screenName=s=>(s&&s.label)||'the other display';
+const twoScreens=()=>!!(window.screen&&window.screen.isExtended);
+async function screenDetails(){
+  if(SD||!window.getScreenDetails||!twoScreens())return SD;
+  try{SD=await window.getScreenDetails();}catch(e){SD=null;}
+  return SD;
+}
+function pickScreen(sd){
+  if(!sd||!sd.screens||sd.screens.length<2)return null;
+  const L=[...sd.screens],here=sd.currentScreen;
+  const chosen=screenPick&&L.find(s=>s.label===screenPick);
+  if(chosen)return chosen;
+  if(builtIn(here))return L.find(s=>!builtIn(s))||here;
+  return here;
+}
+function screenOpts(scr){return scr?{navigationUI:'hide',screen:scr}:{navigationUI:'hide'};}
+/* Asked for, not waited on: present() paints the deck whatever the answer. */
+async function fillScreen(retried){
+  let scr=null;
+  if(twoScreens()&&window.getScreenDetails)scr=pickScreen(await screenDetails());
+  try{
+    await document.documentElement.requestFullscreen(screenOpts(scr));
+    if(scr&&SD)toast('On '+screenName(scr)+' — D moves it to the other display');
+  }catch(e){
+    /* the browser's question took longer than a click lasts */
+    if(scr&&!retried&&showing)armFullscreen('Click, or press any key, to show it on '+screenName(scr));
+  }
+  if(twoScreens()&&!SD)toast('Two displays: if this is the wrong one, Win/Super + Shift + ← → moves the window');
+}
+async function otherScreen(){
+  const sd=await screenDetails();
+  if(!sd||sd.screens.length<2){
+    toast(!twoScreens()?'One display — nothing else is plugged in, or it mirrors this one':
+      !window.getScreenDetails?'This browser cannot choose the display — Win/Super + Shift + ← → moves the window':
+      'This site may not use the other display — allow Window management (address bar), or Win/Super + Shift + ← →');
+    return;
+  }
+  const L=[...sd.screens],next=L[(L.indexOf(sd.currentScreen)+1)%L.length];
+  screenPick=next.label||'';
+  fsGuard=true;
+  try{await document.documentElement.requestFullscreen(screenOpts(next));
+      toast('On '+screenName(next)+' — D for the other');}
+  catch(e){armFullscreen('Click, or press any key, to show it on '+screenName(next));}
+  setTimeout(()=>{fsGuard=false;},400);
+}
 async function present(on){
   showing=on;
-  if(on){ try{ const p=document.documentElement.requestFullscreen({navigationUI:'hide'});
-               if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+  if(on)fillScreen();
   else if(document.fullscreenElement){
     fsGuard=true;
     try{ const p=document.exitFullscreen(); if(p&&p.then)await Promise.race([p,new Promise(r=>setTimeout(r,400))]); }catch(e){}
@@ -7551,7 +7606,8 @@ document.addEventListener('keydown',e=>{
     else if(e.key==='a'||e.key==='A'){e.preventDefault();autoToggle();}
     else if(e.key==='n'||e.key==='N'){notesOn=!notesOn;document.getElementById('notes').classList.toggle('on',notesOn);fit();}
     else if(e.key==='o'||e.key==='O'){gridOn=!gridOn;document.getElementById('grid').classList.toggle('on',gridOn);if(gridOn)paintGrid();}
-    else if(e.key==='f'||e.key==='F'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch(x){}}
+    else if(e.key==='f'||e.key==='F'){try{document.fullscreenElement?document.exitFullscreen():fillScreen();}catch(x){}}
+    else if(e.key==='d'||e.key==='D'){e.preventDefault();otherScreen();}
   }else{
     const mod=e.ctrlKey||e.metaKey;
     if(e.altKey&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();moveSlide(e.key==='ArrowDown'?1:-1);}

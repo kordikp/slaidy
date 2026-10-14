@@ -5,6 +5,17 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Fixed
+- **The deck goes to the projector.** Full screen fills the display the browser window is on,
+  and with a projector plugged in that is usually the laptop: a lecture came up full screen
+  on the lid, and a full-screen window cannot be dragged anywhere. Now `P` asks Chrome or Edge
+  for the display that is not built into the laptop (the browser asks once whether the page
+  may use your displays), says where the deck went, and `D` moves it to the next display and
+  back — the show goes on. A window already on the projector stays there; two monitors on a
+  desk, neither built in, stay as they were; one display, or a mirrored one, works exactly as
+  before. Where the browser cannot choose (Firefox, Safari) or was told not to, the deck fills
+  this display and a line says how to move the window (`Win/Super + Shift + ← →`). Leaving full
+  screen now always ends the show: the flag that tells a deliberate exit from a move was never
+  declared, so the first exit threw instead. `tests/35-presenting-on-the-projector.html`.
 - **A PDF from the print dialog is just the slides.** The "press P to present" banner of a
   shared deck is `position:fixed`, and a fixed element prints on every page: it came out as a
   black bar over each slide, its blurred shadow a bitmap on every page (0.8 MB in a 70-page

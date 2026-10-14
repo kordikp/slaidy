@@ -1068,7 +1068,8 @@ let lastSaved=null,lastSnap=0,saveErr=null;
 function setStatus(state,info){
   const el=document.getElementById('status');if(!el)return;
   el.className=state==='local'?'warn':state;
-  const where=fileName?' → '+fileName:(info?' · '+info:'');
+  const where=state==='ok'&&GL&&GL.saved&&!edited&&S.git&&S.git.commit?' → GitLab '+S.git.commit:
+    fileName?' → '+fileName:(info?' · '+info:'');
   el.textContent={
     none:'no deck', busy:'saving…',
     ok:'saved '+(lastSaved?lastSaved.toTimeString().slice(0,5):'')+where,
@@ -1244,8 +1245,8 @@ async function openDeckFile(){
       const b=await r.json();
       if(!b.slides)throw new Error('that file is not a deck');
       S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-         meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
-      normalise();cur=0;dirty=false;unbanner();
+         meta:b.meta||{},style:b.style||{},assets:b.assets||{},...(b.git?{git:b.git}:{})};
+      normalise();glBase();cur=0;dirty=false;unbanner();
       srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
       lastSaved=new Date();setStatus('ok');
       document.getElementById('welcome').classList.add('hidden');
@@ -1266,8 +1267,8 @@ async function openDeckFile(){
     const b=JSON.parse(await (await h.getFile()).text());
     if(!b.slides)throw new Error('that file is not a deck');
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-       meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
-    normalise();cur=0;dirty=false;
+       meta:b.meta||{},style:b.style||{},assets:b.assets||{},...(b.git?{git:b.git}:{})};
+    normalise();glBase();cur=0;dirty=false;
     srvLinked=false;                 /* this file is now the deck's home, not the served one */
     unbanner();
     await rememberHandle(h);
@@ -1336,7 +1337,8 @@ async function persist(){
        await put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at,unsynced:edited}); }
   catch(e){ where=null; }
   try{
-    const toDisk=rmtDeck?await writeRemote():(srvDeck&&srvLinked)?await writeServer():await writeFile();
+    let toDisk=rmtDeck?await writeRemote():(srvDeck&&srvLinked)?await writeServer():await writeFile();
+    if(!toDisk&&GL.saved&&!edited&&S.git)toDisk=true;    /* committed to GitLab, nothing since */
     lastSaved=new Date();saveErr=null;
     /* Held only by this browser is not saved: closing the tab must still ask,
        and a deck published as a link will not show these edits next time. */
@@ -1344,7 +1346,9 @@ async function persist(){
     if(toDisk)put('index:'+S.id,{id:S.id,title:S.title,n:S.slides.length,at,unsynced:false}).catch(()=>{});
     else if(edited&&!persist.told){
       persist.told=true;
-      banner('Your edits are kept only in this browser — the deck you opened does not change. '+
+      if(glOn())banner('Your edits are kept in this browser until you save them to GitLab (Ctrl-S).',
+        'Save to GitLab',()=>glSave());
+      else banner('Your edits are kept only in this browser — the deck you opened does not change. '+
              'Download a copy (or save it to a file) to keep them.',
         canFile()?'Save to a file':'Download a copy',()=>canFile()?saveDeckAs():downloadDeck());
     }
@@ -1359,6 +1363,299 @@ async function persist(){
       : `Not saved to ${fileName||'disk'} — ${saveErr}. Your work is safe in this browser.`,
       'Download a copy',()=>downloadDeck());
   }
+}
+/* ---------- saving to GitLab ----------
+   A deck built from markdown in a GitLab repository and published there (Pages)
+   knows where it came from: the build writes S.git — the server, the project and
+   branch, the OAuth application, and for every slide the file and a fingerprint
+   of the block it was built from. Save commits only what changed, as markdown:
+   an edited slide replaces its own block in the file as it is on GitLab now,
+   found there by that fingerprint, so what someone else committed in the
+   meantime stays. Where that cannot be done safely — the same slide changed on
+   GitLab too, or slides were added, removed or moved in a file that someone
+   else changed — nothing is written; the edits stay here and a download is
+   offered. Between saves the browser holds the edits, as before: a commit per
+   keystroke would bury the history. */
+var GL={go:u=>location.assign(u),saved:false};   /* var: setStatus may ask before this line has run */
+const GL_SLIDE=/^### (\d+)\.\s*`\[([SDEB])\]`\s*(.+?)\s*$/gm,GL_SUB=/^##\s+(?!#)(.+?)\s*$/gm;
+/* the same cut scripts/build_bundle.py makes: a slide runs from its ### line to
+   the next ### or ## line */
+function glBlocks(text){
+  const marks=[...text.matchAll(GL_SLIDE)].map(m=>({k:'s',a:m.index,num:m[1]}))
+    .concat([...text.matchAll(GL_SUB)].map(m=>({k:'sub',a:m.index}))).sort((x,y)=>x.a-y.a);
+  const blocks=[];
+  marks.forEach((m,i)=>{if(m.k!=='s')return;
+    const b=i+1<marks.length?marks[i+1].a:text.length;
+    blocks.push({a:m.a,b,num:m.num,text:text.slice(m.a,b)});});
+  return {blocks,subs:marks.some(m=>m.k==='sub'),head:marks.length?text.slice(0,marks[0].a):text};
+}
+async function glKey(t){
+  const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(t).replace(/\s+$/,'')));
+  return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,20);
+}
+/* a fingerprint of what a slide says, to tell an edited slide from one that is
+   only written differently from its file (SlAIdy's own spelling) */
+function fp(t){let a=0xdeadbeef,b=0x41c6ce57;t=String(t);
+  for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677);}
+  a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);
+  b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);
+  return (4294967296*(2097151&b)+(a>>>0)).toString(36);}
+const slideFp=s=>fp(slideMd(Object.assign({},s,{n:0})));
+const glOn=()=>!!(S.git&&S.git.ready&&S.git.clientId&&S.git.host&&window.crypto&&crypto.subtle&&
+  (location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname)));
+/* What the deck said when it was opened, before any edit: the base a save is
+   measured from. Taken once — a copy the browser held keeps the base it had. */
+function glBase(){
+  const g=S.git;if(!g||g.ready)return;
+  S.slides.forEach(s=>{if(s.src)s.src.m=slideFp(s);});
+  g.fm={};for(const k in S.figs)g.fm[k]=fp(S.figs[k]);
+  g.dm=JSON.stringify([S.title,S.meta||{},S.style||{}]);
+  g.ready=true;
+}
+const glEnc=encodeURIComponent;
+function glUtf8(b64){return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s+/g,'')),c=>c.charCodeAt(0)));}
+const b64url=u=>btoa(String.fromCharCode(...u)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const GL_TOK=h=>'slaidy-gitlab:'+h;
+function glStored(){try{return JSON.parse(sessionStorage.getItem(GL_TOK(S.git.host))||'null');}catch(e){return null;}}
+function glKeep(host,j){
+  const t={access:j.access_token,refresh:j.refresh_token||null,exp:Date.now()+1000*(+j.expires_in||7200)};
+  try{sessionStorage.setItem(GL_TOK(host),JSON.stringify(t));}catch(e){}
+  return t;
+}
+async function glOauth(host,body){
+  const r=await fetch(host+'/oauth/token',{method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok||!j.access_token)throw new Error(j.error_description||j.error||('GitLab answered '+r.status));
+  return glKeep(host,j);
+}
+async function glToken(){
+  const g=S.git,t=glStored();
+  if(t&&t.exp>Date.now()+60000)return t;
+  if(t&&t.refresh)try{return await glOauth(g.host,{grant_type:'refresh_token',refresh_token:t.refresh,
+    client_id:g.clientId,redirect_uri:g.redirect});}catch(e){}
+  return null;
+}
+async function glApi(path,opt){
+  opt=opt||{};
+  let t=await glToken();if(!t)throw Object.assign(new Error('not signed in'),{auth:true});
+  const go=()=>fetch(S.git.host+'/api/v4'+path,Object.assign({},opt,
+    {headers:Object.assign({},opt.headers||{},{Authorization:'Bearer '+t.access})}));
+  let r=await go();
+  if(r.status===401){
+    try{sessionStorage.removeItem(GL_TOK(S.git.host));}catch(e){}
+    if(t.refresh){t=await glToken();if(t)r=await go();}
+    if(r.status===401)throw Object.assign(new Error('the GitLab sign-in expired'),{auth:true});
+  }
+  return r;
+}
+/* Signing in leaves the page, so everything is in the browser's storage first
+   and the slide you were on comes back with you. PKCE: no secret in the page. */
+async function glSignIn(){
+  const g=S.git;
+  await persist();
+  const v=b64url(crypto.getRandomValues(new Uint8Array(48))),st=b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const ch=b64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))));
+  try{sessionStorage.setItem('slaidy-oauth',JSON.stringify({v,st,cur,deck:S.id,host:g.host,
+    clientId:g.clientId,redirect:g.redirect,at:Date.now()}));}catch(e){}
+  dirty=false;          /* stored above; leaving is not losing it */
+  setTimeout(()=>{dirty=true;},4000);   /* unless the page did not leave */
+  GL.go(g.host+'/oauth/authorize?'+new URLSearchParams({client_id:g.clientId,redirect_uri:g.redirect,
+    response_type:'code',state:st,scope:'api',code_challenge:ch,code_challenge_method:'S256'}));
+}
+/* Back from GitLab with ?code=…&state=…: the code becomes a token, the address
+   is cleaned, and the save that sent you there carries on once the deck is up. */
+async function glReturn(search){
+  const q=new URLSearchParams(search==null?location.search:search);
+  const code=q.get('code'),st=q.get('state'),err=q.get('error'),why=q.get('error_description');
+  if(!code&&!err)return null;
+  let o=null;try{o=JSON.parse(sessionStorage.getItem('slaidy-oauth')||'null');}catch(e){}
+  if(search==null){['code','state','error','error_description'].forEach(k=>q.delete(k));
+    try{history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash);}catch(e){}}
+  if(!o||o.st!==st)return null;
+  try{sessionStorage.removeItem('slaidy-oauth');}catch(e){}
+  if(err)return {o,error:why||err};
+  try{await glOauth(o.host,{grant_type:'authorization_code',code,client_id:o.clientId,
+    redirect_uri:o.redirect,code_verifier:o.v});return {o};}
+  catch(e){return {o,error:e.message};}
+}
+function glResume(back){
+  if(!back)return;
+  if(back.error){toast('GitLab sign-in did not finish — '+back.error);return;}
+  if(S.id===back.o.deck&&back.o.cur<S.slides.length){cur=back.o.cur;paint();}
+  if(!glOn())return;
+  if(document.getElementById('veil').classList.contains('on')){toast('Signed in to GitLab — Ctrl-S saves there');return;}
+  glSave();
+}
+async function glRead(p){
+  const g=S.git;
+  const r=await glApi(`/projects/${glEnc(g.project)}/repository/files/${glEnc(p)}?ref=${glEnc(g.branch)}`);
+  if(r.status===404)return {text:null};
+  if(!r.ok)throw glFail(r,await r.text().catch(()=>''));
+  const j=await r.json(),text=glUtf8(j.content||'');
+  const v=Object.assign({text,last:j.last_commit_id},glBlocks(text));
+  for(const b of v.blocks)b.h=await glKey(b.text);
+  return v;
+}
+function glFail(r,body){
+  let said='';try{said=JSON.parse(body).message||'';}catch(e){}
+  const e=new Error(r.status===403?'your GitLab account may read this project but not write to '+
+      ((S.git&&S.git.branch)||'it')+(said?' (GitLab: '+String(said).slice(0,100)+')':'')+' — ask its maintainer for write access':
+    r.status===404?'GitLab does not show you this project':('GitLab answered '+r.status+(body?': '+String(body).slice(0,160):'')));
+  e.status=r.status;return e;
+}
+/* What a save would commit, worked out against GitLab as it is now. */
+async function glPlan(){
+  const g=S.git,files={},read=async p=>files[p]||(files[p]=await glRead(p));
+  const conflicts=[],refused=[],actions=[],titles=[],after=[];
+  const base=g.blocks||{},seen=new Set(),want={};
+  for(const s of S.slides){
+    const k=s.src&&(s.src.file+'#'+s.src.h);
+    const known=!!(s.src&&(base[s.src.file]||[]).includes(s.src.h)&&!seen.has(k));
+    if(known)seen.add(k);
+    const f=known&&(g.groupOf||{})[s.src.file]===s.group?s.src.file:(g.files||{})[s.group];
+    if(!f){refused.push(`“${s.title}” is in a section (${s.group}) that has no file on GitLab yet`);continue;}
+    (want[f]=want[f]||[]).push({s,id:known?s.src:null,changed:!known||s.src.m!==slideFp(s)});
+  }
+  for(const f of [...new Set(Object.keys(base).concat(Object.keys(want)))]){
+    const was=base[f]||[],mine=want[f]||[];
+    const moved=mine.length!==was.length||mine.some((x,i)=>!x.id||x.id.file!==f||x.id.h!==was[i]);
+    const edits=mine.filter(x=>x.changed);
+    if(!moved&&!edits.length)continue;
+    if((g.generated||[]).includes(f)){
+      refused.push(`${f} is written by a script from other sources, so a change there would be overwritten`);continue;}
+    const head=await read(f);
+    if(head.text===null){conflicts.push(`${f} is no longer on GitLab`);continue;}
+    const at=h=>head.blocks.find(b=>b.h===h);
+    const md=(s,num)=>slideMd(Object.assign({},s,{n:num==null?s.n:num})).replace(/\s+$/,'');
+    let text;
+    if(!moved){
+      /* only edits: each one into its own block, wherever that block is now */
+      const put=[];
+      for(const x of edits){const b=at(x.id.h);
+        if(!b){conflicts.push(`“${x.s.title}” was changed on GitLab as well`);continue;}
+        x.out=md(x.s,b.num);put.push({b,md:x.out,x});}
+      if(put.length<edits.length)continue;
+      text=head.text;
+      put.sort((p,q)=>q.b.a-p.b.a).forEach(p=>{
+        const tail=p.b.text.slice(p.b.text.replace(/\s+$/,'').length);
+        text=text.slice(0,p.b.a)+p.md+tail+text.slice(p.b.b);});
+    }else{
+      /* slides added, removed or moved: the file is written in the deck's order,
+         which is only safe if nobody else has touched it since */
+      if(head.subs){conflicts.push(`${f} has ## subsections, which a save cannot reorder yet`);continue;}
+      if(head.blocks.map(b=>b.h).join()!==was.join()){conflicts.push(`${f} was changed on GitLab as well`);continue;}
+      text=head.head+mine.map(x=>{const b=x.id&&at(x.id.h);
+        return !x.changed&&b?b.text.replace(/\s+$/,''):(x.out=md(x.s,b?b.num:null));}).join('\n\n')+'\n';
+    }
+    if(text===head.text)continue;
+    actions.push({action:'update',file_path:f,content:text,last_commit_id:head.last});
+    edits.forEach(x=>titles.push(x.s.title));
+    if(moved&&!edits.length)titles.push(f.replace(/^.*\//,'')+' (order)');
+    after.push({f,mine,text});
+  }
+  const figs=[];
+  for(const id in S.figs){
+    if((g.fm||{})[id]===fp(S.figs[id]))continue;
+    const svg=stored(S.figs[id]),p=(g.figdir||'figures')+'/'+id+'.svg';
+    if(/asset:/.test(svg)){refused.push(`figure ${id} holds a picture, which the repository build cannot read`);continue;}
+    const head=await read(p);
+    if(head.text===null)actions.push({action:'create',file_path:p,content:svg.trim()+'\n'});
+    else if((g.figh||{})[id]&&await glKey(head.text.trim())===g.figh[id])
+      actions.push({action:'update',file_path:p,content:svg.trim()+'\n',last_commit_id:head.last});
+    else{conflicts.push(`figure ${id} was changed on GitLab as well`);continue;}
+    figs.push(id);titles.push('figure '+id);
+  }
+  const dm=JSON.stringify([S.title,S.meta||{},S.style||{}]);
+  if(g.dm&&dm!==g.dm&&g.meta){
+    const head=await read(g.meta);
+    let j=null;try{j=head.text&&JSON.parse(head.text);}catch(e){}
+    const [t0,m0]=JSON.parse(g.dm);
+    if(!j||JSON.stringify([j.title,j.meta||{},j.style||{}])!==g.dm)conflicts.push('the deck settings were changed on GitLab as well');
+    else{
+      j.title=S.title;
+      const m=Object.assign({},j.meta||{});
+      for(const k of new Set(Object.keys(m0).concat(Object.keys(S.meta||{}))))
+        if(JSON.stringify(m0[k])!==JSON.stringify((S.meta||{})[k])){if((S.meta||{})[k]===undefined)delete m[k];else m[k]=S.meta[k];}
+      j.meta=m;j.style=Object.assign({},S.style||{});
+      actions.push({action:'update',file_path:g.meta,content:JSON.stringify(j,null,2)+'\n',last_commit_id:head.last});
+      titles.push(t0!==S.title?'the deck title':'deck settings');
+    }
+  }
+  return {actions,conflicts,refused,titles,after,figs,dm};
+}
+function glMessage(titles){
+  const t=[...new Set(titles)];
+  return (t.length===1?`Edit ${/^(figure|the deck|deck settings)/.test(t[0])?t[0]:'“'+t[0]+'”'}`:
+    `Edit ${t.length} slides and files: `+t.slice(0,4).map(x=>/^(figure|the deck|deck settings)|\(order\)$/.test(x)?x:'“'+x+'”').join(', ')+
+    (t.length>4?', …':''))+'\n\nSaved from SlAIdy.';
+}
+async function glSave(){
+  if(!glOn())return false;
+  if(glSave.busy)return;glSave.busy=true;
+  const done=busy('Saving to GitLab…');
+  try{
+    await persist();                       /* the browser copy first, whatever happens next */
+    if(!await glToken()){done();return glAsk();}
+    let plan=await glPlan();
+    if(plan.conflicts.length||plan.refused.length)return glStop(plan);
+    if(!plan.actions.length){GL.saved=true;dirty=false;edited=false;await persist();
+      toast('Nothing to save — GitLab already has this');return;}
+    const g=S.git,post=()=>glApi(`/projects/${glEnc(g.project)}/repository/commits`,{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({branch:g.branch,commit_message:glMessage(plan.titles),actions:plan.actions})});
+    let r=await post();
+    /* a file moved between reading and writing: read again, once */
+    if(r.status===400){plan=await glPlan();
+      if(plan.conflicts.length||plan.refused.length)return glStop(plan);r=await post();}
+    if(!r.ok)throw glFail(r,await r.text().catch(()=>''));
+    const c=await r.json();
+    /* what was written is the new base */
+    for(const a of plan.after){
+      const list=[];
+      for(const x of a.mine){
+        const h=x.out!=null?await glKey(x.out):x.id.h;
+        x.s.src={file:a.f,h,m:slideFp(x.s)};list.push(h);
+      }
+      g.blocks[a.f]=list;
+    }
+    for(const s of S.slides)if(s.src)s.src.m=slideFp(s);
+    g.fm=g.fm||{};g.figh=g.figh||{};
+    for(const id of plan.figs){g.fm[id]=fp(S.figs[id]);g.figh[id]=await glKey(stored(S.figs[id]).trim());}
+    g.dm=plan.dm;g.commit=c.short_id||String(c.id||'').slice(0,8);
+    GL.saved=true;edited=false;dirty=false;
+    await persist();unbanner();
+    setStatus('ok');
+    toast(`Saved to GitLab (${g.commit}) — the site updates when its pipeline has run`);
+    return true;
+  }catch(e){
+    if(e.auth){done();return glAsk();}
+    saveErr=e.message;setStatus('bad');
+    banner(`Not saved to GitLab — ${e.message}. Your edits are safe in this browser.`,'Download a copy',()=>downloadDeck());
+  }finally{glSave.busy=false;done();}
+}
+function glAsk(){
+  const g=S.git;
+  dialog(`<h3>Save to GitLab</h3><p>The slides you changed go to <b>${esc(g.project)}</b> on
+    ${esc(g.host.replace(/^https?:\/\//,''))} as markdown, committed under your name. Sign in once
+    for this tab — your edits are kept in this browser while you do.</p>
+    <div class="rw" style="margin-top:14px"><button class="b p" id="glIn">Sign in and save</button>
+    <button class="b" id="glDl">Download a copy instead</button></div>`);
+  document.getElementById('glIn').onclick=()=>{closeDialog();glSignIn();};
+  document.getElementById('glDl').onclick=()=>{closeDialog();downloadDeck();};
+}
+function glStop(plan){
+  setStatus('local');
+  const li=a=>a.map(x=>`<li>${esc(x)}</li>`).join('');
+  dialog(`<h3>Not saved to GitLab</h3>
+    <p>Nothing was written, and your edits are safe in this browser.</p>
+    ${plan.conflicts.length?`<p>Someone else changed the same thing since this version was published:</p><ul>${li(plan.conflicts)}</ul>
+      <p class="tip">Download your edits, reload to get the new version, and redo them there — or ask the deck owner to merge them.</p>`:''}
+    ${plan.refused.length?`<p>This cannot be saved from here:</p><ul>${li(plan.refused)}</ul>`:''}
+    <div class="rw" style="margin-top:14px"><button class="b p" id="glDl">Download my edits</button>
+    <button class="b" id="glOk">Close</button></div>`);
+  document.getElementById('glDl').onclick=()=>downloadDeck();
+  document.getElementById('glOk').onclick=()=>closeDialog();
 }
 async function snapshot(){
   const ts=Date.now();
@@ -2480,7 +2777,7 @@ const NOTE_MD=/^\*(?:Delivery note|Transition)[^:]*:\*[ \t]*(.*(?:\n(?!\*[A-Z][^
 /* what a slide is made of, as far as this editor knows; anything else on a slide
    is somebody else's data and is carried, not dropped */
 const SLIDE_KEYS=new Set(['n','tag','group','sub','title','layout','textScale','body','notes','summary',
-  'skip','flags','style','fig','figScale']);
+  'skip','flags','style','fig','figScale','src']);
 function importMarkdown(name,text){
   const slides=[];
   const act=(text.match(/^#\s+(.+)$/m)||[])[1]||name.replace(/\.md$/,'');
@@ -7621,6 +7918,7 @@ document.addEventListener('keydown',e=>{
     else if(mod&&e.key==='Enter'){e.preventDefault();document.getElementById('bNew').click();}
     else if(mod&&e.key==='s'){e.preventDefault();
       if(e.shiftKey)saveDeckAs();
+      else if(glOn()&&!(srvDeck&&srvLinked)&&!fileHandle&&!rmtDeck)glSave();
       else persist().then(()=>toast(fileName?'Saved to '+fileName:'Saved in this browser'));}
     else if(mod&&e.key==='z'){e.preventDefault();undo();}
     else if(e.key==='ArrowDown'||e.key==='j'){e.preventDefault();cur=Math.min(S.slides.length-1,cur+1);paint();}
@@ -7835,6 +8133,7 @@ document.getElementById('bUndo').onclick=undo;
 document.getElementById('bSaveNow').onclick=async()=>{
   /* If there is nowhere for it to go, the button that says Save asks where.
      Saving into the browser and reporting "Saved" is how work is lost. */
+  if(glOn()&&!(srvDeck&&srvLinked)&&!fileHandle&&!rmtDeck)return glSave();
   if(!(srvDeck&&srvLinked)&&!fileHandle)return saveDeckAs();
   const b=document.getElementById('bSaveNow');b.disabled=true;
   await persist();b.disabled=false;
@@ -7970,8 +8269,8 @@ async function recentDecks(){
       const bdy=await r.json();
       if(!r.ok||!bdy.slides)throw new Error(bdy.error||'that file is not a deck');
       S={id:bdy.id||'deck',title:bdy.title||'Deck',slides:bdy.slides||[],figs:bdy.figs||{},
-         meta:bdy.meta||{},style:bdy.style||{},assets:bdy.assets||{}};
-      normalise();cur=0;dirty=false;unbanner();
+         meta:bdy.meta||{},style:bdy.style||{},assets:bdy.assets||{},...(bdy.git?{git:bdy.git}:{})};
+      normalise();glBase();cur=0;dirty=false;unbanner();
       srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
       lastSaved=new Date();setStatus('ok');closeDialog();
       document.getElementById('welcome').classList.add('hidden');
@@ -8015,8 +8314,8 @@ async function boot(){
 
   const load=b=>{
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-       meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
-    normalise();cur=0;dirty=false;edited=false;
+       meta:b.meta||{},style:b.style||{},assets:b.assets||{},...(b.git?{git:b.git}:{})};
+    normalise();glBase();cur=0;dirty=false;edited=false;
     /* ?s=N opens at slide N and &step=K at the K-th click of it: a link to one
        moment of a talk, and how a screenshot of that moment is taken */
     const q=new URLSearchParams(location.search),at=parseInt(q.get('s')||'',10);
@@ -8170,6 +8469,7 @@ async function boot(){
 
   if(mine&&mine.slides&&mine.slides.length&&mineAt>fileAt+1000){
     load(mine);
+    if(!unsynced&&S.git&&S.git.commit){GL.saved=true;setStatus('ok');return;}
     dirty=true;setStatus('warn');
     if(!byLink){
       toast('Continuing with your edits — newer than the file on disk');
@@ -8233,5 +8533,5 @@ function banner(text,label,fn,key){
   document.getElementById('nudgeGo').onclick=()=>{el.classList.remove('on');fn();};
   document.getElementById('nudgeNo').onclick=()=>{el.classList.remove('on');if(key)hush(key);};
 }
-boot();
+glReturn().then(back=>boot().then(()=>glResume(back)));
 </script></body></html>

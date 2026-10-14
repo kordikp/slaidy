@@ -1,0 +1,158 @@
+<!doctype html><meta charset=utf-8><body data-realtime><iframe id=f src="/index.html?36" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (W.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  // A deck published from a GitLab repository: its markdown lives in two files,
+  // one per section, and Save commits the edited slides back into them.
+  const HOST='https://git.example.org',PROJECT='team/talk';
+  const groups=[...new Set(w.S.slides.map(s=>s.group))].slice(0,2);
+  w.S.slides=groups.flatMap(g=>w.S.slides.filter(s=>s.group===g).slice(0,3));w.normalise();
+  const files={},file=g=>'slides/0'+(groups.indexOf(g)+1)+'.md';
+  for(const g of groups)files[file(g)]=`# ${g}\n\n`+w.S.slides.filter(s=>s.group===g)
+    .map(s=>w.slideMd(s).trim()+'\n\n*Skip:* no — a comment the editor does not keep\n').join('\n');
+  const base={};
+  for(const p in files){const bl=W.glBlocks(files[p]).blocks;base[p]=await Promise.all(bl.map(b=>W.glKey(b.text)));}
+  const per={};w.S.slides.forEach(s=>{const p=file(s.group);per[p]=(per[p]||0);s.src={file:p,h:base[p][per[p]++]};});
+  const figId=Object.keys(w.S.figs)[0];
+  if(figId)files['figures/'+figId+'.svg']=w.S.figs[figId]+'\n';
+  files['slides/deck.meta.json']=JSON.stringify({title:w.S.title,meta:w.S.meta||{},style:w.S.style||{},groups:{}},null,2)+'\n';
+  w.S.git={host:HOST,project:PROJECT,branch:'main',clientId:'app-1',redirect:'https://deck.example.org/',
+    meta:'slides/deck.meta.json',figdir:'figures',generated:[file(groups[1])],
+    files:Object.fromEntries(groups.map(g=>[g,file(g)])),groupOf:Object.fromEntries(groups.map(g=>[file(g),g])),
+    blocks:base,figh:figId?{[figId]:await W.glKey(w.S.figs[figId])}:{}};
+  W.glBase();
+  ok('the base is taken when the deck opens',w.S.git.ready&&w.S.slides.every(s=>s.src.m));
+
+  // GitLab, stood in for — and this deck is not the file the test server serves
+  const linked=w.srvLinked;w.srvLinked=false;
+  let status=0,commits=[],reads=0,tokenBody=null;
+  const enc=t=>W.btoa(String.fromCharCode(...new W.TextEncoder().encode(t)));
+  const realFetch=W.fetch;
+  W.fetch=async(u,o)=>{u=String(u);
+    if(u===HOST+'/oauth/token'){tokenBody=String(o.body);
+      return new W.Response(JSON.stringify({access_token:'tok',refresh_token:'ref',expires_in:7200}),{status:200});}
+    const m=u.match(/repository\/files\/([^?]+)\?ref=main$/);
+    if(m){reads++;const t=files[decodeURIComponent(m[1])];
+      return t==null?new W.Response('{}',{status:404}):
+        new W.Response(JSON.stringify({content:enc(t),last_commit_id:'c0'}),{status:200});}
+    if(u===HOST+'/api/v4/projects/team%2Ftalk/repository/commits'){
+      if(status)return new W.Response('{"message":"403 Forbidden"}',{status});
+      const b=JSON.parse(o.body);commits.push(b);for(const a of b.actions)files[a.file_path]=a.content;
+      return new W.Response(JSON.stringify({id:'abcdef123456',short_id:'abcdef1'}),{status:201});}
+    return realFetch.call(W,u,o);};
+  W.sessionStorage.removeItem('slaidy-gitlab:'+HOST);
+
+  // --- not signed in: Save explains, and signing in goes to GitLab with PKCE ---
+  let went='';w.GL.go=u=>{went=u;};
+  const s0=w.S.slides[0];s0.notes=(s0.notes||'')+' An edit.';w.touch();await wait(50);
+  d.getElementById('bSaveNow').click();
+  for(let i=0;i<40&&!d.getElementById('glIn');i++)await wait(100);
+  const dlg=()=>d.getElementById('veil').classList.contains('on')?d.getElementById('dlg').innerText:'';
+  ok('Save asks to sign in to GitLab, saying where it goes',/Sign in and save/.test(dlg())&&/team\/talk/.test(dlg()),dlg().slice(0,80));
+  d.getElementById('glIn').click();await wait(600);
+  const q=new URL(went||'http://x/').searchParams;
+  ok('signing in goes to GitLab’s authorize page',went.startsWith(HOST+'/oauth/authorize?'),went.slice(0,60));
+  ok('with the app, the address to come back to, and a PKCE challenge',
+     q.get('client_id')==='app-1'&&q.get('redirect_uri')==='https://deck.example.org/'&&q.get('code_challenge_method')==='S256'&&
+     (q.get('code_challenge')||'').length>40&&q.get('scope')==='api');
+  ok('the edit is in the browser before the page leaves',!!(await w.get('deck:'+w.S.id)).slides[0].notes.includes('An edit.'));
+
+  // --- back from GitLab: the code becomes a token, with the verifier ---
+  const back=await W.glReturn('?code=C0DE&state='+q.get('state'));
+  ok('the code is exchanged for a token',!!back&&!back.error&&/code=C0DE/.test(tokenBody||''),back&&back.error);
+  ok('with the PKCE verifier, not a secret',/code_verifier=[A-Za-z0-9_-]{40,}/.test(tokenBody||'')&&!/secret/.test(tokenBody||''));
+  ok('a state that does not match is ignored',(await W.glReturn('?code=X&state=wrong'))===null);
+
+  // --- Save: one commit, only the edited block ---
+  const was=files[file(groups[0])];
+  ok('Ctrl-S saves to GitLab',true);
+  d.dispatchEvent(new W.KeyboardEvent('keydown',{key:'s',ctrlKey:true,bubbles:true}));
+  for(let i=0;i<30&&!commits.length;i++)await wait(100);
+  const c=commits[0]||{actions:[]},a=c.actions[0]||{};
+  ok('one commit, to main, with one file',commits.length===1&&c.branch==='main'&&c.actions.length===1&&a.file_path===file(groups[0]),
+     commits.length+' commits');
+  ok('the commit message names the slide',c.commit_message&&c.commit_message.includes(s0.title),c.commit_message);
+  ok('it says which version it changed, so nothing in between is overwritten',a.last_commit_id==='c0');
+  const B=W.glBlocks(was).blocks,A=W.glBlocks(a.content||'').blocks;
+  ok('the edited slide is in its own block',A[0]&&A[0].text.includes('An edit.'));
+  ok('the other slides are as they were, letter for letter',A.length===B.length&&A.slice(1).every((x,i)=>x.text===B[i+1].text));
+  ok('a line the editor does not keep survives in untouched slides',(a.content||'').split('a comment the editor does not keep').length-1===B.length-1);
+  ok('saved: nothing to ask about when the tab closes',w.dirty===false&&/GitLab abcdef1/.test(d.getElementById('status').textContent),
+     d.getElementById('status').textContent);
+  ok('and the browser copy is not marked unsynced',(await w.get('index:'+w.S.id)).unsynced===false);
+
+  // --- nothing changed since: nothing to commit ---
+  await W.glSave();await wait(100);
+  ok('a second save with no edits commits nothing',commits.length===1);
+
+  // --- someone changed another slide in the same file meanwhile ---
+  const f1=file(groups[0]);
+  const other=W.glBlocks(files[f1]).blocks[1];
+  files[f1]=files[f1].replace(other.text,other.text.replace(/\n*$/,'\nTheir line.\n\n'));
+  w.S.slides[0].title+=' (2)';w.touch();await wait(50);
+  await W.glSave();await wait(100);
+  ok('their change to another slide stays',commits.length===2&&files[f1].includes('Their line.')&&files[f1].includes(' (2)'));
+
+  // --- someone changed the same slide: nothing is written ---
+  const mine=W.glBlocks(files[f1]).blocks[0];
+  files[f1]=files[f1].replace(mine.text,mine.text.replace(/\n*$/,'\nTheirs too.\n\n'));
+  w.S.slides[0].title+=' (3)';w.touch();await wait(50);
+  await W.glSave();await wait(100);
+  ok('the same slide changed on GitLab: no commit',commits.length===2);
+  ok('a dialog says so, with the edits kept and a download',/Not saved to GitLab/.test(dlg())&&/changed on GitLab/.test(dlg())&&!!d.getElementById('glDl'));
+  ok('and the deck is still unsaved',w.dirty===true);
+  w.closeDialog();
+
+  // --- a file written by a script is not saved into ---
+  files[f1]=files[f1].replace('\nTheirs too.\n','\n');   // back to what we know
+  const gen=w.S.slides.findIndex(s=>s.group===groups[1]);
+  w.S.slides[gen].title+=' (edited)';w.touch();await wait(50);
+  await W.glSave();await wait(100);
+  ok('a generated file refuses, saying why',commits.length===2&&/written by a script/.test(dlg()),dlg().slice(0,120));
+  w.closeDialog();w.S.slides[gen].title=w.S.slides[gen].title.replace(' (edited)','');
+
+  // --- a new slide goes in after the one before it ---
+  w.S.git.generated=[];
+  const at=w.S.slides.findIndex(s=>s.group===groups[1]);
+  w.S.slides.splice(at+1,0,{tag:'S',group:groups[1],title:'Brand new',body:'Fresh.',notes:'',layout:'text'});w.normalise();w.touch();
+  const f2=file(groups[1]),before2=W.glBlocks(files[f2]).blocks.map(b=>b.text);
+  await W.glSave();await wait(100);
+  const after2=W.glBlocks(files[f2]).blocks.map(b=>b.text);
+  ok('a new slide is written after the slide before it',commits.length===3&&after2.length===before2.length+1&&/Brand new/.test(after2[1]),
+     after2.length+' blocks');
+  ok('and the rest of that file is untouched',after2[0]===before2[0]&&after2.slice(2).every((t,i)=>t.replace(/\s+$/,'')===before2[i+1].replace(/\s+$/,'')));
+
+  // --- a figure ---
+  if(figId){
+    w.S.figs[figId]=w.S.figs[figId].replace('</svg>','<circle cx="1" cy="1" r="1"/></svg>');w.touch();
+    await W.glSave();await wait(100);
+    const fa=(commits[3]||{actions:[]}).actions[0]||{};
+    ok('an edited figure is saved as its SVG',fa.file_path==='figures/'+figId+'.svg'&&/cx="1"/.test(fa.content||''));
+  }
+
+  // --- no right to write ---
+  status=403;w.S.slides[2].title+=' (4)';w.touch();await wait(50);
+  await W.glSave();await wait(100);
+  const nb=d.getElementById('nudge');
+  ok('an account that may only read is told so, and the edits stay',nb&&nb.classList.contains('on')&&
+     /may read this project but not write/.test(nb.textContent)&&w.dirty===true,dlg().replace(/\s+/g,' ').slice(0,400)+' | commits '+commits.length);
+  status=0;
+
+  // --- a deck without GitLab behind it saves as before ---
+  const g=w.S.git;delete w.S.git;
+  ok('no S.git: GitLab is not involved',!w.glOn());
+  w.S.git=g;
+  W.fetch=realFetch;w.srvLinked=linked;
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

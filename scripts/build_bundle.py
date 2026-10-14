@@ -38,7 +38,7 @@ NOTE_RE = re.compile(r"^\*(?:Delivery note|Transition)[^:]*:\*[ \t]*(.*(?:\n(?!\
 # Data the editor has no field for — an integration's own, such as Tiny's on a
 # chatbot slide — travels as one line of JSON, so a round trip keeps it.
 DATA_RE = re.compile(r"^\*Data:\*[ \t]*(\{.*\})[ \t]*$", re.M)
-KNOWN = {"n", "tag", "group", "sub", "title", "layout", "textScale", "body", "notes", "summary",
+KNOWN = {"n", "tag", "group", "sub", "title", "src", "layout", "textScale", "body", "notes", "summary",
          "skip", "flags", "style", "fig", "figScale"}
 SUM_RE = re.compile(r"^\*Summary:\*\s*(.+)$", re.M)
 SKIP_RE = re.compile(r"^\*Skip:\*\s*(\S+)[^\n]*$", re.M)      # hidden when presenting
@@ -83,6 +83,24 @@ GROUPS = {
     "09-act8-what-we-build.md": "VIII · What We Build",
     "10-epilogue.md": "Epilogue",
 }
+
+
+def slide_spans(text):
+    """Where each slide parse_slides finds starts and stops: from its ### line to the
+    next ### or ## line. A tool that writes one slide back replaces exactly this."""
+    marks = sorted([m.start() for m in SUB_RE.finditer(text)] + [m.start() for m in SLIDE_RE.finditer(text)])
+    out = []
+    for a in (m.start() for m in SLIDE_RE.finditer(text)):
+        later = [x for x in marks if x > a]
+        out.append((a, later[0] if later else len(text)))
+    return out
+
+
+def block_key(text):
+    """The fingerprint SlAIdy finds a slide's block by when it saves to GitLab
+    (glKey in slaidy.html): sha-256 of the block without its trailing whitespace."""
+    import hashlib
+    return hashlib.sha256(text.rstrip().encode("utf-8")).hexdigest()[:20]
 
 
 def parse_slides(text, group):

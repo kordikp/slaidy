@@ -106,6 +106,19 @@ watch it (`P`), read the notes (`N`), take a PDF, or edit their own copy; their 
 in their browser and never touch what you published. `#present` on the end opens straight
 into the projector, and `notes/` is the speaker notes as a document that prints.
 
+**Published from GitLab, saved back to it.** A deck whose markdown lives in a GitLab
+repository and is published there (GitLab Pages) can save straight into the repository:
+whoever edits it clicks Save (or Ctrl-S), signs in to GitLab once per tab (OAuth with PKCE,
+no secret in the page), and the slides they changed are committed under their name — as
+markdown, each edited slide into its own block of its own file, everything else letter for
+letter as it was. The build gives the deck an `S.git` section — server, project, branch, the
+OAuth application's id, and for every slide the file and a fingerprint of the block it came
+from (`build_bundle.slide_spans` and `block_key`). If someone changed the same slide on
+GitLab in the meantime, or slides were added or moved in a file someone else changed,
+nothing is written: the edits stay in the browser and a download is offered. Files a script
+generates can be listed as `generated`, and edits there are refused rather than lost on the
+next build. Between saves the edits are held by the browser, as for any published deck.
+
 `scripts/commentary.py` adds a third page, the deck read for its audience: every slide as
 it projects, with a paragraph under it that says what the slide claims and links the
 sources in the text. You write the commentary as markdown, one block per slide; the script

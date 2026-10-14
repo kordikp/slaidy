@@ -782,12 +782,20 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
   /* browsers drop backgrounds when printing unless told not to, which turns a
      dark slide into dark-on-white or white-on-white */
   #printroot,#printroot *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #bar,#work,#show,#prog,#count,#notes,#grid,#veil,#drop,#welcome,#toast{display:none!important}
+  /* only the pages: a banner, toast or spinner is position:fixed, and a fixed
+     element prints on every page — so everything else goes, not a list of it */
+  body>:not(#printroot){display:none!important}
   #printroot{display:block!important}
+  /* a page shows the finished slide, not wherever an entrance happened to be
+     when the dialog opened (figures draw their final state; keyframes only
+     bring it in) */
+  #printroot *{animation:none!important;transition:none!important}
 }
 /* 297mm is 1122.5px at 96dpi, so the stage lands exactly on the page */
 .psl{width:297mm;height:167mm;page-break-after:always;break-after:page;background:var(--d-paper);
  overflow:hidden;position:relative}
+/* a break after the last page is a blank page at the end */
+.psl:last-child{page-break-after:auto;break-after:auto}
 .psl .stage{transform:scale(0.8770)}
 .psl.withnotes .stage{transform:scale(0.7000)}
 .psl.withnotes{display:flex;flex-direction:column}
@@ -8136,7 +8144,7 @@ async function boot(){
   load(file);
   if(byLink)return;
   if(shared){
-    setTimeout(()=>banner(`${esc(S.title||'This deck')} — press P to present, N for the notes.`,
+    setTimeout(()=>banner(`${S.title||'This deck'} — press P to present, N for the notes.`,
       'Present it',()=>present(true)),1000);
     return;
   }

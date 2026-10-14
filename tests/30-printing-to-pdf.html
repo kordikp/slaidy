@@ -93,6 +93,17 @@ addEventListener('load',async()=>{
   const css=[...d.styleSheets].flatMap(x=>{try{return [...x.cssRules]}catch(e){return []}})
     .filter(r=>r.media&&[...r.media].includes('print')).map(r=>r.cssText).join(' ');
   ok('backgrounds print as they are',/print-color-adjust:\s*exact/.test(css));
+  // a fixed banner or toast would print on every page, over the slide
+  const rules=[...d.styleSheets].flatMap(x=>{try{return [...x.cssRules]}catch(e){return []}})
+    .filter(r=>r.media&&[...r.media].includes('print')).flatMap(r=>[...r.cssRules]);
+  const rule=sel=>rules.find(r=>r.selectorText===sel);
+  ok('only the pages print — nothing else on the page',rule('body > :not(#printroot)')?.style.display==='none');
+  ok('a page shows the finished slide, not an entrance half way',rule('#printroot *')?.style.animationName==='none');
+  await W.toPdf(false);await wait(600);
+  const ps=pages();
+  ok('no blank page after the last one',getComputedStyle(ps[ps.length-1]).breakAfter==='auto'&&
+     getComputedStyle(ps[0]).breakAfter==='page',ps.map(p=>getComputedStyle(p).breakAfter).slice(-2).join(' '));
+  W.dispatchEvent(new Event('afterprint'));await wait(50);
 
   // nothing to print is said, not printed
   const all=w.S.slides.map(x=>x.skip);w.S.slides.forEach(x=>x.skip=true);printed=0;sent=null;

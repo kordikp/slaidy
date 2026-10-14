@@ -5,6 +5,15 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Fixed
+- **A PDF from the print dialog is just the slides.** The "press P to present" banner of a
+  shared deck is `position:fixed`, and a fixed element prints on every page: it came out as a
+  black bar over each slide, its blurred shadow a bitmap on every page (0.8 MB in a 70-page
+  deck). Print now shows nothing but the pages, whatever else is on the screen; the last page
+  no longer breaks onto an empty one; and figure entrances are switched off on paper, so a
+  page shows the finished slide rather than wherever an animation was when the dialog
+  opened. The banner no longer shows `&amp;` for an ampersand in the deck title. Tip for
+  figure authors: Chrome turns an SVG `<pattern>` fill into a 300 dpi bitmap when it prints,
+  so a decorative texture is best left out under `@media print`.
 - **Edits are never lost quietly.** On a page with no file or server behind it — a deck
   published as a link, a one-file deck — edits are kept in the browser, and they used to be
   marked *saved*: closing the tab did not ask, and the next build of a published deck opened

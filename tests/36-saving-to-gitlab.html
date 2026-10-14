@@ -88,10 +88,13 @@ addEventListener('load',async()=>{
   ok('saved: nothing to ask about when the tab closes',w.dirty===false&&/GitLab abcdef1/.test(d.getElementById('status').textContent),
      d.getElementById('status').textContent);
   ok('and the browser copy is not marked unsynced',(await w.get('index:'+w.S.id)).unsynced===false);
+  ok('the “kept in this browser” banner is taken down once it is on GitLab',!d.getElementById('nudge')?.classList.contains('on'));
 
-  // --- nothing changed since: nothing to commit ---
+  // --- nothing changed since: nothing to commit, and a stale banner still goes ---
+  W.banner('Your edits are kept in this browser until you save them to GitLab (Ctrl-S).','Save to GitLab',()=>{});
   await W.glSave();await wait(100);
   ok('a second save with no edits commits nothing',commits.length===1);
+  ok('and it still clears a left-over banner',!d.getElementById('nudge')?.classList.contains('on'));
 
   // --- someone changed another slide in the same file meanwhile ---
   const f1=file(groups[0]);

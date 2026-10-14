@@ -1599,7 +1599,7 @@ async function glSave(){
     if(!await glToken()){done();return glAsk();}
     let plan=await glPlan();
     if(plan.conflicts.length||plan.refused.length)return glStop(plan);
-    if(!plan.actions.length){GL.saved=true;dirty=false;edited=false;await persist();
+    if(!plan.actions.length){GL.saved=true;dirty=false;edited=false;await persist();unbanner();
       toast('Nothing to save — GitLab already has this');return;}
     const g=S.git,post=()=>glApi(`/projects/${glEnc(g.project)}/repository/commits`,{method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -8472,11 +8472,22 @@ async function boot(){
     if(!unsynced&&S.git&&S.git.commit){GL.saved=true;setStatus('ok');return;}
     dirty=true;setStatus('warn');
     if(!byLink){
-      toast('Continuing with your edits — newer than the file on disk');
-      setTimeout(()=>{
-        if(!fileHandle)banner('These edits live in this browser only.',
-          'Save to a file',()=>saveDeckAs(),'no-file');
-      },900);
+      if(glOn()){
+        /* A GitLab-published deck is saved with Ctrl-S, and glResume is very
+           likely committing these very edits right now (we have just come back
+           from signing in). So decide when the timer fires, not now: if the
+           save has landed (not dirty) or is still running, say nothing — and
+           never tell someone to "save to a file" a deck that lives on GitLab. */
+        setTimeout(()=>{if(dirty&&!glSave.busy)
+          banner('Your edits are kept in this browser until you save them to GitLab (Ctrl-S).',
+            'Save to GitLab',()=>glSave());},1400);
+      }else{
+        toast('Continuing with your edits — newer than the file on disk');
+        setTimeout(()=>{
+          if(!fileHandle&&dirty)banner('These edits live in this browser only.',
+            'Save to a file',()=>saveDeckAs(),'no-file');
+        },900);
+      }
     }
     return;
   }

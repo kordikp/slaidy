@@ -191,6 +191,28 @@ addEventListener('load',async()=>{
   ok('one undo puts the order back',titles().join('|')===t0.join('|'));
   w.PICKED.clear();
 
+  // ---------- a dark cover pasted into a light deck keeps its background ----------
+  const cover=()=>({tag:'S',group:'G',sub:null,title:'Thanks',body:'',notes:'',layout:'cover',
+    textScale:100,skip:false,flags:[]});
+  const dark={paper:'#0E251F',ink:'#F3F7F6',accent:'#3BC4A2'};
+  w.S={id:'dark',title:'Dark deck',meta:{},style:{...dark},figs:{},slides:[cover()]};
+  w.normalise();w.cur=0;w.PICKED.clear();w.paint();await wait(150);
+  await w.copySlides();await wait(250);
+  w.S={id:'light',title:'Light deck',meta:{},style:{paper:'#F5F8F7',ink:'#13211F',accent:'#0FA5A5'},figs:{},
+       slides:[{...cover(),title:'Opening'}]};
+  w.normalise();w.cur=0;w.PICKED.clear();w.paint();await wait(150);
+  await w.pasteSlides();await wait(350);
+  const got=w.S.slides.find(x=>x.title==='Thanks')||{};
+  ok('a slide from a dark deck keeps its own background in a light one',
+     got.style&&got.style.paper==='#0E251F'&&got.style.ink==='#F3F7F6'&&got.style.accent==='#3BC4A2',
+     JSON.stringify(got.style||null));
+  // the same colours as the receiving deck: nothing extra is written on the slide
+  w.S={id:'dark2',title:'Another dark deck',meta:{},style:{...dark},figs:{},slides:[{...cover(),title:'Opening'}]};
+  w.normalise();w.cur=0;w.PICKED.clear();w.paint();await wait(150);
+  await w.pasteSlides();await wait(350);
+  const got2=w.S.slides.find(x=>x.title==='Thanks')||{};
+  ok('into a deck of the same colours it carries no style of its own',!got2.style,JSON.stringify(got2.style||null));
+
  }catch(e){L.push('ERROR '+E(e.message)+' @ '+E((e.stack||'').split('\n')[1]||''));}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

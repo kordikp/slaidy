@@ -3006,8 +3006,15 @@ function figsOf(list){
   });
   return out;
 }
+/* The colours a slide gets from its deck. A copied slide carries them as its
+   own, or a dark cover pasted into a light deck arrives without its background;
+   the paste drops again whatever the receiving deck already says. */
+const LOOK_KEYS=['paper','ink','accent'];
 async function copySlides(){
-  const ix=picked(),list=ix.map(i=>clone(S.slides[i]));
+  const ix=picked(),list=ix.map(i=>{
+    const s=clone(S.slides[i]),own=s.style||{};
+    s.style={...Object.fromEntries(LOOK_KEYS.map(k=>[k,style(k)])),...own};
+    return s;});
   if(!list.length)return;
   const md=list.map(slideMd).join('\n');
   const payload={kind:'slaidy/slides',at:Date.now(),from:S.title||S.id,
@@ -3133,7 +3140,13 @@ async function pasteSlides(text){
     .filter(id=>!figs[id]&&S.figs[id]);
   const rename=t=>String(t||'').replace(FIGREF,(m,id)=>map[id]&&map[id]!==id?`![[${map[id]}]]`:m);
   const at=S.slides[cur];
+  const sameColour=(a,b)=>String(a).trim().toLowerCase()===String(b).trim().toLowerCase();
   list.forEach(x=>{
+    /* keep only the colours this deck does not already have */
+    if(x.style){
+      for(const k of LOOK_KEYS)if(x.style[k]!=null&&sameColour(x.style[k],style(k)))delete x.style[k];
+      if(!Object.keys(x.style).length)delete x.style;
+    }
     if(x.fig&&map[x.fig])x.fig=map[x.fig];
     x.body=rename(x.body);
     if(!x.group)x.group=at?at.group:'';

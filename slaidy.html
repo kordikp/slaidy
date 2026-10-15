@@ -3338,8 +3338,21 @@ function duplicateSlide(i){
 }
 
 /* the speaker needs position, not a taxonomy label */
+/* The room and the PDF see only the slides that are not hidden, so that is what
+   the header counts there — with a third of a talk hidden it used to jump from
+   "33" to "49 / 77" and the audience wondered what they had missed. The editor
+   keeps counting every slide, as its list does. */
+var numberLive=false;   /* var: set by pdfPages, read before any let below has run */
 function where(s){
   const i=S.slides.indexOf(s),g=s.group||'';
+  if((numberLive||(showing&&!showHidden))&&!s.skip){
+    const L=S.slides.map((x,j)=>x.skip?-1:j).filter(j=>j>=0),k=L.indexOf(i);
+    if(k>=0){
+      let a=k;while(a>0&&(S.slides[L[a-1]].group||'')===g)a--;
+      let b=k;while(b<L.length-1&&(S.slides[L[b+1]].group||'')===g)b++;
+      return{sec:g,at:k-a+1,of:b-a+1,n:k+1,total:L.length,left:L.length-k-1};
+    }
+  }
   let a=i;while(a>0&&(S.slides[a-1].group||'')===g)a--;
   let b=i;while(b<S.slides.length-1&&(S.slides[b+1].group||'')===g)b++;
   return{sec:g,at:i-a+1,of:b-a+1,n:i+1,total:S.slides.length,left:S.slides.length-i-1};
@@ -7614,9 +7627,12 @@ function printSlide(s,withNotes,at){
    nothing to the browser the server prints with. */
 function pdfPages(slides,withNotes){
   const box=document.createElement('div');
-  box.innerHTML=picPortably(()=>slides.flatMap(s=>{
-    const out=[];for(let k=1,n=stepsOf(s);k<=n;k++)out.push(printSlide(s,withNotes,k));
-    return out;}).join(''));
+  numberLive=true;
+  try{
+    box.innerHTML=picPortably(()=>slides.flatMap(s=>{
+      const out=[];for(let k=1,n=stepsOf(s);k<=n;k++)out.push(printSlide(s,withNotes,k));
+      return out;}).join(''));
+  }finally{numberLive=false;}
   box.querySelectorAll('.psl').forEach(p=>applySteps(p,+p.dataset.overlay||1));
   return {html:box.innerHTML,count:box.children.length};
 }

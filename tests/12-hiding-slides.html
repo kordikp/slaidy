@@ -116,6 +116,18 @@ addEventListener('load',async()=>{
   ok('and calling it anyway does nothing',w.S.slides.length===1);
   w.S.slides=all;w.cur=0;w.paint();await wait(150);
 
+  // the header counts what the room sees: hidden slides are not numbered while presenting
+  w.S.slides.forEach(x=>x.skip=false);w.S.slides[1].skip=true;w.S.slides[2].skip=true;w.normalise();
+  const shown=w.S.slides.filter(x=>!x.skip).length;
+  w.cur=3;await w.present(true);await wait(300);
+  const ix=(d.querySelector('#deck .hdr .ix')||{}).textContent||'';
+  ok('presenting, the header numbers the shown slides only',ix.replace(/\s+/g,' ').trim()==='2 / '+shown,ix);
+  await w.present(false);await wait(150);
+  w.cur=3;w.paint();await wait(150);
+  const ixEd=(d.querySelector('#sheet .hdr .ix')||{}).textContent||'';
+  ok('the editor still counts every slide, as its list does',ixEd.replace(/\s+/g,' ').trim()==='4 / '+w.S.slides.length,ixEd);
+  w.S.slides.forEach(x=>x.skip=false);w.normalise();w.paint();
+
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

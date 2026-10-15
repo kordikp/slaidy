@@ -8539,8 +8539,14 @@ async function boot(){
            from signing in). So decide when the timer fires, not now: if the
            save has landed (not dirty) or is still running, say nothing — and
            never tell someone to "save to a file" a deck that lives on GitLab. */
+        /* and when the published deck has moved on since these edits were made,
+           say so: otherwise the room sees an old version and nobody knows why */
+        const when=new Date(mineAt).toTimeString().slice(0,5);
         setTimeout(()=>{if(dirty&&!glSave.busy)
-          banner('Your edits are kept in this browser until you save them to GitLab (Ctrl-S).',
+          banner(differs
+            ? `You are seeing this browser’s copy, with your edits from ${when} — the published deck has changed since. `+
+              'Ctrl-S saves your edits to GitLab slide by slide, then reload for the latest.'
+            : 'Your edits are kept in this browser until you save them to GitLab (Ctrl-S).',
             'Save to GitLab',()=>glSave());},1400);
       }else{
         toast('Continuing with your edits — newer than the file on disk');

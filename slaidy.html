@@ -6993,6 +6993,9 @@ function deckSettings(){
         <input id="dsAdv" type="number" min="1" max="600" step="1" value="${esc(M.advance||'')}" placeholder="by hand"></div>
      <div class="tip">Empty: you click. A PechaKucha is 20. Clicks within a slide share its time;
        <kbd>A</kbd> pauses while presenting.</div>
+     <div class="chk"><input type="checkbox" id="dsLoop"${M.loop?' checked':''}><span>start again after the last slide</span></div>
+     <div class="tip">For a screen left playing at a stand. <code>?loop</code> in the address does
+       the same for one showing.</div>
    </div>
    <div class="sec"><div class="sect">Style</div>
      <div class="fld"><label>Accent</label><input data-s="accent" type="color" value="${style('accent')}"></div>
@@ -7040,6 +7043,8 @@ function deckSettings(){
   document.getElementById('dsAdv').onchange=e=>{
     const v=Math.round(+e.target.value);snap('advance');
     if(v>0)S.meta.advance=Math.min(600,v);else delete S.meta.advance;touch();};
+  document.getElementById('dsLoop').onchange=e=>{
+    snap('loop');if(e.target.checked)S.meta.loop=true;else delete S.meta.loop;touch();};
   document.querySelectorAll('.dlg [data-m]').forEach(i=>i.onchange=()=>{
     snap('deck details');S.meta[i.dataset.m]=i.value.trim();touch();});
   document.querySelectorAll('.dlg [data-s]').forEach(i=>i.oninput=()=>{
@@ -7699,12 +7704,18 @@ function paintDeck(){
    (meta.advance, in seconds) or the address does (?auto=20); a slide with
    clicks shares its time between them, so a figure that builds up still lands
    within its twenty seconds. A pauses and resumes; moving by hand restarts the
-   count on wherever you land. It stops at the last click of the last slide. */
+   count on wherever you land. It stops at the last click of the last slide,
+   unless the deck runs in a loop (meta.loop, or ?loop in the address): a deck
+   left playing on a screen at a stand starts again from the first slide. */
 const AUTO={on:false,timer:null,key:'',per:0,left:0,t0:0};
 function autoSeconds(){
   const q=parseFloat(new URLSearchParams(location.search).get('auto'));
   const v=Number.isFinite(q)&&q>0?q:+((S.meta||{}).advance||0);
   return Number.isFinite(v)&&v>0?Math.min(600,Math.max(1,v)):0;
+}
+function autoLoop(){
+  const q=new URLSearchParams(location.search).get('loop');
+  return q!==null?!/^(0|no|false|off)$/i.test(q):!!(S.meta||{}).loop;
 }
 function autoBar(){
   const b=document.getElementById('auto');if(!b)return;
@@ -7720,7 +7731,9 @@ function autoRun(){
   AUTO.timer=setTimeout(()=>{
     AUTO.timer=null;AUTO.left=0;
     const R=liveIdx();
-    if(cur===R[R.length-1]&&overlay>=stepsOf(S.slides[cur])){AUTO.on=false;autoBar();toast('The end — the clock has stopped');return;}
+    if(cur===R[R.length-1]&&overlay>=stepsOf(S.slides[cur])){
+      if(autoLoop()&&R.length){cur=R[0];overlay=1;AUTO.key='';paintDeck();return;}
+      AUTO.on=false;autoBar();toast('The end — the clock has stopped');return;}
     advance(1);
   },Math.max(0,AUTO.left));
   autoBar();
@@ -7810,18 +7823,30 @@ function pickScreen(sd){
   return here;
 }
 function screenOpts(scr){return scr?{navigationUI:'hide',screen:scr}:{navigationUI:'hide'};}
-/* Asked for, not waited on: present() paints the deck whatever the answer. */
+/* Asked for, not waited on: present() paints the deck whatever the answer.
+   Full screen on P fills the display the window is already on — reliable on
+   Wayland, X11 and Windows alike. It does NOT try to pick the projector by
+   itself: placing a window on a chosen display through the Window Management
+   API is unreliable on Wayland and was dropping the talk out of full screen
+   mid-sentence. The projector is reached on purpose — D, or the compositor's
+   move-window shortcut — and a choice made with D (screenPick) is honoured on
+   the next fill. */
 async function fillScreen(retried){
   let scr=null;
-  if(twoScreens()&&window.getScreenDetails)scr=pickScreen(await screenDetails());
+  if(screenPick&&twoScreens()&&window.getScreenDetails){
+    const sd=await screenDetails();
+    if(sd){const f=[...sd.screens].find(s=>s.label===screenPick);if(f)scr=f;}
+  }
   try{
     await document.documentElement.requestFullscreen(screenOpts(scr));
-    if(scr&&SD)toast('On '+screenName(scr)+' — D moves it to the other display');
   }catch(e){
-    /* the browser's question took longer than a click lasts */
-    if(scr&&!retried&&showing)armFullscreen('Click, or press any key, to show it on '+screenName(scr));
+    /* Could not place it on the chosen display (common on Wayland): fill the
+       one the window is on instead, so the slide is at least full somewhere. */
+    let plain=false;
+    if(scr){try{await document.documentElement.requestFullscreen(screenOpts(null));plain=true;}catch(e2){}}
+    if(!plain&&!retried&&showing)armFullscreen('Click, or press any key, to fill the screen');
   }
-  if(twoScreens()&&!SD)toast('Two displays: if this is the wrong one, Win/Super + Shift + ← → moves the window');
+  if(twoScreens()&&!screenPick)toast('Two displays — D moves the slide to the projector (or Win/Super + Shift + ← →)');
 }
 async function otherScreen(){
   const sd=await screenDetails();
@@ -7953,8 +7978,15 @@ document.getElementById('deck').addEventListener('click',async e=>{
   toast('Opened in a new tab — F goes back to full screen');
 });
 document.addEventListener('fullscreenchange',()=>{
-  if(!document.fullscreenElement&&showing&&!fsGuard)present(false);
-  else if(showing)setTimeout(fit,60);
+  if(showing)setTimeout(fit,60);
+  /* Losing full screen must NOT end the talk. Wayland and some projectors drop
+     full screen on their own — placing a window on a particular display is
+     unreliable there — and when exiting full screen also exited the
+     presentation, the slides froze on the laptop and would not advance. The
+     presentation overlay (#show) fills the window with or without full screen,
+     and the keys keep working; Esc leaves, F fills the screen again. */
+  if(!document.fullscreenElement&&showing&&!fsGuard)
+    toast('Full screen off — Esc leaves, F fills the screen again');
 });
 /* Only a drag carrying files is an offer of a deck. Picking up a paragraph
    raised the same near-opaque overlay across the whole window, so you could not

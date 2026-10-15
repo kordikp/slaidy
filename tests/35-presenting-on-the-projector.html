@@ -27,18 +27,21 @@ addEventListener('load',async()=>{
   const key=k=>d.dispatchEvent(new W.KeyboardEvent('keydown',{key:k,bubbles:true}));
   const stop=async()=>{w.present(false);await wait(80);};
 
-  // --- the window is on the lid: P puts the deck on the projector ---
+  // --- the window is on the lid: P fills THIS display and says how to reach the
+  //     projector. It no longer jumps to the projector by itself — placing a
+  //     window on a chosen display is unreliable on Wayland and was dropping the
+  //     talk out of full screen. ---
   w.present(true);await wait(200);
-  ok('P asks for full screen on the projector, not the lid',last().screen===hdmi,(last().screen||{}).label||'no screen named');
-  ok('and says where it went, and how to move it',/HDMI-1/.test(toastText())&&/\bD\b/.test(toastText()),toastText());
+  ok('P fills the display the window is on, naming no screen',last().screen===undefined,(last().screen||{}).label||'no screen named (good)');
+  ok('with two displays it says to press D for the projector',/\bD\b/.test(toastText())&&/projector/i.test(toastText()),toastText());
   ok('the deck is presented',w.showing===true);
 
   // --- D moves it to the next display, and the show goes on ---
   key('d');await wait(200);
-  ok('D moves it to the lid',last().screen===lid,(last().screen||{}).label);
+  ok('D moves it to the projector',last().screen===hdmi,(last().screen||{}).label);
   ok('still presenting after the move',w.showing===true);
   key('d');await wait(200);
-  ok('D again — back on the projector',last().screen===hdmi,(last().screen||{}).label);
+  ok('D again — back to the lid',last().screen===lid,(last().screen||{}).label);
   await stop();
 
   // a choice made with D holds while the page is open
@@ -47,10 +50,10 @@ addEventListener('load',async()=>{
   ok('a display chosen with D is kept for the next P',last().screen===lid,(last().screen||{}).label);
   await stop();w.screenPick='';
 
-  // --- the window already on the projector stays there ---
-  sd.currentScreen=hdmi;
+  // --- the window already on the projector: P fills it where it is ---
+  sd.currentScreen=hdmi;calls.length=0;
   w.present(true);await wait(200);
-  ok('a window already on the projector fills the projector',last().screen===hdmi,(last().screen||{}).label);
+  ok('a window already on the projector fills it where it is (no jump)',last().screen===undefined&&calls.length===1,(last().screen||{}).label||'no screen named (good)');
   await stop();
 
   // --- a browser that does not say which display is built in: the name does ---
@@ -60,14 +63,16 @@ addEventListener('load',async()=>{
   ok('two monitors on a desk, neither built in: it stays where it is',
      w.pickScreen({screens:[dp,hdmi],currentScreen:dp})===dp);
 
-  // --- the browser's question took longer than the click lasts ---
+  // --- full screen refused (the question outlived the click, or Wayland said no):
+  //     P names no screen, so it arms the generic prompt and the next key fills
+  //     the screen. ---
   sd.currentScreen=lid;refuse=true;calls.length=0;
   w.present(true);await wait(200);
   const turn=d.getElementById('turn');
-  ok('a refused request says how to finish it',turn.classList.contains('on')&&/HDMI-1/.test(turn.textContent),turn.textContent);
+  ok('a refused request says how to finish it',turn.classList.contains('on')&&/fill the screen/i.test(turn.textContent),turn.textContent);
   refuse=false;key('ArrowRight');await wait(200);
-  ok('and the next key puts it on the projector',last().screen===hdmi&&!turn.classList.contains('on'),
-     calls.length+' asks, last on '+((last().screen||{}).label||'—'));
+  ok('and the next key fills the screen',last().screen===undefined&&!turn.classList.contains('on'),
+     calls.length+' asks, last '+((last().screen||{}).label||'no screen named (good)'));
   await stop();
 
   // --- not allowed to use other displays: it fills this one and says how to move it ---
@@ -94,6 +99,24 @@ addEventListener('load',async()=>{
   ok('no API: full screen here',calls.length===1&&!last().screen);
   ok('with the keys that move the window',/Win\/Super \+ Shift/.test(toastText()),toastText());
   await stop();W.getScreenDetails=api;
+
+  // --- losing full screen must NOT end the talk ---
+  // Wayland and some projectors drop full screen on their own; when that also
+  // exited the presentation, the slides froze on the laptop and would not
+  // advance. The presentation overlay fills the window either way.
+  calls.length=0;w.present(true);await wait(150);
+  ok('presenting',w.showing===true);
+  const c0=w.cur;
+  d.dispatchEvent(new W.Event('fullscreenchange'));await wait(140);
+  ok('a dropped full screen does not end the presentation',
+     w.showing===true&&d.getElementById('show').classList.contains('on')&&d.body.classList.contains('presenting'));
+  key('ArrowRight');await wait(140);
+  ok('and the keys still advance after the drop',w.cur!==c0||w.overlay>1,'cur '+c0+'→'+w.cur+' step '+w.overlay);
+  d.dispatchEvent(new W.Event('fullscreenchange'));await wait(100);   // flap again
+  key('ArrowRight');await wait(120);
+  ok('and keep advancing through repeated drops',w.showing===true);
+  key('Escape');await wait(120);
+  ok('Esc still leaves the talk',w.showing===false);
  }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
  clearTimeout(__watchdog);
  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');

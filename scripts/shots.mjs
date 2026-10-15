@@ -7,6 +7,9 @@
 //   node scripts/shots.mjs https://kordikp.github.io/slaidy/isd2026/ --steps
 //
 //   --steps        one picture per click (s05-2.png), not only the last state of a slide
+//   --shown        only the slides that are not hidden (what the room sees)
+//
+// Slide numbers are the deck's own (as in ?s=N and the file names), hidden slides included.
 //   --wait 3000    milliseconds to let a slide settle before the picture (default 2500)
 //   --size 1920x1080
 //
@@ -21,6 +24,7 @@ import { join, resolve } from 'node:path';
 const argv = process.argv.slice(2);
 const flag = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv.splice(i, 2)[1] : d; };
 const steps = argv.includes('--steps'); if (steps) argv.splice(argv.indexOf('--steps'), 1);
+const shownOnly = argv.includes('--shown'); if (shownOnly) argv.splice(argv.indexOf('--shown'), 1);
 const WAIT = +flag('--wait', 2500);
 const [W, H] = flag('--size', '1280x720').split('x').map(Number);
 const [page, first = '1', last = '', OUT = 'shots'] = argv;
@@ -53,7 +57,9 @@ await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
 const open = async (n, k) => { await send('Page.navigate', { url: `${base}?s=${n}${k ? '&step=' + k : ''}#present` }); await sleep(WAIT); };
 await open(+first);
-const total = await ask('typeof liveIdx==="function"?liveIdx().length:0');
+/* the deck's own numbering: liveIdx() counts only shown slides, and capping the
+   range with it left the last slides of a deck with hidden ones unphotographed */
+const total = await ask('typeof S==="object"&&S&&S.slides?S.slides.length:0');
 const end = Math.min(+last || total || +first, total || Infinity);
 const shoot = async name => {
   // the "fill the screen" prompt is for a person at the keyboard, not for a picture
@@ -62,6 +68,7 @@ const shoot = async name => {
   const f = join(OUT, name + '.png'); writeFileSync(f, Buffer.from(shot.result.data, 'base64')); console.log(f);
 };
 for (let n = +first; n <= end; n++) {
+  if (shownOnly && await ask(`!!(S.slides[${n - 1}]||{}).skip`)) continue;
   if (n !== +first) await open(n);
   const name = 's' + String(n).padStart(2, '0');
   const k = steps ? await ask('typeof stepsOf==="function"?stepsOf(S.slides[cur]):1') || 1 : 1;

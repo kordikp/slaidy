@@ -5908,6 +5908,10 @@ function feSetCanvas(x,y,w,h,c){
   fePush();
   const old=c.vb[0]+c.vb[2]/2;                  /* where "centred" used to be */
   FE.svg.setAttribute('viewBox',`${x} ${y} ${w} ${h}`);
+  /* a size on the root is the size of the file outside the deck (figures/<id>.svg):
+     left as it was, a cropped figure opens letterboxed in anything else */
+  const px=a=>/^\s*[\d.]+(px)?\s*$/.test(FE.svg.getAttribute(a)||'');
+  if(px('width')&&px('height')){FE.svg.setAttribute('width',w);FE.svg.setAttribute('height',h);}
   if(c.bg){c.bg.setAttribute('x',x);c.bg.setAttribute('y',y);
            c.bg.setAttribute('width',w);c.bg.setAttribute('height',h);}
   /* the design system centres the title and the takeaway on the canvas, so

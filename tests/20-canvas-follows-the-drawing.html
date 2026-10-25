@@ -123,6 +123,30 @@ addEventListener('load',async()=>{
      w.FE.svg.getAttribute('viewBox')+' was '+wasVb);
   w.feSelect([]);await wait(200);
   ok('with nothing selected it says what to do',true,'the Canvas panel offers Trim instead');
+  d.getElementById('feCancel').click();await wait(200);
+
+  // ---------- a picture wider than the canvas ----------
+  // A student's 2570 × 680 screenshot stuck out of an 800 × 450 canvas and would not crop.
+  // That was the course platform stripping attributes (25 Oct 2026); this is SlAIdy's half.
+  const wide=await new Promise(r=>{const c=d.createElement('canvas');c.width=2570;c.height=680;
+    const g=c.getContext('2d');g.fillStyle='#0EA5E9';g.fillRect(0,0,2570,680);g.fillStyle='#F59E0B';g.fillRect(900,100,700,400);c.toBlob(r,'image/png');});
+  const pic=await w.picImport(wide,{name:'wide.png'});
+  w.S.figs['fig-wide']=w.picFigureSvg(pic.id,pic.w,pic.h);
+  w.S.slides[0].body='![[fig-wide]]';w.paint();await wait(300);
+  const pv=w.figAR('fig-wide'),im=d.querySelector('#sheet .figbox image');
+  ok('a picture figure takes the picture\'s shape',Math.abs(pv.w/pv.h-2570/680)<0.02,pv.w+'×'+pv.h);
+  ok('and the picture fills that canvas, not more',+im.getAttribute('width')===pv.w&&+im.getAttribute('height')===pv.h,
+     im.getAttribute('width')+'×'+im.getAttribute('height')+' in '+pv.w+'×'+pv.h);
+  w.figEdit(w.S.slides[0],'fig-wide');await wait(600);
+  const img=w.FE.svg.querySelector('image');
+  img.setAttribute('width','400');img.setAttribute('height','106');w.FE.src=w.feHtml();
+  w.feSelect([img]);await wait(250);
+  d.getElementById('feCrop').click();await wait(500);
+  const pc=w.FE.svg.getAttribute('viewBox').trim().split(/\s+/).map(Number);
+  ok('cropping to the picture makes the canvas the picture, plus the margin',pc.join(' ')==='-10 -10 420 126',pc.join(' '));
+  ok('and the size of the file follows the canvas',w.FE.svg.getAttribute('width')==='420'&&w.FE.svg.getAttribute('height')==='126',
+     w.FE.svg.getAttribute('width')+'×'+w.FE.svg.getAttribute('height'));
+  d.getElementById('feCancel').click();await wait(200);
 
   // ---------- figures were coming out wordy: the prompt now says how wordy ----------
   const sys=w.figSys();

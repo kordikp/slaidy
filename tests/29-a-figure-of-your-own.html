@@ -42,6 +42,18 @@ addEventListener('load',async()=>{
   ok('trimmed to the svg element',/^<svg/.test(w.S.figs['fig-my-pasted-one']||'')&&/<\/svg>$/.test(w.S.figs['fig-my-pasted-one']||''));
   ok('and disarmed',!/onload|<script/.test(w.S.figs['fig-my-pasted-one']||''));
   ok('the picker handed that back too',picked==='fig-my-pasted-one',String(picked));
+  // through the editor and back, it is still a drawing: a course platform's extra filter once kept
+  // only the colours, and a pasted figure drew a heap of labels in a corner (25 Oct 2026)
+  const ps=w.S.slides[si];ps.body+='\n\n![[fig-my-pasted-one]]';
+  w.figEdit(ps,'fig-my-pasted-one');await wait(500);
+  d.getElementById('feSave').click();await wait(400);
+  const back=w.S.figs['fig-my-pasted-one']||'';
+  ok('after the editor and Save it keeps its canvas and geometry',
+     ['viewBox="0 0 400 200"','width="400"','x="200"','font-size="14"','text-anchor="middle"'].every(a=>back.includes(a)),back.slice(0,200));
+  w.paint();await wait(250);
+  const pb=d.querySelector('#sheet .figbox svg').getBBox();
+  ok('and the slide draws it at its size',pb.width>390&&pb.height>190,[pb.x,pb.y,pb.width,pb.height].map(Math.round).join(','));
+  ps.body=ps.body.replace('\n\n![[fig-my-pasted-one]]','');w.paint();await wait(100);
   // not an svg at all
   w.pickFigure(()=>{}); await wait(120);
   [...d.querySelectorAll('.dlg .fetabs button')].find(b=>b.dataset.t==='svg').click(); await wait(80);

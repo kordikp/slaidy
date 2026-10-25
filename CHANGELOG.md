@@ -21,6 +21,12 @@ Dates are when the work landed, not when it was released; there are no releases 
   `tests/36-saving-to-gitlab.html`.
 
 ### Fixed
+- **A cropped or trimmed figure keeps its file the same shape.** Trim, crop and reset changed the
+  canvas (`viewBox`) but left a `width`/`height` on the figure's root as they were, so a figure
+  written to `figures/<id>.svg` opened letterboxed in anything else; they now follow the canvas.
+  Pasted SVG and pictures are now checked through the editor and Save as well: a course platform's
+  extra filter had stripped every attribute but the colours (25 Oct 2026; fixed there).
+  `tests/20-canvas-follows-the-drawing.html`, `tests/29-a-figure-of-your-own.html`.
 - **The deck goes to the projector.** Full screen fills the display the browser window is on,
   and with a projector plugged in that is usually the laptop: a lecture came up full screen
   on the lid, and a full-screen window cannot be dragged anywhere. Now `P` asks Chrome or Edge

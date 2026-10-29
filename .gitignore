@@ -22,3 +22,8 @@ demo/vercel/.vercel/
 tools/drawio/vendor/viewer.min.js
 tools/drawio/vendor/*.part
 tools/drawio/__pycache__/
+
+# built by scripts/themes.py (the site builds its own)
+themes/index.json
+themes/*.css
+themes/*/deck.json

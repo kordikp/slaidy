@@ -1,0 +1,8 @@
+{
+  "name": "paper",
+  "label": "Paper",
+  "description": "A quiet, bookish look for lectures and research talks: ivory paper, Literata titles, Lexend text, vermilion and teal, a dot grid on the cover.",
+  "author": "SlAIdy",
+  "licence": "CSS MIT · Literata, Lexend and JetBrains Mono OFL 1.1",
+  "style": {"accent": "#D9480F", "ink": "#1C1F26", "paper": "#FAF7F0", "titleSize": 40, "bodySize": 22, "header": "position"}
+}

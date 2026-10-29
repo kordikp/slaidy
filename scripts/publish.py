@@ -117,6 +117,13 @@ def notes_page(deck, name):
                 ('<p class="key">%s</p>' % inline(key)) if key else ""))
     title = deck.get("title") or name
     n = len(deck.get("slides") or [])
+    # a figure is drawn for its slide, so it sits on the slide's paper here too, and a
+    # figure that takes the deck's colours (var(--d-accent)) finds them
+    st = deck.get("style") or {}
+    hexes = {k: st.get(k) for k in ("accent", "ink", "paper")
+             if re.fullmatch(r"#[0-9a-fA-F]{3,8}", str(st.get(k) or ""))}
+    css = NOTES_CSS + ":root{%s}\n  .fig svg{background:var(--d-paper,#fff)}\n" % "".join(
+        "--d-%s:%s;" % kv for kv in hexes.items())
     return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>%s · notes</title><style>%s</style></head><body><div class="wrap">
@@ -124,7 +131,7 @@ def notes_page(deck, name):
 <p class="sub">%d slides · speaker notes · <a href="../">the deck</a> ·
  <a href="../#present">present it</a></p>
 %s
-</div></body></html>""" % (html.escape(title), NOTES_CSS, html.escape(title), n, "\n".join(out)))
+</div></body></html>""" % (html.escape(title), css, html.escape(title), n, "\n".join(out)))
 
 
 def main():

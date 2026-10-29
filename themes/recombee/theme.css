@@ -1,0 +1,51 @@
+/* Recombee — the corporate identity of recombee.com: a dark green slide (#0E251F),
+   mint (#3BC4A2) and Inter, with the logo in the header. Figures in this theme are
+   drawn for the dark slide; the bees carry data, they are not decoration. */
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;
+ src:url(fonts/Inter-latin-ext.woff2) format("woff2");
+ unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;
+ src:url(fonts/Inter-latin.woff2) format("woff2");
+ unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+html[data-slaidy-theme="recombee"]{--th-paper:#0E251F;--th-mint:#3BC4A2;--th-mint-soft:#62D0B5;
+ --th-text:#E9EDEC;--th-strong:#F3F7F6;--th-muted:#8FA39E;--th-faint:#657B76;--th-card:#143A31}
+
+html[data-slaidy-theme="recombee"] .stage{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+ background:radial-gradient(125% 95% at 88% 118%,#1B4B3F 0%,#143A31 34%,var(--th-paper) 68%)!important;
+ -webkit-print-color-adjust:exact;print-color-adjust:exact}
+html[data-slaidy-theme="recombee"] .stage::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;
+ background:var(--th-mint);z-index:5}
+html[data-slaidy-theme="recombee"] .stage h2{font-family:Inter,system-ui,sans-serif;font-weight:700;letter-spacing:-.025em}
+html[data-slaidy-theme="recombee"] .stage .hdr{color:var(--th-muted);font-family:Inter,system-ui,sans-serif;align-items:center}
+html[data-slaidy-theme="recombee"] .stage .hdr .ix,html[data-slaidy-theme="recombee"] .stage .pos{color:var(--th-faint)}
+html[data-slaidy-theme="recombee"] .stage .hdr .ix::after{content:"";display:inline-block;width:108px;height:24px;
+ margin-left:20px;vertical-align:middle;background:url(logo.svg) no-repeat right center/contain}
+html[data-slaidy-theme="recombee"] .stage .tx blockquote{color:var(--th-text);border-left-color:var(--th-mint)}
+html[data-slaidy-theme="recombee"] .stage .tx a{color:var(--th-mint-soft)}
+html[data-slaidy-theme="recombee"] .stage .tx strong,html[data-slaidy-theme="recombee"] .stage .tx b{color:var(--th-strong)}
+html[data-slaidy-theme="recombee"] .stage .tx,html[data-slaidy-theme="recombee"] .stage .tx p,
+html[data-slaidy-theme="recombee"] .stage .tx li{color:var(--th-text)}
+html[data-slaidy-theme="recombee"] .stage .tx li::marker{color:var(--th-mint)}
+
+/* Editing on the dark slide: the field being edited stays dark, framed in mint,
+   rather than lighting up white under white text. */
+html[data-slaidy-theme="recombee"] .stage h2.hd:focus{background:rgba(59,196,162,.12)!important;
+ box-shadow:0 0 0 2px var(--th-mint)!important;outline:none}
+html[data-slaidy-theme="recombee"] .stage .grp.editing,html[data-slaidy-theme="recombee"] .stage .sub.editing{
+ background:var(--th-card)!important;box-shadow:0 0 0 2px var(--th-mint)!important;color:var(--th-text)!important}
+html[data-slaidy-theme="recombee"] .stage textarea.src{background:var(--th-card)!important;color:var(--th-text)!important;
+ border-color:var(--th-mint)!important;box-shadow:0 0 0 3px rgba(59,196,162,.3)!important;caret-color:var(--th-mint)}
+html[data-slaidy-theme="recombee"] .stage ::selection{background:rgba(59,196,162,.4);color:var(--th-strong)}
+html[data-slaidy-theme="recombee"] .stage .bk:hover{background:rgba(59,196,162,.07)!important}
+html[data-slaidy-theme="recombee"] .stage .area.dropin,html[data-slaidy-theme="recombee"] .stage .bdy.dropin{
+ background:rgba(59,196,162,.12)!important}
+
+/* Code and tables on the dark slide, and the logo on the cover and the closing */
+html[data-slaidy-theme="recombee"] .stage .tx code{background:rgba(59,196,162,.14);color:var(--th-strong);border-color:transparent}
+html[data-slaidy-theme="recombee"] .stage .tx pre{background:var(--th-card);color:var(--th-text);border-color:rgba(59,196,162,.25)}
+html[data-slaidy-theme="recombee"] .stage .tx pre code{background:none}
+html[data-slaidy-theme="recombee"] .stage .tx th,html[data-slaidy-theme="recombee"] .stage .tx td{border-color:rgba(233,237,236,.18)}
+html[data-slaidy-theme="recombee"] .stage.lay-cover::after,html[data-slaidy-theme="recombee"] .stage.lay-closing::after{
+ content:"";position:absolute;right:64px;bottom:56px;width:230px;height:38px;
+ background:url(logo.svg) no-repeat right center/contain}

@@ -5,6 +5,30 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **Themes.** A deck can wear a brand's look: fonts, colours, a cover and a closing, a header and a
+  footer. Pick one in Deck settings → Style → Theme. The deck keeps the theme's CSS (`S.themeCss`,
+  named by `style.theme`), so it still opens offline as one file. The page carries
+  `html[data-slaidy-theme]`, every stage a `lay-<layout>` class and `--slaidy-footer` the footer
+  line. The hooks a course platform and a PechaKucha used to patch in are now the app's own. A theme
+  can come with any deck, so the editor keeps only what a theme is for:
+  - rules for that theme's slides, and `--th-*` properties on its root;
+  - fonts and pictures as `data:`, never an address;
+  - keyframes named after the theme.
+
+  The rest is left out and counted. The library is `themes/`: Recombee, AI dětem, Tiny and AI
+  kurikulum, and Paper for lectures, each with a sample deck at `themes/<name>/` on the site and a
+  picture in the new gallery. `scripts/themes.py` builds and checks them; `themes/README.md` says how to add one by
+  a pull request. `tests/37-themes.html` puts every theme through the filter.
+- **The gallery** (`/gallery/` on the site): the published talks and every theme on one page. Three
+  new talks show the range: a Recombee company profile, the AI dětem PechaKucha *Mind the Alignment
+  Gap*, and *How a network remembers*, an animated lecture on recurrent networks in Paper. The theme
+  cards come from `themes/index.json`, so a merged theme appears by itself.
+- **Speaker notes keep a figure on its slide's paper.** `scripts/publish.py` puts each figure on the
+  deck's background and gives it the deck's colours, so a figure drawn for a dark slide no longer
+  turns white on white in the notes.
+- **A dark slide stays dark while you edit it.** Hovering a block, the figure editor's canvas and the
+  figure previews used white or a pale grey whatever the slide's background was, so white text on a
+  dark slide vanished as soon as you touched it. They now follow the slide's background.
 - **Save to GitLab.** A deck published from a GitLab repository (Pages) saves its edits back
   into the repository as markdown. Save or Ctrl-S signs in to GitLab once per tab — OAuth
   with PKCE, the token kept for that tab only — and commits the edited slides under the

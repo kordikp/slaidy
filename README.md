@@ -28,6 +28,10 @@ published the same way: [the ISD 2026 keynote](https://kordikp.github.io/slaidy/
 37 slides and 41 figures in one link, with [its notes](https://kordikp.github.io/slaidy/isd2026/notes/)
 and [a reading of every slide](https://kordikp.github.io/slaidy/isd2026/commentary/).
 
+**[The gallery](https://kordikp.github.io/slaidy/gallery/)** shows what else the one file can
+look like: a company profile in Recombee's identity, a PechaKucha in AI dětem's, a lecture on
+recurrent networks in the bookish Paper theme. Each is a link that presents.
+
 ## Run it on your machine, with your own key
 
 This is the editor you work in. On Linux it is four commands; elsewhere skip
@@ -127,6 +131,24 @@ and says which are dead.
 
 The [demo](https://kordikp.github.io/slaidy/) is the same thing with the tour deck in it,
 and a small daily allowance of AI so you can see what the panels do.
+
+## Themes
+
+A theme is a look for the slides: fonts, colours, the cover and the closing, the header and
+the footer. Pick one under **⋯ → Deck settings → Style → Theme**; the deck keeps the theme's
+CSS inside it, so it still opens offline and still needs nothing but itself. The words and
+the figures do not change, so the same deck can be shown in any theme.
+
+The library is [`themes/`](themes/): Recombee's corporate identity, three from AI dětem
+(the brand, the Tiny classroom, the AI kurikulum), and Paper for lectures and research talks.
+Each has a sample deck at `kordikp.github.io/slaidy/themes/<name>/`, and
+[the gallery](https://kordikp.github.io/slaidy/gallery/) shows them all.
+
+**Bring your own.** A theme is a folder with `theme.css`, `theme.json` and its fonts, and it
+comes in as a pull request. [`themes/README.md`](themes/README.md) says what a theme can
+style, and the test suite loads every theme through the same filter the editor uses, so a
+rule the editor would drop fails the build before it reaches anyone. `scripts/use_theme.py`
+puts a theme into a deck from the command line.
 
 ## What it is for
 

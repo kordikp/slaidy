@@ -1,0 +1,15 @@
+{
+  "name": "tiny",
+  "label": "Tiny",
+  "description": "Tiny (tiny.school), the AI dětem classroom: dark violet, yellow and Inter.",
+  "author": "AI dětem z. ú.",
+  "licence": "CSS MIT · fonts OFL 1.1 · brand and logos © AI dětem z. ú., for its own materials",
+  "style": {
+    "accent": "#692638",
+    "ink": "#241832",
+    "paper": "#FFFFFF",
+    "titleSize": 38,
+    "bodySize": 21,
+    "header": "position"
+  }
+}

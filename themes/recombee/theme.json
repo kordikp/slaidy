@@ -1,0 +1,15 @@
+{
+  "name": "recombee",
+  "label": "Recombee",
+  "description": "Recombee's corporate identity from recombee.com: a dark green slide, mint and Inter, the logo in the header.",
+  "author": "Recombee",
+  "licence": "CSS MIT · Inter OFL 1.1 · the Recombee logo and brand © Recombee, for Recombee materials only",
+  "style": {
+    "accent": "#3BC4A2",
+    "ink": "#F3F7F6",
+    "paper": "#0E251F",
+    "titleSize": 38,
+    "bodySize": 20,
+    "header": "position"
+  }
+}

@@ -1,0 +1,89 @@
+<!doctype html><meta charset=utf-8><iframe id=f src="/index.html" style="width:1500px;height:940px;border:0"></iframe>
+<script>
+const E=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const L=[],ok=(n,c,x)=>L.push((c?'PASS ':'FAIL ')+E(n)+(x?'  '+E(x):''));
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const spill=()=>{if(!document.getElementById('out'))
+  document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+
+    '\nERROR the file stopped here — it hung rather than finished</pre>');};
+const __watchdog=setTimeout(spill,55000);
+addEventListener('load',async()=>{
+ const W=f.contentWindow,d=f.contentDocument; await (f.contentWindow.__ready||wait(3500)); await wait(120); const w=W.__api;
+ try{
+  const html=d.documentElement,stage=()=>d.querySelector('#sheet .stage');
+
+  // ---------- what a theme from anywhere is cut down to ----------
+  const R='html[data-slaidy-theme="t"]';
+  const evil=[
+    `${R}{--th-a:red;color:red;font-family:Comic}`,                 // keeps --th-a, not color or font
+    `${R} .stage h2{color:var(--th-a)}`,                            // kept
+    `${R} .stage.lay-cover,${R} .stage::after{background:url(data:image/png;base64,AA==)}`, // kept, data: stays
+    `${R} .stage .x{background:url(https://tracker.example/p.gif)}`,// kept, the address goes
+    `${R} .stage::before{position:fixed;inset:0}`,                  // kept, but not fixed
+    `${R} #bar{display:none}`, `body{display:none}`, `${R} .stagewrap{display:none}`,
+    `${R} .stage ~ #side{display:none}`, `${R} .stage + *{display:none}`,  // five rules outside the slides
+    `${R} .stage:is(.a,.b) p{color:blue}`,                          // kept: the comma is inside :is()
+    `@import url(https://x.example/a.css);`,
+    `@keyframes spin{to{opacity:0}}`, `@keyframes t-glow{to{opacity:.5}}`,
+    `@media print{${R} .stage{color:black} .app{display:none}}`,
+    `@font-face{font-family:"T";src:url(data:font/woff2;base64,AA==)}`,
+  ].join('\n');
+  const v=w.themeSafe(evil,'t');
+  ok('the theme\'s own --th-* properties stay, nothing else on its root',
+     v.css.includes(`${R}{--th-a:red}`)&&!/Comic/.test(v.css),v.css.slice(0,60));
+  ok('rules for its slides stay',v.css.includes(`${R} .stage h2{color:var(--th-a)}`)&&v.css.includes(':is(.a,.b)'));
+  ok('pictures inside the CSS stay',v.css.includes('url(data:image/png;base64,AA==)'));
+  ok('nothing is fetched from an address',!/tracker\.example|x\.example/.test(v.css));
+  ok('a slide cannot cover the window',!/position\s*:\s*fixed/.test(v.css));
+  ok('rules for the app itself are left out',!/#bar|body\{|stagewrap|#side|\+ \*|\.app/.test(v.css),v.css);
+  ok('keyframes only under the theme\'s name',v.css.includes('t-glow')&&!/keyframes spin/.test(v.css));
+  ok('@media keeps its slide rules',/@media print\{html\[data-slaidy-theme="t"\] \.stage\{color:black\}\}/.test(v.css),v.css.slice(-160));
+  ok('fonts stay',v.css.includes('@font-face{font-family:"T"'));
+  ok('and what was left out is counted',v.dropped===11,v.dropped+'');
+
+  // ---------- every theme in the library passes whole ----------
+  let lib=null;try{lib=await (await fetch('/themes/index.json')).json();}catch(e){}
+  ok('the library is built for the suite',!!lib&&lib.themes.length>=4,lib?lib.themes.map(t=>t.name).join(', '):'no index.json');
+  const css={};
+  for(const t of (lib?lib.themes:[])){
+    css[t.name]=await (await fetch('/themes/'+t.css)).text();
+    const s=w.themeSafe(css[t.name],t.name);
+    ok(`${t.name}: nothing in it is left out`,s.dropped===0,s.dropped+' left out');
+    ok(`${t.name}: its style is a style the deck knows`,Object.keys(t.style).every(k=>w.STYLE_KEYS.includes(k)));
+  }
+
+  // ---------- putting one on the deck ----------
+  if(css.recombee){
+    const t=lib.themes.find(x=>x.name==='recombee');
+    w.themeUse('recombee',css.recombee,t.style);await wait(300);
+    ok('the page says which theme',html.dataset.slaidyTheme==='recombee');
+    ok('its CSS is on the page once',d.querySelectorAll('#deck-theme').length===1);
+    ok('the deck carries it, to work offline',w.S.themeCss===css.recombee&&w.S.style.theme==='recombee');
+    ok('and takes its colours',w.style('paper')==='#0E251F'&&w.style('accent')==='#3BC4A2',w.style('paper'));
+    const cs=W.getComputedStyle(stage());
+    ok('the slide wears it',/radial-gradient/.test(cs.backgroundImage)&&/Inter/.test(cs.fontFamily),cs.fontFamily);
+    ok('the app around it does not',!/Inter/.test(W.getComputedStyle(d.getElementById('bar')).fontFamily)||
+       /Inter/.test(W.getComputedStyle(d.body).fontFamily));
+    ok('every stage says its layout',/\blay-[\w-]+\b/.test(stage().className),stage().className);
+    ok('the printed pages carry the theme too',w.pdfDoc('<div></div>').includes('data-slaidy-theme="recombee"'));
+    ok('the footer line is the deck title',/./.test(html.style.getPropertyValue('--slaidy-footer')));
+    // a deck that comes back with its theme in it shows it again
+    const kept=JSON.parse(JSON.stringify(w.S));w.S=kept;w.applyStyle();w.paint();await wait(150);
+    ok('a deck opened again keeps its theme',html.dataset.slaidyTheme==='recombee'&&!!d.getElementById('deck-theme'));
+    // a hostile theme under the same mechanism cannot touch the app
+    w.themeUse('evil',`html[data-slaidy-theme="evil"] #bar{display:none} body{background:red}`,null);await wait(150);
+    ok('a theme cannot hide the toolbar',W.getComputedStyle(d.getElementById('bar')).display!=='none');
+    ok('or colour the page',W.getComputedStyle(d.body).backgroundColor!=='rgb(255, 0, 0)');
+    w.themeUse('');await wait(150);
+    ok('no theme: no attribute, no CSS',!html.dataset.slaidyTheme&&!d.getElementById('deck-theme')&&!w.S.themeCss);
+  }
+  // a name that is not a name is no theme
+  w.S.style.theme='x"] body{display:none} [y';w.S.themeCss='body{display:none}';w.applyStyle();await wait(100);
+  ok('a malformed theme name is ignored',!html.dataset.slaidyTheme&&!d.getElementById('deck-theme'));
+  delete w.S.style.theme;delete w.S.themeCss;w.applyStyle();
+
+ }catch(e){L.push('ERROR '+e.message+' @ '+(e.stack||'').split('\n')[1]);}
+ clearTimeout(__watchdog);
+ document.body.insertAdjacentHTML('beforeend','<pre id=out>'+L.join('\n')+'</pre>');
+});
+</script>

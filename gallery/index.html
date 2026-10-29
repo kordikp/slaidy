@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SlAIdy gallery</title>
+<meta name="description" content="Talks made with SlAIdy, the slide editor in one HTML file, and the themes anyone can add.">
+<!--
+  The gallery: the published talks (site/<name>/, a cover in talks/<name>.jpg) and every theme
+  in the library, read from ../themes/index.json, which the Pages workflow builds. A new theme
+  shows up here by itself; a new talk is a card below and a cover picture:
+    node scripts/shots.mjs build/talk.html 1 1 shots/ --wait 4000 --size 1280x720
+  then crop the slide out of the frame and save it as talks/<name>.jpg, 800×450.
+-->
+<style>
+:root{--ink:#14161B;--text:#3A404C;--muted:#6B7280;--line:#E4E6EA;--card:#FFFFFF;--bg:#F6F6F9;
+ --acc:#4B3FCF;--accbg:#ECEBFB;--onacc:#FFFFFF;--shadow:0 1px 2px rgba(20,22,27,.06),0 8px 24px rgba(20,22,27,.06)}
+@media (prefers-color-scheme:dark){:root{--ink:#F2F3F7;--text:#C9CDD6;--muted:#9097A4;--line:#2A2E38;
+ --card:#171A21;--bg:#0E1015;--acc:#9D94FF;--accbg:#22203F;--onacc:#14112E;--shadow:0 1px 2px rgba(0,0,0,.4)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--acc)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.brand{font-weight:750;font-size:20px;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+.brand b{color:var(--acc)}
+nav a{margin-left:20px;color:var(--text);text-decoration:none;font-size:15px}
+nav a:hover{color:var(--acc)}
+.hero{padding:40px 0 34px}
+.hero h1{font-size:clamp(36px,6vw,64px);line-height:1.04;letter-spacing:-.035em;color:var(--ink);margin:0 0 18px}
+.hero p{max-width:720px;font-size:19px;margin:0 0 26px}
+.btn{display:inline-block;padding:11px 18px;border-radius:10px;font-weight:600;text-decoration:none;margin:0 10px 10px 0}
+.btn.pri{background:var(--acc);color:var(--onacc)}
+.btn.sec{background:var(--accbg);color:var(--acc)}
+h2{font-size:26px;letter-spacing:-.02em;color:var(--ink);margin:56px 0 6px}
+.lead{margin:0 0 22px;color:var(--muted);max-width:760px}
+.grid{display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);
+ display:flex;flex-direction:column}
+.card .pic{display:block;aspect-ratio:16/9;background:var(--line);overflow:hidden}
+.card .pic img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.card .pic:hover img{transform:scale(1.03)}
+.card .body{padding:16px 18px 18px;display:flex;flex-direction:column;flex:1}
+.tag{display:inline-block;font:600 11px/1 system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);
+ background:var(--accbg);padding:5px 8px;border-radius:6px;margin-bottom:10px;align-self:flex-start}
+.card h3{font-size:19px;line-height:1.25;letter-spacing:-.01em;color:var(--ink);margin:0 0 6px}
+.card p{margin:0 0 12px;font-size:15px}
+.card .meta{font-size:13px;color:var(--muted);margin-top:auto;margin-bottom:10px}
+.links{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;font-weight:600}
+.links a{text-decoration:none}
+.links a:hover{text-decoration:underline}
+.themes .card .pic{aspect-ratio:32/9}
+.add{border-style:dashed;box-shadow:none;background:transparent}
+.add .body{justify-content:center}
+ol.steps{padding-left:20px;margin:0 0 6px;max-width:760px}
+ol.steps li{margin:6px 0}
+code{font:14px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--accbg);color:var(--ink);padding:1px 5px;border-radius:4px}
+footer{margin:64px 0 0;padding:26px 0 40px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.empty{color:var(--muted);font-style:italic}
+@media (max-width:520px){.wrap{padding:0 16px}nav a{margin-left:12px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+ <a class="brand" href="../">Sl<b>AI</b>dy</a>
+ <nav><a href="../">Try it</a><a href="https://github.com/kordikp/slaidy">GitHub</a><a href="https://github.com/kordikp/slaidy/tree/main/themes">Themes</a></nav>
+</header>
+
+<section class="hero">
+ <h1>One file.<br>Any look.</h1>
+ <p>Every talk below is the same single HTML file with a different deck in it: it presents, prints the
+ speaker notes and exports a PDF, with nothing to install. The look is a <b>theme</b>, a stylesheet the
+ deck carries inside it, so a company profile, a PechaKucha and a lecture can share one editor.</p>
+ <a class="btn pri" href="../">Open the editor</a>
+ <a class="btn sec" href="https://github.com/kordikp/slaidy/blob/main/themes/README.md">Add your theme</a>
+</section>
+
+<h2>Talks</h2>
+<p class="lead">Click a picture to present it (arrows or a click move on, <code>N</code> shows the notes).
+Open one to see how it is made, or to make your own copy.</p>
+<div class="grid">
+
+ <article class="card">
+  <a class="pic" href="../recombee/#present"><img src="talks/recombee.jpg" alt="The cover of the Recombee profile: a swarm carrying items from a catalogue to people" loading="lazy"></a>
+  <div class="body">
+   <span class="tag">theme · Recombee</span>
+   <h3>Recombee — AI personalisation and search</h3>
+   <p>A company profile: the product stack built up from the servers, ten domains with their public case
+   studies, a reel of published research. Every figure is an animated SVG.</p>
+   <div class="meta">11 slides · company profile</div>
+   <div class="links"><a href="../recombee/#present">Present</a><a href="../recombee/">Open</a><a href="../recombee/notes/">Notes</a></div>
+  </div>
+ </article>
+
+ <article class="card">
+  <a class="pic" href="../mind-the-gap/#present"><img src="talks/mind-the-gap.jpg" alt="The red AI dětem cover of Mind the Alignment Gap" loading="lazy"></a>
+  <div class="body">
+   <span class="tag">theme · AI dětem</span>
+   <h3>Mind the Alignment Gap</h3>
+   <p>A PechaKucha from WOAH 2026 at EMNLP: why moderation built for adults misses the harms done to
+   children. Twenty slides, twenty seconds each, and the deck keeps its own time.</p>
+   <div class="meta">20 slides × 20 s · PechaKucha</div>
+   <div class="links"><a href="../mind-the-gap/#present">Present</a><a href="../mind-the-gap/">Open</a><a href="../mind-the-gap/notes/">Notes</a></div>
+  </div>
+ </article>
+
+ <article class="card">
+  <a class="pic" href="../rnn/#present"><img src="talks/rnn.jpg" alt="The Paper cover of How a network remembers: a word entering a recurrent cell" loading="lazy"></a>
+  <div class="body">
+   <span class="tag">theme · Paper</span>
+   <h3>How a network remembers</h3>
+   <p>A lecture on recurrent neural networks for NI-MVI at FIT CTU: the loop, the unrolled network,
+   backpropagation through time, the vanishing gradient, LSTM and what came after. All in motion.</p>
+   <div class="meta">11 slides · lecture</div>
+   <div class="links"><a href="../rnn/#present">Present</a><a href="../rnn/">Open</a><a href="../rnn/notes/">Notes</a></div>
+  </div>
+ </article>
+
+ <article class="card">
+  <a class="pic" href="../isd2026/#present"><img src="talks/isd2026.jpg" alt="The cover of the ISD 2026 keynote" loading="lazy"></a>
+  <div class="body">
+   <span class="tag">default look</span>
+   <h3>The Great Convergence — ISD 2026 keynote</h3>
+   <p>Recommendation, search and conversation in real-world AI systems: a keynote with tables, formulas,
+   generated and hand-corrected figures, and a note on every slide.</p>
+   <div class="meta">37 slides · keynote</div>
+   <div class="links"><a href="../isd2026/#present">Present</a><a href="../isd2026/">Open</a><a href="../isd2026/notes/">Notes</a><a href="../isd2026/commentary/">Read it</a></div>
+  </div>
+ </article>
+
+ <article class="card">
+  <a class="pic" href="../miton2026/#present"><img src="talks/miton2026.jpg" alt="The cover of The Great Convergence at Miton Times" loading="lazy"></a>
+  <div class="body">
+   <span class="tag">default look</span>
+   <h3>The Great Convergence — Miton Times</h3>
+   <p>The same story retold for a meetup audience in Prague: shorter, more pictures, the same single file.</p>
+   <div class="meta">35 slides · meetup talk</div>
+   <div class="links"><a href="../miton2026/#present">Present</a><a href="../miton2026/">Open</a><a href="../miton2026/notes/">Notes</a></div>
+  </div>
+ </article>
+
+</div>
+
+<h2>Themes</h2>
+<p class="lead">Each theme has a sample deck: the same five slides in its look. In the editor a theme is
+one choice under <b>⋯ → Deck settings → Style → Theme</b>, and your deck keeps it inside, so it still
+opens offline.</p>
+<div class="grid themes" id="themes"><p class="empty">Loading the themes…</p></div>
+
+<h2>Add your theme</h2>
+<p class="lead">A theme is a folder with a stylesheet, a few lines of JSON and its fonts. Bring your
+university's, your company's or your own look:</p>
+<ol class="steps">
+ <li>Fork <a href="https://github.com/kordikp/slaidy">kordikp/slaidy</a> and make <code>themes/&lt;name&gt;/</code>
+  with <code>theme.css</code>, <code>theme.json</code> and the fonts with their licence.</li>
+ <li><code>python3 scripts/themes.py</code> builds it with the sample deck; <code>python3 scripts/theme_preview.py &lt;name&gt;</code>
+  makes the picture for this page.</li>
+ <li>Run <code>tests/all.sh</code> and open a pull request. Once it is merged, it is here and in every
+  editor's theme list.</li>
+</ol>
+<p><a href="https://github.com/kordikp/slaidy/blob/main/themes/README.md">What a theme can do, and the hooks it gets →</a></p>
+
+<footer>SlAIdy is MIT-licensed and fits in one HTML file. Brands and logos in the themes belong to their
+owners. Made by <a href="https://kordikp.github.io">Pavel Kordík</a> and contributors ·
+<a href="https://github.com/kordikp/slaidy">github.com/kordikp/slaidy</a></footer>
+</div>
+
+<script>
+(function(){
+  const box = document.getElementById('themes');
+  const NAME = /^[a-z][a-z0-9-]{0,31}$/;
+  const el = (tag, attrs, text) => {
+    const e = document.createElement(tag);
+    for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  function card(t){
+    const n = t.name, c = el('article', {class: 'card'});
+    const pic = el('a', {class: 'pic', href: '../themes/' + n + '/#present'});
+    if (t.preview) pic.append(el('img', {src: '../themes/' + n + '/preview.png', alt: 'The first two slides of the ' + n + ' sample deck', loading: 'lazy'}));
+    const b = el('div', {class: 'body'});
+    b.append(el('span', {class: 'tag'}, n), el('h3', null, t.label || n), el('p', null, t.description || ''),
+      el('div', {class: 'meta'}, [t.author, t.licence].filter(Boolean).join(' · ')));
+    const l = el('div', {class: 'links'});
+    l.append(el('a', {href: '../themes/' + n + '/#present'}, 'Sample deck'),
+      el('a', {href: '../themes/' + n + '/'}, 'Open'),
+      el('a', {href: 'https://github.com/kordikp/slaidy/tree/main/themes/' + n}, 'Source'));
+    b.append(l); c.append(pic, b);
+    return c;
+  }
+  function add(){
+    const c = el('article', {class: 'card add'}), b = el('div', {class: 'body'});
+    const a = el('a', {href: 'https://github.com/kordikp/slaidy/blob/main/themes/README.md'}, 'How to add one →');
+    b.append(el('h3', null, 'Your theme here'), el('p', null, 'A pull request with a folder under themes/ — the tests check it, the site publishes it.'), a);
+    c.append(b);
+    return c;
+  }
+  fetch('../themes/index.json').then(r => r.ok ? r.json() : Promise.reject(r.status)).then(j => {
+    box.textContent = '';
+    (j.themes || []).filter(t => t && NAME.test(t.name || '')).forEach(t => box.append(card(t)));
+    box.append(add());
+  }).catch(() => {
+    box.textContent = '';
+    box.append(el('p', {class: 'empty'}, 'The list of themes did not load. They are in the repository under themes/.'), add());
+  });
+})();
+</script>
+</body>
+</html>

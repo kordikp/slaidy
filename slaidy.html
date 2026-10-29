@@ -326,7 +326,7 @@ button{cursor:pointer;background:none;border:none}
    There is no gutter to have: the column is the slide. They ride inside the
    block's own top-right corner instead, over the content, on hover only. */
 .bk{position:relative;border-radius:5px;padding:0 6px;margin:0 -6px}
-.bk:hover{background:#F6F7F9;cursor:text}
+.bk:hover{background:rgba(128,128,128,.09);cursor:text}
 .bk.dragging{opacity:.35}
 /* The line has to be findable while something is over it, so it is drawn
    outside the block and given a nub at each end. */
@@ -461,7 +461,7 @@ textarea.src{width:100%;border:1px solid var(--acc);border-radius:6px;padding:9p
 .mdsrc{border:0;border-left:1px solid var(--line);padding:16px 18px;resize:none;outline:none;
  font:12.5px/1.7 ui-monospace,SFMono-Regular,monospace;color:#3A404C;background:#fff;tab-size:2}
 /* a figure preview is 800×450 and needs no stage scaling — just a box */
-.pvwrap.figpv{aspect-ratio:800/450;background:#fff;display:block;padding:0}
+.pvwrap.figpv{aspect-ratio:800/450;background:var(--d-paper,#fff);display:block;padding:0}
 .pvwrap.figpv svg{width:100%;height:100%;display:block}
 .pvwrap{border:1px solid var(--line);border-radius:var(--r10);overflow:hidden;flex:none;
  box-shadow:0 1px 2px rgba(15,18,26,.04),0 5px 16px rgba(15,18,26,.05)}
@@ -635,7 +635,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .fetools .hr{height:1px;background:var(--line);margin:3px 2px}
 .fecanvas.drawing{cursor:crosshair}
 .fecanvas.drawing iframe{pointer-events:auto}
-.fecanvas iframe{width:100%;height:100%;border:0;background:#fff;border-radius:var(--r6);
+.fecanvas iframe{width:100%;height:100%;border:0;background:var(--d-paper,#fff);border-radius:var(--r6);
  box-shadow:0 1px 2px rgba(15,18,26,.05),0 6px 20px rgba(15,18,26,.06)}
 .fehint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11.5px;color:var(--faint);
  background:rgba(255,255,255,.94);padding:3px 11px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
@@ -677,7 +677,7 @@ kbd{font:11px ui-monospace,monospace;background:#F1F2F5;border:1px solid var(--l
 .swin{width:100%;margin-top:6px;border:1px solid var(--line);border-radius:var(--r6);padding:4px 8px;
  font:11.5px ui-monospace,monospace;outline:none}
 .swin:focus{border-color:var(--acc)}
-.fepv{border:1px solid var(--line);border-radius:var(--r6);padding:6px;background:#fff}
+.fepv{border:1px solid var(--line);border-radius:var(--r6);padding:6px;background:var(--d-paper,#fff)}
 .fepv svg{width:100%;height:auto}
 .fepanel .sec:first-child{padding-top:13px}
 
@@ -1245,7 +1245,7 @@ async function openDeckFile(){
       const b=await r.json();
       if(!b.slides)throw new Error('that file is not a deck');
       S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-         meta:b.meta||{},style:b.style||{},assets:b.assets||{},...(b.git?{git:b.git}:{})};
+         meta:b.meta||{},style:b.style||{},assets:b.assets||{},...themeOf(b),...(b.git?{git:b.git}:{})};
       normalise();glBase();cur=0;dirty=false;unbanner();
       srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
       lastSaved=new Date();setStatus('ok');
@@ -1267,7 +1267,7 @@ async function openDeckFile(){
     const b=JSON.parse(await (await h.getFile()).text());
     if(!b.slides)throw new Error('that file is not a deck');
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-       meta:b.meta||{},style:b.style||{},assets:b.assets||{},...(b.git?{git:b.git}:{})};
+       meta:b.meta||{},style:b.style||{},assets:b.assets||{},...themeOf(b),...(b.git?{git:b.git}:{})};
     normalise();glBase();cur=0;dirty=false;
     srvLinked=false;                 /* this file is now the deck's home, not the served one */
     unbanner();
@@ -1710,6 +1710,111 @@ function applyStyle(){
   r.setProperty('--d-paper',style('paper'));
   r.setProperty('--d-title',style('titleSize')+'px');
   r.setProperty('--d-body',style('bodySize')+'px');
+  const root=document.documentElement,th=themeName();
+  if(th)root.dataset.slaidyTheme=th;else delete root.dataset.slaidyTheme;
+  r.setProperty('--slaidy-footer',JSON.stringify(String((S.style&&S.style.footer)||S.title||'').replace(/[\u0000-\u001f]+/g,' ')));
+  let el=document.getElementById('deck-theme');
+  const css=th&&S.themeCss?themeSafe(S.themeCss,th).css:'';
+  if(!css){if(el)el.remove();}
+  else{if(!el){el=document.createElement('style');el.id='deck-theme';document.head.appendChild(el);}
+    if(el.textContent!==css)el.textContent=css;}
+}
+
+/* ---------- themes ----------
+   A theme is a brand's look for the slides: fonts, colours, a cover, a footer.
+   It travels as CSS inside the deck (S.themeCss), so a deck in a theme is still
+   one file that needs nothing but itself, and S.style.theme names it. The page
+   then carries html[data-slaidy-theme=<name>], every stage a lay-<layout>
+   class, and --slaidy-footer the deck's footer line (style.footer, else the
+   title). The library is themes/ in the repository; themes/README.md says how
+   to add one.
+
+   A deck can come from anyone, so its theme is cut down to what a theme is for
+   before it reaches the page: rules for the slides of that theme and nothing
+   else, --th-* properties on the theme's own root, fonts and pictures inside
+   the CSS (data: only, nothing fetched), keyframes named <theme>-…. What is
+   left out is counted, not guessed at.                                        */
+const THEMES_HOME='https://kordikp.github.io/slaidy/themes/';
+/* the theme's CSS when a deck is read in: carried, or it would be lost on the way */
+function themeOf(b){return b&&typeof b.themeCss==='string'?{themeCss:b.themeCss}:{};}
+function themeName(){const t=S.style&&S.style.theme;return /^[a-z][a-z0-9-]{0,31}$/.test(t||'')?t:'';}
+/* split on a separator that is not inside brackets or quotes, which a data:
+   URI with a ';' in it or an :is(a,b) would otherwise be cut by */
+function cssSplit(t,sep){
+  const out=[];let d=0,q='',from=0;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='\\')i++;else if(c===q)q='';continue;}
+    if(c==='"'||c==="'")q=c;else if(c==='('||c==='[')d++;else if(c===')'||c===']')d--;
+    else if(c===sep&&!d){out.push(t.slice(from,i));from=i+1;}}
+  out.push(t.slice(from));return out.map(x=>x.trim()).filter(Boolean);
+}
+function themeSafe(css,name){
+  const key=name+'\n'+css;
+  if(themeSafe.memo&&themeSafe.memo.key===key)return themeSafe.memo.v;
+  const root=`html[data-slaidy-theme="${name}"]`;
+  let dropped=0;
+  const src=String(css||'').replace(/\/\*[\s\S]*?\*\//g,'')
+    .replace(/url\(\s*(?!['"]?data:)[^)]*\)/gi,()=>{dropped++;return 'none';});
+  /* .stage and what is in it — not a sibling of it (~ +), not .stagewrap */
+  const onSlide=x=>x.startsWith(root)&&/^\s+\.stage(?![\w-])/.test(x.slice(root.length))&&
+    !/[~+]/.test(x.replace(/\([^)]*\)/g,''));
+  const walk=t=>{
+    let out='',i=0;
+    const end=at=>{let d=0;for(let j=at;j<t.length;j++){if(t[j]==='{')d++;else if(t[j]==='}'&&!--d)return j+1;}return t.length;};
+    while(i<t.length){
+      const at=t.indexOf('{',i);if(at<0)break;
+      let head=t.slice(i,at);
+      /* @import, @charset and the like have no block: they end at ';' */
+      head=head.replace(/@[\w-]+[^;{]*;/g,()=>{dropped++;return '';}).trim();
+      const e=end(at),body=t.slice(at+1,e-1);i=e;
+      if(/^@(media|supports)\b/i.test(head))out+=head+'{'+walk(body)+'}';
+      else if(/^@font-face$/i.test(head))out+='@font-face{'+body+'}';
+      else if(/^@keyframes\s/i.test(head)){
+        if(head.replace(/^@keyframes\s+/i,'').trim().startsWith(name+'-'))out+=head+'{'+body+'}';else dropped++;}
+      else if(head.startsWith('@'))dropped++;
+      else{
+        const sels=cssSplit(head,',');
+        if(sels.length&&sels.every(x=>x===root)){
+          const all=cssSplit(body,';'),keep=all.filter(x=>/^--th-[\w-]*\s*:/.test(x));
+          if(keep.length<all.length)dropped++;
+          if(keep.length)out+=root+'{'+keep.join(';')+'}';
+        }
+        else if(sels.length&&sels.every(onSlide))
+          out+=sels.join(',')+'{'+body.replace(/position\s*:\s*fixed/gi,'position:absolute')+'}';
+        else dropped++;
+      }
+    }
+    return out;
+  };
+  const v={css:walk(src),dropped};
+  themeSafe.memo={key,v};
+  return v;
+}
+/* The library's list: next to the app when it is served (studio.sh, a fork's
+   Pages), else from the project's own site. null when neither answers. */
+async function themeList(){
+  if(themeList.v)return themeList.v;
+  const tries=(/^https?:$/.test(location.protocol)?[new URL('themes/index.json',location.href).href]:[])
+    .concat(THEMES_HOME+'index.json');
+  for(const u of tries){
+    try{const r=await fetch(u,{cache:'no-cache'});if(!r.ok)continue;
+      const j=await r.json();
+      if(j&&Array.isArray(j.themes))return themeList.v={base:new URL('.',u).href,themes:j.themes};}
+    catch(e){}
+  }
+  return null;
+}
+/* Put a theme on the deck: its CSS, and its colours and sizes as the deck's
+   style, which the Style section below can then still change. */
+function themeUse(name,css,defaults){
+  snap('theme');S.style=S.style||{};
+  if(!name){delete S.style.theme;delete S.themeCss;}
+  else{
+    S.style.theme=name;S.themeCss=css;
+    for(const k of STYLE_KEYS)if(defaults&&defaults[k]!=null)S.style[k]=defaults[k];
+  }
+  touch();applyStyle();paint();
+  return name?themeSafe(css,name).dropped:0;
 }
 function mark(v){dirty=v;if(v)setStatus('warn');}
 function touch(){mark(true);edited=true;clearTimeout(touch.t);touch.t=setTimeout(persist,800);}
@@ -2925,7 +3030,7 @@ async function importWizard(files){
             'Download a copy',()=>downloadDeck());return;}}
         const b=r.bundle;
         S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-           meta:b.meta||{},style:b.style||{},assets:b.assets||{}};
+           meta:b.meta||{},style:b.style||{},assets:b.assets||{},...themeOf(b)};
         normalise();cur=0;fileHandle=null;fileName=null;srvLinked=false;
         document.getElementById('welcome').classList.add('hidden');
         closeDialog();await persist();paint();toast('Opened');};
@@ -3585,7 +3690,8 @@ function stageHtml(s,edit){
 }
 function stageClass(s){
   const L=layOf(s),{behind}=bodyParts(s,L);
-  return 'stage'+(behind&&S.figs[behind.id]?' bgfig':'')+(L.title==='big'?' titled':'');
+  return 'stage'+(behind&&S.figs[behind.id]?' bgfig':'')+(L.title==='big'?' titled':'')+
+    ' lay-'+String((s&&s.layout)||'text').replace(/[^\w-]/g,'');
 }
 /* the overrides ride on the stage element itself, so every surface that draws a
    stage — editor, projector, print — gets them without knowing about them */
@@ -5724,8 +5830,10 @@ function feMount(){
   const clean=disarmSvg(FE.src);
   if(clean)FE.src=clean;
   const fr=document.getElementById('fefr');
+  /* the figure on the slide's own background, or a figure drawn for a dark slide is invisible */
+  const pp=String(sstyle(S.slides[cur],'paper')),paper=/^(#[0-9a-f]{3,8}|[a-z]{3,20}|rgba?\([\d\s.,%]+\))$/i.test(pp)?pp:'#fff';
   fr.srcdoc=`<!doctype html><meta charset="utf-8"><style>
-    html,body{margin:0;height:100%;background:#fff;cursor:default}
+    html,body{margin:0;height:100%;background:${paper};cursor:default}
     /* a figure carries only a viewBox, so it needs a definite box to render into */
     svg{display:block;width:100%;height:100%}
     .fe-hot{cursor:move}
@@ -7028,6 +7136,13 @@ function deckSettings(){
        the same for one showing.</div>
    </div>
    <div class="sec"><div class="sect">Style</div>
+     <div class="fld"><label>Theme</label><select id="dsTheme">
+       <option value="">None — the colours below</option>
+       ${themeName()?`<option value="${themeName()}" selected>${esc(themeName())}</option>`:''}</select></div>
+     <div class="tip" id="dsThMsg">A brand's fonts, colours, cover and footer, from
+       <a href="${THEMES_HOME}" target="_blank" rel="noopener">the theme library</a>. The deck keeps
+       its theme, so it needs no connection afterwards.</div>
+     <div class="rw"><button class="b" id="dsThFile">Theme from a file…</button></div>
      <div class="fld"><label>Accent</label><input data-s="accent" type="color" value="${style('accent')}"></div>
      <div class="fld"><label>Text</label><input data-s="ink" type="color" value="${style('ink')}"></div>
      <div class="fld"><label>Slide background</label><input data-s="paper" type="color" value="${style('paper')}"></div>
@@ -7084,7 +7199,40 @@ function deckSettings(){
     live();touch();});
   document.querySelectorAll('#dsH button').forEach(b=>b.onclick=()=>{
     S.style.header=b.dataset.v;touch();closeDialog();deckSettings();live();});
-  document.getElementById('dsReset').onclick=()=>{snap('style');S.style={};touch();closeDialog();live();toast('Style reset');};
+  document.getElementById('dsReset').onclick=()=>{snap('style');S.style={};delete S.themeCss;touch();closeDialog();live();toast('Style reset');};
+  const thSel=document.getElementById('dsTheme'),thMsg=document.getElementById('dsThMsg');
+  const thSaid=(name,dropped)=>{thMsg.textContent=!name?'No theme: the colours below are the whole style.':
+    `${name}`+(dropped?` — ${dropped} rule${dropped>1?'s':''} reaching outside the slides left out.`:' — on every slide.');};
+  themeList().then(L=>{
+    if(!document.body.contains(thSel))return;
+    if(!L){if(!themeName())thMsg.textContent='The theme library is not reachable from here. A theme from a file still works.';return;}
+    for(const t of L.themes){
+      if(!/^[a-z][a-z0-9-]{0,31}$/.test(t.name||''))continue;
+      if(t.name===themeName()){const o=thSel.querySelector(`option[value="${t.name}"]`);if(o)o.textContent=t.label||t.name;continue;}
+      thSel.insertAdjacentHTML('beforeend',`<option value="${t.name}">${esc(t.label||t.name)}</option>`);}
+  });
+  thSel.onchange=async()=>{
+    const name=thSel.value;
+    if(!name){themeUse('');closeDialog();deckSettings();return;}
+    const L=await themeList(),t=L&&L.themes.find(x=>x.name===name);
+    if(!t){thMsg.textContent='That theme is not in the library any more.';return;}
+    const done=busy('Fetching the '+(t.label||name)+' theme');
+    try{const r=await fetch(new URL(t.css||name+'.css',L.base).href);if(!r.ok)throw new Error('HTTP '+r.status);
+      const css=await r.text();done();
+      const n=themeUse(name,css,t.style);closeDialog();deckSettings();
+      toast((t.label||name)+(n?` — ${n} rules left out`:''));}
+    catch(e){done();thMsg.textContent='Could not fetch it — '+e.message;}
+  };
+  /* for a theme in the making: its CSS straight from the disk, named by its own selector */
+  document.getElementById('dsThFile').onclick=()=>{
+    const inp=document.createElement('input');inp.type='file';inp.accept='.css,text/css';
+    inp.onchange=async()=>{const f=inp.files[0];if(!f)return;
+      const css=await f.text(),m=css.match(/data-slaidy-theme="([a-z][a-z0-9-]{0,31})"/);
+      if(!m){thMsg.textContent='No html[data-slaidy-theme="…"] in that file — see themes/README.md.';return;}
+      const n=themeUse(m[1],css,null);closeDialog();deckSettings();thSaid(m[1],n);
+      toast(m[1]+' from '+f.name+(n?` — ${n} rules left out`:''));};
+    inp.click();};
+  if(themeName())thSaid(themeName(),themeSafe(S.themeCss||'',themeName()).dropped);
   document.getElementById('dsOk').onclick=closeDialog;
 }
 /* "Trim to length" used to live here: give it a number of minutes and it hid
@@ -7646,7 +7794,8 @@ function pdfPages(slides,withNotes){
 function pdfDoc(pages){
   const css=[...document.querySelectorAll('style')].map(x=>x.textContent).join('\n');
   const q=t=>esc(t).replace(/"/g,'&quot;');
-  return `<!doctype html><html style="${q(document.documentElement.style.cssText)}"><head>
+  const th=themeName();
+  return `<!doctype html><html${th?` data-slaidy-theme="${th}"`:''} style="${q(document.documentElement.style.cssText)}"><head>
 <meta charset="utf-8"><base href="${q(location.href)}"><title>${esc(pdfName(false).slice(0,-4))}</title>
 <style>${css}</style></head><body><div id="printroot">${pages}</div></body></html>`;
 }
@@ -8334,7 +8483,7 @@ async function recentDecks(){
       const bdy=await r.json();
       if(!r.ok||!bdy.slides)throw new Error(bdy.error||'that file is not a deck');
       S={id:bdy.id||'deck',title:bdy.title||'Deck',slides:bdy.slides||[],figs:bdy.figs||{},
-         meta:bdy.meta||{},style:bdy.style||{},assets:bdy.assets||{},...(bdy.git?{git:bdy.git}:{})};
+         meta:bdy.meta||{},style:bdy.style||{},assets:bdy.assets||{},...themeOf(bdy),...(bdy.git?{git:bdy.git}:{})};
       normalise();glBase();cur=0;dirty=false;unbanner();
       srvDeck.path=path;srvDeck.abs=path;srvLinked=true;fileName=path;
       lastSaved=new Date();setStatus('ok');closeDialog();
@@ -8379,7 +8528,7 @@ async function boot(){
 
   const load=b=>{
     S={id:b.id||'deck',title:b.title||'Deck',slides:b.slides||[],figs:b.figs||{},
-       meta:b.meta||{},style:b.style||{},assets:b.assets||{},...(b.git?{git:b.git}:{})};
+       meta:b.meta||{},style:b.style||{},assets:b.assets||{},...themeOf(b),...(b.git?{git:b.git}:{})};
     normalise();glBase();cur=0;dirty=false;edited=false;
     /* ?s=N opens at slide N and &step=K at the K-th click of it: a link to one
        moment of a talk, and how a screenshot of that moment is taken */

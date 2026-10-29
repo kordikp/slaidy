@@ -1,0 +1,85 @@
+{
+ "id": "theme-sample",
+ "title": "A SlAIdy theme",
+ "meta": {
+  "author": "SlAIdy",
+  "event": "the theme sample",
+  "venue": "kordikp.github.io/slaidy/themes"
+ },
+ "style": {},
+ "slides": [
+  {
+   "group": "Theme",
+   "title": "One deck, many looks",
+   "layout": "cover",
+   "body": "The same five slides, in every theme of the SlAIdy library.\n\n**SlAIdy** · [kordikp.github.io/slaidy](https://kordikp.github.io/slaidy/)",
+   "n": 1,
+   "tag": "S",
+   "sub": null,
+   "skip": false,
+   "flags": [],
+   "textScale": 100,
+   "notes": "",
+   "summary": ""
+  },
+  {
+   "group": "Theme",
+   "title": "What a theme changes",
+   "layout": "text",
+   "body": "A theme is a brand's look for the slides, and only for the slides.\n\n- **Fonts** for the titles and the text\n- **Colours**: the slide, the text, the accent\n- **The cover and the closing**, the header and the footer\n\nYour words, figures and markdown stay as they are.\n\n> Switch the theme and the deck changes its clothes, not its content.",
+   "n": 2,
+   "tag": "S",
+   "sub": null,
+   "skip": false,
+   "flags": [],
+   "textScale": 100,
+   "notes": "",
+   "summary": ""
+  },
+  {
+   "group": "Theme",
+   "title": "From your text to the room",
+   "layout": "text",
+   "body": "![[fig-theme-flow]]\n\n> The theme sits between what you wrote and what the room sees.",
+   "n": 3,
+   "tag": "S",
+   "sub": null,
+   "skip": false,
+   "flags": [],
+   "textScale": 100,
+   "notes": "",
+   "summary": ""
+  },
+  {
+   "group": "Theme",
+   "title": "Add your own",
+   "layout": "text",
+   "body": "| | |\n|---|---|\n| **1** | Fork `kordikp/slaidy` |\n| **2** | Make `themes/<name>/`: `theme.css`, `theme.json`, the fonts with their licence, a logo |\n| **3** | Run `python3 scripts/themes.py` and open this deck in your theme |\n| **4** | Open a pull request: the suite checks it, the gallery shows it |",
+   "n": 4,
+   "tag": "S",
+   "sub": null,
+   "skip": false,
+   "flags": [],
+   "textScale": 100,
+   "notes": "",
+   "summary": ""
+  },
+  {
+   "group": "Theme",
+   "title": "Make it yours",
+   "layout": "closing",
+   "body": "Every theme: **[kordikp.github.io/slaidy/themes](https://kordikp.github.io/slaidy/themes/)**\n\nHow to add one: [themes/README.md](https://github.com/kordikp/slaidy/tree/main/themes)",
+   "n": 5,
+   "tag": "S",
+   "sub": null,
+   "skip": false,
+   "flags": [],
+   "textScale": 100,
+   "notes": "",
+   "summary": ""
+  }
+ ],
+ "figs": {
+  "fig-theme-flow": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 420\" font-family=\"inherit\"><style>.dot{animation:go 4s ease-in-out infinite}@keyframes go{0%{transform:translateX(0);opacity:0}8%{opacity:1}92%{opacity:1}100%{transform:translateX(640px);opacity:0}}</style><g transform=\"translate(20,110)\"><rect width=\"240\" height=\"216\" rx=\"16\" style=\"fill:var(--d-ink);fill-opacity:.06;stroke:var(--d-ink);stroke-opacity:.25\" stroke-width=\"1.5\"/><text x=\"20\" y=\"34\" font-size=\"20\" font-weight=\"700\" style=\"fill:var(--d-ink)\">Your text</text><rect x=\"20\" y=\"58\" width=\"170\" height=\"8\" rx=\"4\" style=\"fill:var(--d-ink);fill-opacity:.35\"/><rect x=\"20\" y=\"80\" width=\"130\" height=\"8\" rx=\"4\" style=\"fill:var(--d-ink);fill-opacity:.35\"/><rect x=\"20\" y=\"102\" width=\"190\" height=\"8\" rx=\"4\" style=\"fill:var(--d-ink);fill-opacity:.35\"/><rect x=\"20\" y=\"124\" width=\"110\" height=\"8\" rx=\"4\" style=\"fill:var(--d-ink);fill-opacity:.35\"/><rect x=\"20\" y=\"146\" width=\"150\" height=\"8\" rx=\"4\" style=\"fill:var(--d-ink);fill-opacity:.35\"/><text x=\"20\" y=\"196\" font-size=\"16\" style=\"fill:var(--d-ink);fill-opacity:.7\">slides/*.md · figures/*.svg</text></g><path d=\"M270 210 L360 210\" style=\"stroke:var(--d-accent)\" stroke-width=\"3\" fill=\"none\"/><path d=\"M356 202 L370 210 L356 218 Z\" style=\"fill:var(--d-accent)\"/><g transform=\"translate(380,110)\"><rect width=\"240\" height=\"216\" rx=\"16\" style=\"fill:var(--d-ink);fill-opacity:.06;stroke:var(--d-ink);stroke-opacity:.25\" stroke-width=\"1.5\"/><text x=\"20\" y=\"34\" font-size=\"20\" font-weight=\"700\" style=\"fill:var(--d-ink)\">A theme</text><circle cx=\"46\" cy=\"84\" r=\"22\" style=\"fill:var(--d-accent)\"/><circle cx=\"104\" cy=\"84\" r=\"22\" style=\"fill:var(--d-ink)\"/><circle cx=\"162\" cy=\"84\" r=\"22\" style=\"fill:var(--d-paper);stroke:var(--d-ink);stroke-opacity:.4\" stroke-width=\"1.5\"/><text x=\"20\" y=\"146\" font-size=\"26\" font-weight=\"700\" style=\"fill:var(--d-ink)\">Aa</text><text x=\"66\" y=\"146\" font-size=\"16\" style=\"fill:var(--d-ink);fill-opacity:.7\">fonts, cover, footer</text><text x=\"20\" y=\"196\" font-size=\"16\" style=\"fill:var(--d-ink);fill-opacity:.7\">themes/&lt;name&gt;/theme.css</text></g><path d=\"M630 210 L720 210\" style=\"stroke:var(--d-accent)\" stroke-width=\"3\" fill=\"none\"/><path d=\"M716 202 L730 210 L716 218 Z\" style=\"fill:var(--d-accent)\"/><g transform=\"translate(740,110)\"><rect width=\"240\" height=\"216\" rx=\"16\" style=\"fill:var(--d-ink);fill-opacity:.06;stroke:var(--d-ink);stroke-opacity:.25\" stroke-width=\"1.5\"/><text x=\"20\" y=\"34\" font-size=\"20\" font-weight=\"700\" style=\"fill:var(--d-ink)\">The slide</text><rect x=\"20\" y=\"52\" width=\"200\" height=\"112\" rx=\"8\" style=\"fill:var(--d-paper);stroke:var(--d-ink);stroke-opacity:.3\" stroke-width=\"1.5\"/><rect x=\"20\" y=\"52\" width=\"200\" height=\"6\" rx=\"3\" style=\"fill:var(--d-accent)\"/><rect x=\"36\" y=\"74\" width=\"120\" height=\"12\" rx=\"4\" style=\"fill:var(--d-ink)\"/><rect x=\"36\" y=\"98\" width=\"150\" height=\"6\" rx=\"3\" style=\"fill:var(--d-ink);fill-opacity:.4\"/><rect x=\"36\" y=\"114\" width=\"120\" height=\"6\" rx=\"3\" style=\"fill:var(--d-ink);fill-opacity:.4\"/><rect x=\"36\" y=\"130\" width=\"140\" height=\"6\" rx=\"3\" style=\"fill:var(--d-ink);fill-opacity:.4\"/><text x=\"20\" y=\"196\" font-size=\"16\" style=\"fill:var(--d-ink);fill-opacity:.7\">what the room sees</text></g><circle class=\"dot\" cx=\"290\" cy=\"210\" r=\"7\" style=\"fill:var(--d-accent)\"/><text x=\"500\" y=\"60\" text-anchor=\"middle\" font-size=\"22\" style=\"fill:var(--d-ink);fill-opacity:.8\">the same markdown and figures — in any theme</text></svg>"
+ }
+}

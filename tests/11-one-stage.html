@@ -148,7 +148,8 @@ addEventListener('load',async()=>{
   const tmp=d.createElement('div');tmp.innerHTML=w.printSlide(w.S.slides[i],false);
   ok('print uses the stage as well',!!tmp.querySelector('.psl .stage'));
   ok('print markup matches the board',
-     tmp.querySelector('.stage').className===st.className,tmp.querySelector('.stage').className);
+     /* the board is drawn anew on every paint, so it is the stage there now, not the one at the start */
+     tmp.querySelector('.stage').className===d.querySelector('#sheet .stage').className,tmp.querySelector('.stage').className);
   // ---------- a centred row keeps its figure ----------
   // Centring stops the figure column stretching, and the figure sizes itself
   // from that column's height — so it collapsed to nothing and simply was not

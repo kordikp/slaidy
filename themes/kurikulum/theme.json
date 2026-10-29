@@ -1,0 +1,15 @@
+{
+  "name": "kurikulum",
+  "label": "AI kurikulum",
+  "description": "The AI kurikulum methodology decks: a pink-to-blue gradient cover, Darker Grotesque throughout.",
+  "author": "AI dětem z. ú.",
+  "licence": "CSS MIT · fonts OFL 1.1 · brand and logos © AI dětem z. ú., for its own materials",
+  "style": {
+    "accent": "#D35773",
+    "ink": "#000000",
+    "paper": "#FFFFFF",
+    "titleSize": 38,
+    "bodySize": 24,
+    "header": "position"
+  }
+}

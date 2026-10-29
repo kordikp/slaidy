@@ -19,6 +19,8 @@ trap cleanup EXIT
 cp slaidy.html "$WORK/index.html"
 python3 tests/make-fixture.py >/dev/null
 cp tests/*.html "$WORK/"
+# the theme library as the site serves it, so every theme goes through the app's own filter
+python3 scripts/themes.py --out "$WORK/themes" >/dev/null || { echo "  scripts/themes.py failed"; exit 1; }
 
 # expose the internals the tests drive, without shipping that hook in the app
 python3 - "$WORK/index.html" <<'PY'
@@ -53,7 +55,7 @@ window.__api={figEdit,feSelect,feTranslate,fePush,feCommit,feGroup,feUngroup,feU
   parseStyle,STYLE_KEYS,normalise,slideMd,style,slideMenu,newDeck,renameDeck,unbanner,hush,hushed,checkFit,useLoad,useNote,useReset,usageHtml,
   KIND_LABEL,nfmt,safeUrl,askReplace,writeServer,writeServerAs,aiSays,nativeFile,canFile,saveDeckAs,openDeckFile,disarmSvg,scopeSvg,put,get,cfgUrl,DEMO_AI,DEMO_HOSTS,demoLimitsHtml,llmOnce,llm2,transient,RETRY,swipes,step,
   fillScreen,otherScreen,pickScreen,builtIn,get SD(){return SD},set SD(v){SD=v},get screenPick(){return screenPick},set screenPick(v){screenPick=v},
-  get GL(){return GL},glOn,slideFp,glPlan};"""
+  get GL(){return GL},glOn,slideFp,glPlan,themeSafe,themeUse,themeName,themeList,cssSplit,pdfDoc};"""
 ready = """
 /* Transitions never settle under Chrome's virtual time, so getComputedStyle
    reads the value a property is animating *from* — an assertion about a drawer

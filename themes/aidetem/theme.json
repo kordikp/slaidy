@@ -1,0 +1,15 @@
+{
+  "name": "aidetem",
+  "label": "AI dětem",
+  "description": "The AI dětem graphic manual (08/2025): strawberry red and endless sky, Space Grotesk headings, Darker Grotesque text, the robot logo; a red cover and closing.",
+  "author": "AI dětem z. ú.",
+  "licence": "CSS MIT · fonts OFL 1.1 · brand and logos © AI dětem z. ú., for its own materials",
+  "style": {
+    "accent": "#DC5B5B",
+    "ink": "#1D1D1B",
+    "paper": "#FFFFFF",
+    "titleSize": 38,
+    "bodySize": 24,
+    "header": "position"
+  }
+}

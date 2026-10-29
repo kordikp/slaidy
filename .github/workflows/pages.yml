@@ -53,6 +53,13 @@ jobs:
             fi
             echo "  published /$n  ($(du -h "$d/deck.json" | cut -f1))"
           done
+          # The theme library: one CSS per theme with its fonts and pictures inside, the
+          # list the editor offers (themes/index.json), and each theme's sample deck at
+          # /themes/<name>/ — the same single file again, with the sample in that theme.
+          python3 scripts/themes.py --out _site/themes
+          for d in _site/themes/*/; do cp slaidy.html "$d/index.html"; done
+          # The gallery: the published talks and every theme, on one page.
+          mkdir -p _site/gallery && cp -r gallery/. _site/gallery/
       - uses: actions/configure-pages@v5
         with: {enablement: true}      # turn Pages on the first time rather than asking
       - uses: actions/upload-pages-artifact@v3

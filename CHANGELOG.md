@@ -5,6 +5,12 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **The demo deck is a manual now.** `kordikp.github.io/slaidy/` opens fifteen slides in which every
+  slide does what it describes: the keys, a slide's own markdown, formulas and tables, a slide that builds
+  up click by click, an animated chart with axes, a screenshot of the editor with callouts that arrive one
+  per click, an agent converting a deck in a figure where a bitmap leaves at the click its redrawing
+  arrives, three columns, a hidden slide, the eight themes, the exits and a QR code. It replaces the
+  nine-slide tour; `example/slides/` is split into one file per section.
 - **Three more themes.** `fit-cvut` is the identity of the Czech Technical University for its Faculty
   of Information Technology: a white slide, CTU blue, the faculty logo on every slide, and Titillium Web
   in place of the university's own Technika, which is not free to share. `mlcig` is FIT's ML & CI Group:

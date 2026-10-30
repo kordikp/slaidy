@@ -33,7 +33,7 @@ to open straight into the projector:
 
 `https://kordikp.github.io/slaidy/isd2026/#present`
 
-The root of the site stays the tour: `https://kordikp.github.io/slaidy/`. Here now:
+The root of the site stays the manual deck: `https://kordikp.github.io/slaidy/`. Here now:
 `isd2026/`, the ISD 2026 keynote *The Great Convergence*, which is also
 `decks/isd2026.json` in the repository; and `isd2026-v2/`, an earlier draft of it.
 The gallery's talks are here too (`recombee/`, `mind-the-gap/`, `rnn/`, `tiny-intro/`,

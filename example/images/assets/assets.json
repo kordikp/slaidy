@@ -1,0 +1,14 @@
+{
+  "img-d724945e57765880b4a416de": {
+    "name": "themes-grid.png",
+    "w": 1630,
+    "h": 460,
+    "desc": "One slide of the lecture on recurrent networks (the loop of a recurrent cell, the figure drawn in the theme's own colours) shown in eight themes, four across and two down: FIT ČVUT, Recombee, PoliRuralPlus, Tiny on the top row; ML & CI Group, AI dětem, Paper, AI kurikulum below."
+  },
+  "img-9014f8dc94c843f4426643d8": {
+    "name": "editor.png",
+    "w": 1600,
+    "h": 900,
+    "desc": "A screenshot of the SlAIdy editor, 1600 × 900, with this demo deck open at slide 6 (A chart is a drawing too): the slide list by section on the left, the slide itself in the middle with the icon bar for inserting blocks and the speaker notes under it, the panel for the slide's purpose, layout and AI changes on the right, and the top bar with undo, the menu and Present."
+  }
+}

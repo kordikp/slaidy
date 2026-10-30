@@ -27,7 +27,7 @@ than for machines (photographs kept, motion on top of them).
 A deck can also live at a URL — `?deck=<address>` opens it and saves back to it,
 which is how a class shares one storage ([docs/REMOTE.md](docs/REMOTE.md)).
 
-Nothing to sign up for and nothing uploaded — the same single file with the tour deck in
+Nothing to sign up for and nothing uploaded — the same single file with the manual deck in
 it, and a small daily allowance of AI so you can see what the panels do. A real talk is
 published the same way: [the ISD 2026 keynote](https://kordikp.github.io/slaidy/isd2026/),
 37 slides and 41 figures in one link, with [its notes](https://kordikp.github.io/slaidy/isd2026/notes/)
@@ -87,7 +87,7 @@ between them with `Ctrl-C` / `Ctrl-V`, figures included.
 
 | | | |
 |---|---|---|
-| **The tour** | [`decks/example.json`](decks/example.json) | nine slides that show what the editor does, built from [`example/slides/01-tour.md`](example/slides/01-tour.md) and the SVGs beside it — a deck in its markdown form |
+| **The manual** | [`decks/example.json`](decks/example.json) | fifteen slides, each doing what it describes: steps, formulas, an animated chart, a screenshot with callouts, a hidden slide, themes. Built from [`example/slides/`](example/slides/) and the SVGs and pictures in [`example/images/`](example/images/), a deck in its markdown form, and the reference an agent can copy syntax from |
 | **The keynote** | [`decks/isd2026.json`](decks/isd2026.json) | *The Great Convergence*, the ISD 2026 keynote: 37 slides in eight sections, 41 figures, 412 kB in all — a real talk, kept here as the worked example |
 
 The keynote is what a deck looks like once it has been used in anger: one-, two- and
@@ -134,7 +134,7 @@ sources in the text. You write the commentary as markdown, one block per slide; 
 lays it out. `scripts/check_links.py` resolves every DOI and arXiv id in a deck or a page
 and says which are dead.
 
-The [demo](https://kordikp.github.io/slaidy/) is the same thing with the tour deck in it,
+The [demo](https://kordikp.github.io/slaidy/) is the same thing with the manual deck in it,
 and a small daily allowance of AI so you can see what the panels do.
 
 ## Themes

@@ -3,7 +3,7 @@
   "meta": {
     "author": "Pavel Kordík",
     "affiliation": "CTU FIT & Recombee",
-    "event": "a demo deck",
+    "event": "the manual, as a deck",
     "venue": "kordikp.github.io/slaidy",
     "date": ""
   },
@@ -11,8 +11,8 @@
     "accent": "#7C3AED",
     "ink": "#1E1B4B",
     "paper": "#FFFFFF",
-    "titleSize": 38,
-    "bodySize": 19,
+    "titleSize": 44,
+    "bodySize": 24,
     "header": "position"
   }
 }

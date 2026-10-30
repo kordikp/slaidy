@@ -36,6 +36,7 @@ to open straight into the projector:
 The root of the site stays the tour: `https://kordikp.github.io/slaidy/`. Here now:
 `isd2026/`, the ISD 2026 keynote *The Great Convergence*, which is also
 `decks/isd2026.json` in the repository; and `isd2026-v2/`, an earlier draft of it.
-The gallery's talks are here too (`recombee/`, `mind-the-gap/`, `rnn/`, `internet/`,
-`miton2026/`). **`internet/` is not MIT:** its content comes from the Internet4Kids methodology
-(MFF UK & PedF UK) and stays under CC BY-NC-SA 4.0, like the methodology itself.
+The gallery's talks are here too (`recombee/`, `mind-the-gap/`, `rnn/`, `tiny-intro/`,
+`miton2026/`). **`tiny-intro/` is not MIT:** its text, the screenshots of the app and the Tinybot
+artwork are AI dětem's (© AI dětem, z.s.). It comes from the course platform tini-colab, with the
+editors' working notes taken out of the speaker notes.

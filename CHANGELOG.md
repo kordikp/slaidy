@@ -11,8 +11,9 @@ Dates are when the work landed, not when it was released; there are no releases 
   CTU blue, the group's orange and its mark. `polirural` is the Horizon Europe project PoliRuralPlus:
   its greens and fonts, and the EU emblem with the grant acknowledgement, placed as the EU's guide asks.
 - **The gallery:** the lecture on recurrent networks now wears `fit-cvut`, white with the faculty logo,
-  and a school lesson in Czech joins it: *Jak funguje internet* from the Internet4Kids methodology, in
-  Tiny, with its content under CC BY-NC-SA 4.0.
+  and *Tiny at a glance* joins it: AI dětem's 15-minute introduction to Tiny for partners and
+  conferences, in the Tiny theme, with screenshots of the app kept as pictures and a timed speaker note
+  on every slide. Its content is AI dětem's, not MIT.
 - **Converting a presentation, for agents.** `docs/CONVERT.md` is the procedure an agent follows when
   someone says "convert my presentation to SlAIdy": PowerPoint, Keynote, Google Slides, Canva or PDF
   in, a deck and a one-file HTML out. Lean by default (words as markdown, diagrams and charts redrawn

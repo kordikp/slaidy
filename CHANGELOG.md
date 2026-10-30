@@ -11,6 +11,9 @@ Dates are when the work landed, not when it was released; there are no releases 
   per click, an agent converting a deck in a figure where a bitmap leaves at the click its redrawing
   arrives, three columns, a hidden slide, the eight themes, the exits and a QR code. It replaces the
   nine-slide tour; `example/slides/` is split into one file per section.
+- **A new opening figure.** The first slide shows what the deck is made of: a slide's markdown and the
+  SVG of its chart, dark, until a beam crosses it and leaves the slide behind, each thing where its source
+  was. 16 kB of SVG and CSS; with the animation off it stops at the split, slide on the left, source on the right.
 - **Three more themes.** `fit-cvut` is the identity of the Czech Technical University for its Faculty
   of Information Technology: a white slide, CTU blue, the faculty logo on every slide, and Titillium Web
   in place of the university's own Technika, which is not free to share. `mlcig` is FIT's ML & CI Group:

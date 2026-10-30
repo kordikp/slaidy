@@ -1,211 +1,103 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" font-family="system-ui,sans-serif">
-  <style>
-    @keyframes ask    { 0%,2%{opacity:0;transform:translateY(8px) scale(.92)}
-                        6%,20%{opacity:1;transform:none}
-                        25%,100%{opacity:0;transform:translateY(8px) scale(.92)} }
-    @keyframes wall   { 0%,7%{opacity:0} 11%,44%{opacity:1} 48%,100%{opacity:0} }
-    @keyframes type   { 0%,8%{transform:scaleX(0)} 15%,100%{transform:scaleX(1)} }
-    @keyframes tag    { 0%,26%{opacity:0} 30%,44%{opacity:1} 48%,100%{opacity:0} }
-    @keyframes tada   { 0%,27%{opacity:0;transform:translateY(6px) scale(.85)}
-                        31%,39%{opacity:1;transform:none}
-                        43%,100%{opacity:0;transform:translateY(6px) scale(.85)} }
-    @keyframes reachx { 0%,36%{transform:scaleX(1)} 45%,49%{transform:scaleX(2.85)}
-                        56%,100%{transform:scaleX(1)} }
-    @keyframes reachh { 0%,36%{transform:translateX(0)} 45%,49%{transform:translateX(178px)}
-                        56%,100%{transform:translateX(0)} }
-    @keyframes hold   { 0%,33%{opacity:0} 37%,50%{opacity:1} 55%,100%{opacity:0} }
-    @keyframes strike { 0%,37%{opacity:0;stroke-dashoffset:170} 39%{opacity:1}
-                        45%{opacity:1;stroke-dashoffset:0} 50%,100%{opacity:0;stroke-dashoffset:0} }
-    @keyframes poof   { 0%,44%{opacity:0;transform:scale(.3)} 48%{opacity:.8;transform:scale(1)}
-                        55%,100%{opacity:0;transform:scale(1.6)} }
-    @keyframes mood   { 0%,47%{transform:none} 53%,62%{transform:translateY(11px) rotate(4deg)}
-                        68%,81%{transform:none} 87%{transform:translateY(-11px) rotate(-6deg)}
-                        93%,100%{transform:none} }
-    @keyframes sad    { 0%,48%{opacity:0} 53%,63%{opacity:1} 68%,100%{opacity:0} }
-    @keyframes glad   { 0%,48%{opacity:1} 53%,63%{opacity:0} 68%,100%{opacity:1} }
-    @keyframes drip   { 0%,52%{opacity:0;transform:translateY(-2px)} 56%{opacity:1}
-                        64%,100%{opacity:0;transform:translateY(20px)} }
-    @keyframes calm   { 0%,72%{opacity:1} 75%,100%{opacity:0} }
-    @keyframes warm   { 0%,72%{opacity:0} 75%,100%{opacity:1} }
-    @keyframes redo   { 0%,63%{opacity:0} 71%,100%{opacity:1} }
-    @keyframes grow   { 0%,67%{transform:scaleY(0)} 79%,100%{transform:scaleY(1)} }
-    @keyframes draw   { 0%,73%{stroke-dashoffset:190} 85%,100%{stroke-dashoffset:0} }
-    @keyframes dot    { 0%,76%{opacity:0;transform:scale(.3)} 84%,100%{opacity:1;transform:scale(1)} }
-    @keyframes heart  { 0%,80%{opacity:0;transform:translateY(0) scale(.5)}
-                        86%{opacity:1;transform:translateY(-18px) scale(1)}
-                        97%,100%{opacity:0;transform:translateY(-40px) scale(1)} }
-    @keyframes spark  { 0%,29%{opacity:0;transform:scale(.4)} 33%{opacity:1;transform:scale(1)}
-                        39%,82%{opacity:0;transform:scale(.4)} 88%{opacity:1;transform:scale(1)}
-                        95%,100%{opacity:0;transform:scale(1.3)} }
-    @keyframes write  { 0%,9%{transform:none} 14%{transform:translate(-9px,-27px)}
-                        19%{transform:translate(-5px,-7px)} 24%{transform:translate(-11px,-31px)}
-                        29%{transform:translate(-5px,-5px)} 34%,64%{transform:none}
-                        70%{transform:translate(-9px,-23px)} 76%,100%{transform:none} }
-    @keyframes bob    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-    @keyframes blink  { 0%,45%,53%,100%{transform:scaleY(1)} 47%,51%{transform:scaleY(.1)} }
-    @keyframes ping   { 0%,9%{opacity:.55;transform:scale(1)} 13%,32%{opacity:1;transform:scale(1.25)}
-                        38%,100%{opacity:.55;transform:scale(1)} }
-    @keyframes wave   { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-16px)} }
-
-    .ask   {transform-origin:146px 111px;animation:ask 12s ease-out infinite}
-    .wall  {animation:wall 12s ease-out infinite}
-    .wl    {transform-box:fill-box;transform-origin:left center;animation:type 12s ease-out infinite backwards}
-    .tag   {animation:tag 12s ease-out infinite}
-    .tada  {transform-origin:608px 96px;animation:tada 12s ease-out infinite}
-    .armX  {transform-box:fill-box;transform-origin:left center;animation:reachx 12s cubic-bezier(.4,0,.3,1) infinite}
-    .hand  {animation:reachh 12s cubic-bezier(.4,0,.3,1) infinite}
-    .rub   {animation:hold 12s ease-out infinite}
-    .strike{stroke-dasharray:170;animation:strike 12s ease-out infinite}
-    .poof  {transform-box:fill-box;transform-origin:center;animation:poof 12s ease-out infinite}
-    .mood  {transform-origin:655px 240px;animation:mood 12s cubic-bezier(.3,1.4,.5,1) infinite}
-    .bob   {transform-origin:655px 240px;animation:bob 4s ease-in-out infinite}
-    .sad   {animation:sad 12s steps(1,end) infinite}
-    .glad  {animation:glad 12s steps(1,end) infinite}
-    .drip  {animation:drip 12s ease-in infinite}
-    .calm  {animation:calm 12s steps(1,end) infinite}
-    .warm  {animation:warm 12s steps(1,end) infinite}
-    .good  {animation:redo 12s ease-out infinite}
-    .bar   {transform-box:fill-box;transform-origin:center bottom;animation:grow 12s cubic-bezier(.2,1.3,.4,1) infinite backwards}
-    .trend {stroke-dasharray:190;animation:draw 12s ease-out infinite}
-    .tdot  {transform-box:fill-box;transform-origin:center;animation:dot 12s ease-out infinite backwards}
-    .heart {transform-box:fill-box;transform-origin:center;animation:heart 12s ease-out infinite}
-    .spark {transform-box:fill-box;transform-origin:center;animation:spark 12s ease-out infinite}
-    .pen   {animation:write 12s ease-in-out infinite}
-    .eye   {transform-box:fill-box;transform-origin:center;animation:blink 5.5s ease-in-out infinite}
-    .ant   {transform-box:fill-box;transform-origin:center;animation:ping 12s ease-in-out infinite}
-    .wave  {animation:wave 3s linear infinite}
-    @media print,(prefers-reduced-motion:reduce){
-      .ask,.wall,.wl,.tag,.tada,.armX,.hand,.rub,.strike,.poof,.mood,.bob,.sad,.glad,.drip,.calm,.warm,
-      .good,.bar,.trend,.tdot,.heart,.spark,.pen,.eye,.ant,.wave{animation:none!important}
-      .ask,.wall,.tag,.tada,.rub,.strike,.poof,.sad,.drip,.calm,.heart,.spark{opacity:0}
-    }
-  </style>
-
-  <rect width="800" height="450" rx="14" fill="#FAFAF7" stroke="#E5E7EB"/>
-
-  <!-- the slide the two of them are making -->
-  <rect x="268" y="74" width="272" height="302" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
-  <rect x="288" y="98" width="150" height="13" rx="6.5" fill="#1E1B4B" opacity=".85"/>
-
-  <!-- beat 2: the robot writes far too much of it -->
-  <g class="wall" opacity="0">
-    <rect class="wl" x="288" y="138" width="216" height="9" rx="4.5" fill="#C9C3F6"/>
-    <rect class="wl" x="288" y="160" width="200" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:.35s"/>
-    <rect class="wl" x="288" y="182" width="208" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:.7s"/>
-    <rect class="wl" x="288" y="204" width="186" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:1.05s"/>
-    <rect class="wl" x="288" y="226" width="212" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:1.4s"/>
-    <rect class="wl" x="288" y="248" width="194" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:1.75s"/>
-    <rect class="wl" x="288" y="270" width="152" height="9" rx="4.5" fill="#C9C3F6" style="animation-delay:2.1s"/>
-  </g>
-  <text class="tag" x="288" y="300" font-size="12.5" fill="#9AA1AE" opacity="0">+ 6 more paragraphs</text>
-
-  <!-- beat 3: it goes -->
-  <path class="strike" d="M282 252 H448" stroke="#EF4444" stroke-width="3.2" stroke-linecap="round" opacity="0"/>
-  <g fill="#C9C3F6">
-    <circle class="poof" cx="330" cy="196" r="13" opacity="0"/>
-    <circle class="poof" cx="404" cy="176" r="17" opacity="0"/>
-    <circle class="poof" cx="470" cy="212" r="12" opacity="0"/>
-  </g>
-
-  <!-- beat 4: what they end up with — a couple of lines and a chart that reads -->
-  <g class="good">
-    <rect x="288" y="126" width="214" height="8" rx="4" fill="#C9C3F6"/>
-    <rect x="288" y="142" width="168" height="8" rx="4" fill="#C9C3F6"/>
-    <path d="M288 216 H446 M288 258 H446" stroke="#F1F0FB" stroke-width="1.6"/>
-    <path d="M288 300 H446" stroke="#E5E7EB" stroke-width="2"/>
-    <rect class="bar" x="296" y="240" width="26" height="60" rx="4" fill="#6366F1"/>
-    <rect class="bar" x="336" y="208" width="26" height="92" rx="4" fill="#14B8A6" style="animation-delay:.1s"/>
-    <rect class="bar" x="376" y="252" width="26" height="48" rx="4" fill="#F59E0B" style="animation-delay:.2s"/>
-    <rect class="bar" x="416" y="190" width="26" height="110" rx="4" fill="#EC4899" style="animation-delay:.3s"/>
-    <polyline class="trend" points="309,232 349,200 389,244 429,182" fill="none"
-      stroke="#0EA5E9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <g fill="#0EA5E9">
-      <circle class="tdot" cx="309" cy="232" r="3.6"/>
-      <circle class="tdot" cx="349" cy="200" r="3.6" style="animation-delay:.1s"/>
-      <circle class="tdot" cx="389" cy="244" r="3.6" style="animation-delay:.2s"/>
-      <circle class="tdot" cx="429" cy="182" r="3.6" style="animation-delay:.3s"/>
-    </g>
-    <g fill="#E5E7EB">
-      <circle cx="464" cy="212" r="4.5" fill="#6366F1"/><rect x="474" y="208.5" width="42" height="7" rx="3.5"/>
-      <circle cx="464" cy="232" r="4.5" fill="#14B8A6"/><rect x="474" y="228.5" width="32" height="7" rx="3.5"/>
-      <circle cx="464" cy="252" r="4.5" fill="#EC4899"/><rect x="474" y="248.5" width="38" height="7" rx="3.5"/>
-    </g>
-    <rect x="288" y="316" width="124" height="7" rx="3.5" fill="#E5E7EB"/>
-    <rect x="288" y="332" width="76" height="20" rx="10" fill="#EDE9FE" stroke="#C7D2FE" stroke-width="1.6"/>
-    <path d="M300 342 h10 M316 336 v12 M322 342 h12" stroke="#6366F1" stroke-width="2" stroke-linecap="round"/>
-    <rect x="374" y="332" width="52" height="20" rx="10" fill="#CCFBF1" stroke="#5EEAD4" stroke-width="1.6"/>
-    <circle cx="388" cy="342" r="4" fill="#14B8A6"/><rect x="396" y="338.5" width="20" height="7" rx="3.5" fill="#5EEAD4"/>
-  </g>
-
-  <!-- beat 1: the ask -->
-  <g class="ask" opacity="0">
-    <rect x="50" y="88" width="192" height="46" rx="12" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
-    <path d="M118 133 l6 17 15-17 z" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
-    <text x="146" y="117" text-anchor="middle" font-size="15" fill="#1E1B4B">Describe it in detail</text>
-  </g>
-
-  <!-- the person: thinking while they work, pleased when it lands -->
-  <g>
-    <rect x="116" y="238" width="16" height="44" fill="#FEF3C7" stroke="#D97706" stroke-width="2.2"/>
-    <path d="M78 342 q0-64 46-64 t46 64 z" fill="#C7D2FE" stroke="#6366F1" stroke-width="2.4"/>
-    <circle cx="124" cy="216" r="32" fill="#FEF3C7" stroke="#D97706" stroke-width="2.4"/>
-    <circle cx="114" cy="212" r="3.4" fill="#92400E"/><circle cx="134" cy="212" r="3.4" fill="#92400E"/>
-    <g class="warm"><path d="M113 227 q11 9 22 0" fill="none" stroke="#92400E"
-      stroke-width="2.4" stroke-linecap="round"/></g>
-    <g class="calm" opacity="0" fill="none" stroke="#92400E" stroke-width="2.4" stroke-linecap="round">
-      <path d="M114 231 h20"/><path d="M107 201 l11-4"/><path d="M141 201 l-11-4"/>
-    </g>
-    <path class="armX" d="M158 296 q46-10 94-32" fill="none" stroke="#6366F1"
-      stroke-width="9" stroke-linecap="round"/>
-    <g class="hand">
-      <g class="rub" opacity="0"><rect x="240" y="246" width="26" height="15" rx="4"
-        fill="#FCA5A5" stroke="#EF4444" stroke-width="1.8" transform="rotate(-16 253 253)"/></g>
-      <circle cx="252" cy="264" r="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2.2"/>
-    </g>
-    <path class="heart" d="M198 246 c-7-9-20-2-20 9 c0 11 20 20 20 20 c0 0 20-9 20-20 c0-11-13-18-20-9 z"
-      fill="#F472B6" opacity="0"/>
-  </g>
-
-  <!-- the robot -->
-  <g class="mood"><g class="bob">
-    <ellipse cx="655" cy="348" rx="50" ry="7" fill="#000000" opacity=".07"/>
-    <rect x="618" y="318" width="28" height="15" rx="7.5" fill="#6366F1" opacity=".8"/>
-    <rect x="664" y="318" width="28" height="15" rx="7.5" fill="#6366F1" opacity=".8"/>
-    <g class="pen">
-      <path d="M610 270 q-28-6-46-22" fill="none" stroke="#6366F1" stroke-width="9" stroke-linecap="round"/>
-      <path d="M556 236 l14 10-6 8z" fill="#F59E0B" stroke="#D97706" stroke-width="1.6" stroke-linejoin="round"/>
-      <circle cx="566" cy="250" r="9" fill="#C7D2FE" stroke="#6366F1" stroke-width="2.2"/>
-    </g>
-    <path d="M700 270 q26-6 40-20" fill="none" stroke="#6366F1" stroke-width="9" stroke-linecap="round"/>
-    <circle cx="742" cy="248" r="9" fill="#C7D2FE" stroke="#6366F1" stroke-width="2.2"/>
-    <rect x="608" y="232" width="94" height="88" rx="18" fill="#EDE9FE" stroke="#6366F1" stroke-width="2.4"/>
-    <rect x="630" y="254" width="50" height="30" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
-    <clipPath id="screen"><rect x="632" y="256" width="46" height="26" rx="6"/></clipPath>
-    <g clip-path="url(#screen)"><path class="wave" d="M628 274 l8-10 8 10 8-12 8 12 8-10 8 10 8-12 8 12"
-      fill="none" stroke="#14B8A6" stroke-width="2.2" stroke-linecap="round"/></g>
-    <path d="M655 158 V138" stroke="#6366F1" stroke-width="2.4" stroke-linecap="round"/>
-    <circle class="ant" cx="655" cy="131" r="7" fill="#F59E0B" stroke="#D97706" stroke-width="1.6"/>
-    <rect x="614" y="158" width="82" height="66" rx="16" fill="#FFFFFF" stroke="#6366F1" stroke-width="2.4"/>
-    <g class="glad">
-      <circle class="eye" cx="637" cy="188" r="7" fill="#4338CA"/>
-      <circle class="eye" cx="673" cy="188" r="7" fill="#4338CA"/>
-      <path d="M641 204 q14 12 28 0" fill="none" stroke="#4338CA" stroke-width="2.8" stroke-linecap="round"/>
-    </g>
-    <g class="sad" opacity="0" fill="none" stroke="#4338CA" stroke-width="2.8" stroke-linecap="round">
-      <path d="M630 182 l11 6-11 6"/><path d="M680 182 l-11 6 11 6"/>
-      <path d="M641 210 q14-12 28 0"/>
-    </g>
-    <path class="drip" d="M700 176 q7 11 7 15 a7 7 0 0 1-14 0 q0-4 7-15z" fill="#7DD3FC" opacity="0"/>
-  </g></g>
-
-  <!-- what it says while it is pleased with itself -->
-  <g class="tada" opacity="0">
-    <rect x="548" y="58" width="120" height="42" rx="12" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
-    <path d="M636 99 l16 5-5 16z" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="2"/>
-    <text x="608" y="85" text-anchor="middle" font-size="15" fill="#6366F1">Ta-da!</text>
-  </g>
-  <g fill="#F59E0B" opacity="0">
-    <path class="spark" d="M728 184 l4 7.5 7.5 4-7.5 4-4 7.5-4-7.5-7.5-4 7.5-4z"/>
-    <path class="spark" d="M588 140 l3 6 6 3-6 3-3 6-3-6-6-3 6-3z" style="animation-delay:.25s"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 450" font-family="system-ui,sans-serif">
+<style>
+.mv,.wp{animation:mv 10.0s linear infinite}
+.wp{animation-name:wp}
+.bo{animation:bo 10.0s linear infinite}
+.bar{transform-box:fill-box;transform-origin:50% 100%;animation:grow 10.0s linear infinite backwards}
+.dot,.spark{transform-box:fill-box;transform-origin:center;animation:pop 10.0s linear infinite backwards}
+.spark{animation-name:spark;opacity:0}
+.ping{transform-box:fill-box;transform-origin:center;animation:ping 10.0s ease-out infinite backwards;opacity:0}
+.spin{transform-box:fill-box;transform-origin:center;animation:spin 3s linear infinite}
+.caret{animation:blink 1s steps(1) infinite}
+@keyframes mv{0.00%{transform:translateX(40.0px)}8.00%{transform:translateX(40.0px)}9.11%{transform:translateX(40.4px)}10.22%{transform:translateX(43.5px)}11.33%{transform:translateX(51.9px)}12.44%{transform:translateX(68.1px)}13.56%{transform:translateX(94.9px)}14.67%{transform:translateX(134.8px)}15.78%{transform:translateX(190.6px)}16.89%{transform:translateX(264.7px)}18.00%{transform:translateX(360.0px)}19.11%{transform:translateX(455.3px)}20.22%{transform:translateX(529.4px)}21.33%{transform:translateX(585.2px)}22.44%{transform:translateX(625.1px)}23.56%{transform:translateX(651.9px)}24.67%{transform:translateX(668.1px)}25.78%{transform:translateX(676.5px)}26.89%{transform:translateX(679.6px)}28.00%{transform:translateX(680.0px)}80.00%{transform:translateX(680.0px)}80.78%{transform:translateX(679.6px)}81.56%{transform:translateX(676.5px)}82.33%{transform:translateX(668.1px)}83.11%{transform:translateX(651.9px)}83.89%{transform:translateX(625.1px)}84.67%{transform:translateX(585.2px)}85.44%{transform:translateX(529.4px)}86.22%{transform:translateX(455.3px)}87.00%{transform:translateX(360.0px)}87.78%{transform:translateX(264.7px)}88.56%{transform:translateX(190.6px)}89.33%{transform:translateX(134.8px)}90.11%{transform:translateX(94.9px)}90.89%{transform:translateX(68.1px)}91.67%{transform:translateX(51.9px)}92.44%{transform:translateX(43.5px)}93.22%{transform:translateX(40.4px)}94.00%{transform:translateX(40.0px)}100.00%{transform:translateX(40.0px)}}
+@keyframes wp{0.00%{transform:translateX(0.0px)}8.00%{transform:translateX(0.0px)}9.11%{transform:translateX(0.4px)}10.22%{transform:translateX(3.5px)}11.33%{transform:translateX(11.9px)}12.44%{transform:translateX(28.1px)}13.56%{transform:translateX(54.9px)}14.67%{transform:translateX(94.8px)}15.78%{transform:translateX(150.6px)}16.89%{transform:translateX(224.7px)}18.00%{transform:translateX(320.0px)}19.11%{transform:translateX(415.3px)}20.22%{transform:translateX(489.4px)}21.33%{transform:translateX(545.2px)}22.44%{transform:translateX(585.1px)}23.56%{transform:translateX(611.9px)}24.67%{transform:translateX(628.1px)}25.78%{transform:translateX(636.5px)}26.89%{transform:translateX(639.6px)}28.00%{transform:translateX(640.0px)}80.00%{transform:translateX(640.0px)}80.78%{transform:translateX(639.6px)}81.56%{transform:translateX(636.5px)}82.33%{transform:translateX(628.1px)}83.11%{transform:translateX(611.9px)}83.89%{transform:translateX(585.1px)}84.67%{transform:translateX(545.2px)}85.44%{transform:translateX(489.4px)}86.22%{transform:translateX(415.3px)}87.00%{transform:translateX(320.0px)}87.78%{transform:translateX(224.7px)}88.56%{transform:translateX(150.6px)}89.33%{transform:translateX(94.8px)}90.11%{transform:translateX(54.9px)}90.89%{transform:translateX(28.1px)}91.67%{transform:translateX(11.9px)}92.44%{transform:translateX(3.5px)}93.22%{transform:translateX(0.4px)}94.00%{transform:translateX(0.0px)}100.00%{transform:translateX(0.0px)}}
+@keyframes bo{0%,6.0%{opacity:0}8.0%,28.0%{opacity:1}31.0%,77.0%{opacity:0}80.0%,94.0%{opacity:1}97.0%,100%{opacity:0}}
+@keyframes grow{0%{transform:scaleY(0)}5%{transform:scaleY(1.1);animation-timing-function:ease-in-out}8%,100%{transform:scaleY(1)}}
+@keyframes pop{0%{transform:scale(0)}3.5%{transform:scale(1.35)}6%,100%{transform:scale(1)}}
+@keyframes spark{0%{opacity:1;transform:scale(0) rotate(0)}3%{opacity:1;transform:scale(1) rotate(45deg)}8%,100%{opacity:0;transform:scale(.2) rotate(90deg)}}
+@keyframes ping{0%{opacity:.9;transform:scale(1)}12%,100%{opacity:0;transform:scale(3.2)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%{opacity:1}50%{opacity:0}}
+@media print,(prefers-reduced-motion:reduce){.mv,.wp,.bo,.bar,.dot,.spark,.ping,.spin,.caret{animation:none!important}}
+</style>
+<defs>
+<radialGradient id="hero-aura"><stop offset="0" stop-color="#C4B5FD" stop-opacity=".55"/><stop offset=".6" stop-color="#DDD6FE" stop-opacity=".25"/><stop offset="1" stop-color="#EDE9FE" stop-opacity="0"/></radialGradient>
+<linearGradient id="hero-ink" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1E1B4B"/><stop offset="1" stop-color="#2E1065"/></linearGradient>
+<linearGradient id="hero-bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C4B5FD"/><stop offset="1" stop-color="#A78BFA"/></linearGradient>
+<linearGradient id="hero-hot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#5B21B6"/></linearGradient>
+<linearGradient id="hero-halo" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8B5CF6" stop-opacity="0"/><stop offset=".5" stop-color="#8B5CF6" stop-opacity=".38"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/></linearGradient>
+<linearGradient id="hero-core" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7C3AED" stop-opacity="0"/><stop offset=".1" stop-color="#7C3AED"/><stop offset=".9" stop-color="#7C3AED"/><stop offset="1" stop-color="#7C3AED" stop-opacity="0"/></linearGradient>
+<filter id="hero-blur" x="-200%" y="-20%" width="500%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>
+<filter id="hero-shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#4B3FCF" flood-opacity=".22"/></filter>
+<clipPath id="hero-card"><rect x="40" y="50" width="640" height="360" rx="18"/></clipPath>
+<clipPath id="hero-wipe"><rect class="wp" x="40" y="10" width="680" height="440" transform="translate(339 0)"/></clipPath>
+</defs>
+<ellipse cx="360" cy="236" rx="352" ry="210" fill="url(#hero-aura)"/>
+<rect x="40" y="50" width="640" height="360" rx="18" fill="#FFFFFF" filter="url(#hero-shadow)"/>
+<g clip-path="url(#hero-card)">
+<rect x="40" y="50" width="640" height="360" fill="#FFFFFF"/>
+<text x="76" y="100" font-size="13" font-weight="700" letter-spacing="2.5" fill="#7C3AED">SLAIDY</text>
+<text x="644" y="100" text-anchor="end" font-size="13" font-weight="600" fill="#9CA3AF">1 / 15</text>
+<text x="74" y="148" font-size="38" font-weight="800" letter-spacing="-.5" fill="#1E1B4B">Slides as text</text>
+<circle cx="83" cy="199" r="4.5" fill="#7C3AED"/><text x="98" y="206" font-size="20" fill="#374151">one idea per slide</text>
+<circle cx="83" cy="237" r="4.5" fill="#7C3AED"/><text x="98" y="244" font-size="20" fill="#374151">figures as code</text>
+<circle cx="83" cy="275" r="4.5" fill="#7C3AED"/><text x="98" y="282" font-size="20" fill="#374151">an agent checks it</text>
+<rect x="70" y="330" width="214" height="52" rx="12" fill="#F5F3FF"/><text x="86" y="366" font-family="'STIX Two Math','Cambria Math','Latin Modern Math',Georgia,serif" font-style="italic" font-size="28" fill="#1E1B4B">r<tspan dy="7" font-size="17">ui</tspan><tspan dy="-7" font-style="normal"> = </tspan>p<tspan dy="-13" font-size="17" font-style="normal">⊤</tspan><tspan dx="-11" dy="20" font-size="17">u</tspan><tspan dy="-7"> q</tspan><tspan dy="7" font-size="17">i</tspan></text>
+<line x1="380" y1="370" x2="644" y2="370" stroke="#E5E7EB" stroke-width="2"/>
+<rect class="bar" style="animation-delay:1.85s" x="388" y="314" width="34" height="56" rx="6" fill="url(#hero-bar)"/>
+<rect class="bar" style="animation-delay:1.91s" x="440" y="278" width="34" height="92" rx="6" fill="url(#hero-bar)"/>
+<rect class="bar" style="animation-delay:1.99s" x="492" y="292" width="34" height="78" rx="6" fill="url(#hero-bar)"/>
+<rect class="bar" style="animation-delay:2.08s" x="544" y="238" width="34" height="132" rx="6" fill="url(#hero-bar)"/>
+<rect class="bar" style="animation-delay:2.21s" x="596" y="194" width="34" height="176" rx="6" fill="url(#hero-hot)"/>
+<polyline points="405,290 457,254 509,268 561,214 613,170" fill="none" stroke="#F59E0B" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="dot" style="animation-delay:1.97s" cx="405" cy="290" r="6" fill="#FFFFFF" stroke="#F59E0B" stroke-width="3"/>
+<circle class="dot" style="animation-delay:2.03s" cx="457" cy="254" r="6" fill="#FFFFFF" stroke="#F59E0B" stroke-width="3"/>
+<circle class="dot" style="animation-delay:2.11s" cx="509" cy="268" r="6" fill="#FFFFFF" stroke="#F59E0B" stroke-width="3"/>
+<circle class="dot" style="animation-delay:2.20s" cx="561" cy="214" r="6" fill="#FFFFFF" stroke="#F59E0B" stroke-width="3"/>
+<circle class="ping" style="animation-delay:2.58s" cx="613" cy="170" r="7" fill="none" stroke="#F59E0B" stroke-width="2.5"/>
+<circle class="dot" style="animation-delay:2.33s" cx="613" cy="170" r="6" fill="#FFFFFF" stroke="#F59E0B" stroke-width="3"/>
+<g clip-path="url(#hero-wipe)">
+<rect x="40" y="50" width="640" height="360" fill="url(#hero-ink)"/>
+<g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace">
+<text x="58" y="100" font-size="12" text-anchor="end" fill="#4C4785">1</text>
+<text x="58" y="148" font-size="12" text-anchor="end" fill="#4C4785">2</text>
+<text x="58" y="206" font-size="12" text-anchor="end" fill="#4C4785">3</text>
+<text x="58" y="244" font-size="12" text-anchor="end" fill="#4C4785">4</text>
+<text x="58" y="282" font-size="12" text-anchor="end" fill="#4C4785">5</text>
+<text x="58" y="366" font-size="12" text-anchor="end" fill="#4C4785">6</text>
+<text x="76" y="100" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#A78BFA"># </tspan><tspan fill="#E0E7FF">SlAIdy</tspan></text>
+<text x="644" y="100" font-size="15" text-anchor="end" xml:space="preserve"><tspan fill="#A78BFA">*Layout:*</tspan><tspan fill="#E0E7FF"> two</tspan></text>
+<text x="76" y="148" font-size="22" text-anchor="start" font-weight="700" xml:space="preserve"><tspan fill="#A78BFA">### </tspan><tspan fill="#FFFFFF">Slides as text</tspan></text>
+<rect class="caret" x="315" y="130" width="2.5" height="23" fill="#A78BFA"/>
+<text x="76" y="206" font-size="17" text-anchor="start" xml:space="preserve"><tspan fill="#A78BFA">- </tspan><tspan fill="#E0E7FF">one idea per slide</tspan></text>
+<text x="76" y="244" font-size="17" text-anchor="start" xml:space="preserve"><tspan fill="#A78BFA">- </tspan><tspan fill="#E0E7FF">figures as code</tspan></text>
+<text x="76" y="282" font-size="17" text-anchor="start" xml:space="preserve"><tspan fill="#A78BFA">- </tspan><tspan fill="#E0E7FF">an agent checks it</tspan></text>
+<text x="76" y="366" font-size="17" text-anchor="start" xml:space="preserve"><tspan fill="#FCD34D">$</tspan><tspan fill="#E0E7FF">r_{ui} = p_u^</tspan><tspan fill="#93C5FD">\top</tspan><tspan fill="#E0E7FF"> q_i</tspan><tspan fill="#FCD34D">$</tspan></text>
+<text x="392" y="196.0" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#E0E7FF"></tspan><tspan fill="#8B87B5">&lt;</tspan><tspan fill="#F0ABFC">svg</tspan><tspan fill="#93C5FD"> viewBox</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"0 0 264 180"</tspan><tspan fill="#8B87B5">&gt;</tspan></text>
+<text x="392" y="224.5" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#E0E7FF">  </tspan><tspan fill="#8B87B5">&lt;</tspan><tspan fill="#F0ABFC">rect</tspan><tspan fill="#93C5FD"> x</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"0"</tspan><tspan fill="#93C5FD"> height</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"56"</tspan><tspan fill="#8B87B5">/&gt;</tspan></text>
+<text x="392" y="253.0" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#E0E7FF">  </tspan><tspan fill="#8B87B5">&lt;</tspan><tspan fill="#F0ABFC">rect</tspan><tspan fill="#93C5FD"> x</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"52"</tspan><tspan fill="#93C5FD"> height</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"92"</tspan><tspan fill="#8B87B5">/&gt;</tspan></text>
+<text x="392" y="281.5" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#E0E7FF">  </tspan><tspan fill="#8B87B5">&lt;</tspan><tspan fill="#F0ABFC">rect</tspan><tspan fill="#93C5FD"> x</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"104"</tspan><tspan fill="#93C5FD"> height</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"78"</tspan><tspan fill="#8B87B5">/&gt;</tspan></text>
+<text x="392" y="310.0" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#E0E7FF">  </tspan><tspan fill="#8B87B5">&lt;</tspan><tspan fill="#F0ABFC">rect</tspan><tspan fill="#93C5FD"> x</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"156"</tspan><tspan fill="#93C5FD"> height</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"132"</tspan><tspan fill="#8B87B5">/&gt;</tspan></text>
+<text x="392" y="338.5" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#E0E7FF">  </tspan><tspan fill="#8B87B5">&lt;</tspan><tspan fill="#F0ABFC">path</tspan><tspan fill="#93C5FD"> d</tspan><tspan fill="#8B87B5">=</tspan><tspan fill="#FCD34D">"M17 152 L69 116…"</tspan><tspan fill="#8B87B5">/&gt;</tspan></text>
+<text x="392" y="367.0" font-size="15" text-anchor="start" xml:space="preserve"><tspan fill="#8B87B5">&lt;/</tspan><tspan fill="#F0ABFC">svg</tspan><tspan fill="#8B87B5">&gt;</tspan></text>
+</g>
+</g>
+<path class="spark" style="animation-delay:1.55s" d="M150 111 Q151.4 116.6 157 118 Q151.4 119.4 150 125 Q148.6 119.4 143 118 Q148.6 116.6 150 111Z" fill="#8B5CF6"/>
+<path class="spark" style="animation-delay:1.69s" d="M232 307 Q233.0 311.0 237 312 Q233.0 313.0 232 317 Q231.0 313.0 227 312 Q231.0 311.0 232 307Z" fill="#8B5CF6"/>
+<path class="spark" style="animation-delay:1.82s" d="M330 170 Q331.2 174.8 336 176 Q331.2 177.2 330 182 Q328.8 177.2 324 176 Q328.8 174.8 330 170Z" fill="#8B5CF6"/>
+<path class="spark" style="animation-delay:1.96s" d="M452 228 Q453.6 234.4 460 236 Q453.6 237.6 452 244 Q450.4 237.6 444 236 Q450.4 234.4 452 228Z" fill="#8B5CF6"/>
+<path class="spark" style="animation-delay:2.13s" d="M560 295 Q561.0 299.0 565 300 Q561.0 301.0 560 305 Q559.0 301.0 555 300 Q559.0 299.0 560 295Z" fill="#8B5CF6"/>
+<path class="spark" style="animation-delay:2.35s" d="M640 143 Q641.4 148.6 647 150 Q641.4 151.4 640 157 Q638.6 151.4 633 150 Q638.6 148.6 640 143Z" fill="#8B5CF6"/>
+<g class="mv" transform="translate(379 0)"><g class="bo"><rect x="-46" y="50" width="92" height="360" fill="url(#hero-halo)"/></g></g>
+</g>
+<rect x="40.5" y="50.5" width="639" height="359" rx="18" fill="none" stroke="#1E1B4B" stroke-opacity=".08"/>
+<g class="mv" transform="translate(379 0)"><g class="bo">
+<rect x="-5" y="30" width="10" height="400" fill="url(#hero-core)" filter="url(#hero-blur)" opacity=".9"/>
+<rect x="-1.5" y="30" width="3" height="400" fill="url(#hero-core)"/>
+<rect x="-.5" y="56" width="1" height="348" fill="#FFFFFF" opacity=".85"/>
+<circle cx="0" cy="26" r="14" fill="#A78BFA" opacity=".35" filter="url(#hero-blur)"/>
+<path class="spin" d="M0 13 Q2.6 23.4 13 26 Q2.6 28.6 0 39 Q-2.6 28.6 -13 26 Q-2.6 23.4 0 13Z" fill="#7C3AED"/>
+<path d="M0 21 Q1.0 25.0 5 26 Q1.0 27.0 0 31 Q-1.0 27.0 -5 26 Q-1.0 25.0 0 21Z" fill="#FFFFFF"/>
+<circle cx="0" cy="430" r="3" fill="#7C3AED"/>
+</g></g>
 </svg>

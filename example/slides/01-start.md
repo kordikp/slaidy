@@ -10,7 +10,7 @@
 
 *Flags:* center
 
-![[fig-slaidy-hero|88%]]
+![[fig-slaidy-hero|100%]]
 
 <!-- col -->
 
@@ -23,12 +23,12 @@ This deck is the manual: **every slide does what it describes.** Press → to mo
 
 | | |
 |---|---|
-| an animated figure | SVG and CSS, 14 kB |
+| an animated figure | SVG and CSS, 16 kB |
 | a formula | $r_{ui} = \mathbf{p}_u^\top \mathbf{q}_i$ |
 | a table | this one |
 | a link | [github.com/kordikp/slaidy](https://github.com/kordikp/slaidy) |
 
-*Delivery note:* Twelve seconds, five beats: you ask for detail, it writes six paragraphs too many, you wipe the lot, it takes that badly, and comes back with two lines and a chart that reads. All CSS keyframes, and the finished state is what the markup draws: with the animation off, a print or a reader who asked for less motion still sees the result.
+*Delivery note:* Ten seconds, one beam. The card starts as what your agent reads: the markdown of a slide and the SVG of its chart. The beam crosses it and leaves the slide behind, each thing where its source was: the heading turns into the title, the rect lines into bars. Then it goes back, because both are the same file. All CSS keyframes; with the animation off, in a print or for a reader who asked for less motion, the figure stops at the split: the slide on the left, its source on the right.
 
 ### 2. `[S]` How to read this deck
 

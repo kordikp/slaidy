@@ -5,6 +5,14 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **Converting a presentation, for agents.** `docs/CONVERT.md` is the procedure an agent follows when
+  someone says "convert my presentation to SlAIdy": PowerPoint, Keynote, Google Slides, Canva or PDF
+  in, a deck and a one-file HTML out. Lean by default (words as markdown, diagrams and charts redrawn
+  as SVG, pictures only where nothing else will do), or rich on request, with photographs and motion
+  on them. `scripts/ingest.py` does the reading without a model: every slide's text in reading
+  order, its tables, the numbers behind its charts, its pictures and speaker notes into
+  `inventory.md`, a render of each slide, and the pictures written out once each. `--missing`
+  lists the numbers of the original a finished deck no longer has.
 - **Themes.** A deck can wear a brand's look: fonts, colours, a cover and a closing, a header and a
   footer. Pick one in Deck settings → Style → Theme. The deck keeps the theme's CSS (`S.themeCss`,
   named by `style.theme`), so it still opens offline as one file. The page carries

@@ -1,0 +1,8 @@
+{
+  "name": "fit-cvut",
+  "label": "FIT ČVUT",
+  "description": "The visual identity of the Czech Technical University in Prague for its Faculty of Information Technology: a white slide, CTU blue and light blue, Titillium Web standing in for the university's Technika, the faculty logo on every slide.",
+  "author": "SlAIdy, after the CTU graphic manual",
+  "licence": "CSS MIT · Titillium Web OFL 1.1 · the CTU and FIT logos © Czech Technical University in Prague, for the university's own materials",
+  "style": {"accent": "#0065BD", "ink": "#111827", "paper": "#FFFFFF", "titleSize": 40, "bodySize": 22, "header": "position"}
+}

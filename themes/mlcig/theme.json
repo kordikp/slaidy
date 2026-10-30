@@ -1,0 +1,8 @@
+{
+  "name": "mlcig",
+  "label": "ML & CI Group",
+  "description": "The Machine Learning and Computational Intelligence Group at FIT CTU in Prague: cool paper, CTU blue and the group's orange, Outfit; the group's mark in the corner and its logo on the cover and the closing.",
+  "author": "ML & CI Group, FIT CTU",
+  "licence": "CSS MIT · Outfit OFL 1.1 · the group's logo © ML & CI Group, FIT CTU, for the group's materials",
+  "style": {"accent": "#0065BD", "ink": "#0E1A2B", "paper": "#F5F7FB", "titleSize": 38, "bodySize": 21, "header": "position"}
+}

@@ -1,0 +1,8 @@
+{
+  "name": "polirural",
+  "label": "PoliRuralPlus",
+  "description": "PoliRuralPlus, a Horizon Europe project: the project's greens on a pale field, League Spartan and Inter; the logo and the EU emblem on the cover, the grant acknowledgement on the closing.",
+  "author": "PoliRuralPlus consortium (FIT CTU)",
+  "licence": "CSS MIT · League Spartan and Inter OFL 1.1 · the PoliRuralPlus logo © the PoliRuralPlus consortium, for the project's materials · the EU emblem under the EU's rules for its use",
+  "style": {"accent": "#24973F", "ink": "#10241A", "paper": "#F6F8F4", "titleSize": 38, "bodySize": 21, "header": "position"}
+}

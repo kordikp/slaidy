@@ -1,0 +1,1350 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Servery, routery, pakety — 1. hodina (T) · notes</title><style>
+  :root{--ink:#14161B;--gray:#585E6B;--faint:#9AA1AE;--line:#E4E6EA;--acc:#4B3FCF}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);
+    font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 28px 80px}
+  h1{font-size:26px;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--gray);margin:0 0 28px;font-size:14px}
+  .sub a{color:var(--acc)}
+  .act{font:600 11px/1 system-ui;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);
+    margin:34px 0 10px;padding-top:14px;border-top:1px solid var(--line);break-before:page}
+  .act:first-of-type{break-before:auto}
+  .s{display:grid;grid-template-columns:52px 1fr;gap:0 16px;padding:14px 0;
+    border-top:1px solid var(--line);break-inside:avoid}
+  .n{font:600 12px/1.7 ui-monospace,SFMono-Regular,monospace;color:var(--faint)}
+  .t{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:0 0 6px}
+  .fig{margin:8px 0 10px;max-width:340px}
+  .fig svg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px}
+  .note{margin:0;color:#3A404C}
+  .note.none{color:var(--faint);font-style:italic}
+  .key{margin:8px 0 0;padding-left:12px;border-left:3px solid var(--acc);color:var(--gray);
+    font-size:14px}
+  .skip{opacity:.5}
+  .skip .t::after{content:" · hidden";font-weight:400;color:var(--faint);font-size:12px}
+  @media print{
+    .wrap{max-width:none;padding:0}
+    body{font-size:11pt}
+    .s{padding:10px 0}
+    .sub a{color:inherit;text-decoration:none}
+  }
+:root{--d-accent:#692638;--d-ink:#241832;--d-paper:#FFFFFF;}
+  .fig svg{background:var(--d-paper,#fff)}
+</style></head><body><div class="wrap">
+<h1>Servery, routery, pakety — 1. hodina (T)</h1>
+<p class="sub">34 slides · speaker notes · <a href="../">the deck</a> ·
+ <a href="../#present">present it</a></p>
+<div class="act">Pro učitele</div>
+<div class="s skip"><div class="n">001</div><div><p class="t">Pro učitele: Servery, routery, pakety</p><p class="note">Tento snímek je <b>skrytý</b> — v prezentaci se přeskočí (klávesa H ho odkryje), v editoru je vidět.
+
+Deck vznikl z metodiky Internet4Kids (MFF UK &amp; PedF UK), 8.–9. ročník · těžší varianta. Poznámky řečníka u každého snímku jsou průběh hodiny z přípravy pro učitele; sekce v seznamu snímků jsou fáze hodiny s minutami.
+
+Snímky 🔥 rozcvička, 🤖 chatbot a 📚 domácí příprava jsou přidané — propojují hodinu s p-bookem a Tiny.</p></div></div>
+<div class="act">Úvod</div>
+<div class="s"><div class="n">002</div><div><p class="t">ZÁKLADY FUNGOVÁNÍ INTERNETU</p><p class="note">Úvodní snímek. Materiály Internet4Kids (MFF UK &amp; PedF UK), v SlAIdy pro AI dětem.
+
+Obrázek v originále: Titulní slide na tmavě fialovém pozadí se stylizovanou mapou světa; přes kontinenty vedou růžové obloukové spoje mezi červenofialovými uzly (Severní Amerika, Jižní Amerika, Evropa, Asie, Austrálie) – symbol globální sítě.</p></div></div>
+<div class="act">EVOKACE: CO KDYBY NAJEDNOU INTERNET PŘESTAL FUNGOVAT? · 10 min</div>
+<div class="s"><div class="n">003</div><div><p class="t">Co kdyby internet najednou přestal fungovat?</p><p class="note"><b>Pracovní list, úkol 1.</b>
+
+<b>Série snímků 3–4.</b>
+
+<b>Aktivita Co kdyby najednou přestal fungovat internet:</b>
+
+Děti se rozdělí do 5 nebo více skupin. Každá skupina dostane určené téma. Na řešení mají cca 4 minuty.
+
+Témata k přemýšlení:
+
+- ekonomika
+
+- politika
+
+- já jako uživatel
+
+- zdravotnictví
+
+- doprava
+
+„Jedním ze způsobů, jak začít uvažovat o tom, jak funguje internet, je začít z opačné strany. Co kdyby internet nefungoval v následujících oblastech? Každá skupina dostane jednu oblast. Nad přiděleným tématem diskutujte ve skupinách. Pokud si něčím nejste jisti, můžete si danou informaci dohledat. Uveďte vždy použitý zdroj.&quot;
+
+Po uplynutí času (4 minuty na řešení) projdeme řešení všech skupin. Pokud nějaké skupiny mají stejné téma, porovnáváme jejich řešení.
+
+Obrázek v originále: Pouze textový slide na fialovém pozadí.</p></div></div>
+<div class="s"><div class="n">004</div><div><p class="t">Co kdyby internet najednou přestal fungovat? – oblasti</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="54 92 882 332" role="img" lang="cs">
+  <title>Co kdyby internet přestal fungovat? – oblasti následků</title>
+  <desc>Otázka na následky výpadku internetu z hlediska pěti oblastí: školství, politiky, uživatelů, zdravotnictví a dopravy. Slouží k rozdělení témat mezi skupiny žáků.</desc>
+  <text x="480" y="130" font-family="sans-serif" font-size="24" fill="#d9d2f5" text-anchor="middle">Jaké by byly následky z hlediska:</text>
+  <g aria-label="Oblast školství">
+    <rect x="70" y="190" width="150" height="220" rx="12" fill="#e8823c" />
+    <text x="145" y="310" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">ŠKOLSTVÍ</text>
+  </g>
+  <g aria-label="Oblast politiky">
+    <rect x="245" y="190" width="150" height="220" rx="12" fill="#ffffff" />
+    <text x="320" y="310" font-family="sans-serif" font-size="20" font-weight="bold" fill="#4a3a9e" text-anchor="middle">POLITIKY</text>
+  </g>
+  <g aria-label="Oblast uživatelů">
+    <rect x="420" y="190" width="150" height="220" rx="12" fill="#7a5fd0" />
+    <text x="495" y="310" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">UŽIVATELŮ</text>
+  </g>
+  <g aria-label="Oblast zdravotnictví">
+    <rect x="595" y="190" width="150" height="220" rx="12" fill="#e05252" />
+    <text x="670" y="298" font-family="sans-serif" font-size="17" font-weight="bold" fill="#ffffff" text-anchor="middle">ZDRAVOT-</text>
+    <text x="670" y="322" font-family="sans-serif" font-size="17" font-weight="bold" fill="#ffffff" text-anchor="middle">NICTVÍ</text>
+  </g>
+  <g aria-label="Oblast dopravy">
+    <rect x="770" y="190" width="150" height="220" rx="12" fill="#f5c518" />
+    <text x="845" y="310" font-family="sans-serif" font-size="20" font-weight="bold" fill="#1a1a1a" text-anchor="middle">DOPRAVY</text>
+  </g>
+  </svg></div><p class="note">Pokračování série od snímku 3 — poznámky tam.
+
+Text na snímku (je v obrázku): Jaké by byly následky z hlediska: - ŠKOLSTVÍ - POLITIKY - UŽIVATELŮ - ZDRAVOTNICTVÍ - DOPRAVY
+
+Obrázek: Pět barevných rámečků s oblastmi: ŠKOLSTVÍ (oranžový), POLITIKY (bílý), UŽIVATELŮ (fialový), ZDRAVOTNICTVÍ (červený), DOPRAVY (žlutý). Slouží k rozdělení témat mezi skupiny žáků.</p></div></div>
+<div class="s"><div class="n">005</div><div><p class="t">🤖 Co kdyby zítra na celém světě přestal fungovat internet?</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 520" font-family="system-ui,sans-serif" role="img" lang="cs">
+  <title>AI zkoušející v p-booku</title>
+  <desc>QR kód: https://pbook-internet.vercel.app/dp2#ukol-eyJ0IjoiQ28ga2R5YnnigKYiLCJjIjpbeyJwIjoiQ28ga2R5YnkgesOtdHJhIG5hIGNlbMOpbSBzdsSbdMSbIHDFmWVzdGFsIGZ1bmdvdmF0IGludGVybmV0PyBWeWJlciBzaSBkdsSbIG9ibGFzdGkgKMWha29sc3R2w60sIHBvbGl0aWthLCB6ZHJhdm90bmljdHbDrSwgZG9wcmF2YSwgZWtvbm9taWthKSBhIHByb215c2xpIGNvIG5lamtvbmtyw6l0bsSbasWhw60gZG9wYWR5IC0gaeKApiJ9XX0</desc>
+  <rect x="20" y="10" width="420" height="420" rx="14" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <g transform="translate(30 20) scale(6.15385)"><path d="M0 0h7v1h-7zM12 0h2v1h-2zM15 0h2v1h-2zM19 0h1v1h-1zM23 0h2v1h-2zM26 0h1v1h-1zM29 0h3v1h-3zM36 0h2v1h-2zM41 0h5v1h-5zM48 0h2v1h-2zM51 0h1v1h-1zM55 0h1v1h-1zM58 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM15 1h1v1h-1zM17 1h1v1h-1zM22 1h2v1h-2zM25 1h2v1h-2zM28 1h1v1h-1zM32 1h3v1h-3zM36 1h5v1h-5zM43 1h1v1h-1zM46 1h2v1h-2zM49 1h2v1h-2zM53 1h1v1h-1zM56 1h1v1h-1zM58 1h1v1h-1zM64 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM10 2h1v1h-1zM12 2h4v1h-4zM19 2h1v1h-1zM21 2h4v1h-4zM26 2h1v1h-1zM32 2h3v1h-3zM38 2h2v1h-2zM42 2h3v1h-3zM46 2h1v1h-1zM48 2h2v1h-2zM54 2h1v1h-1zM56 2h1v1h-1zM58 2h1v1h-1zM60 2h3v1h-3zM64 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM8 3h2v1h-2zM12 3h1v1h-1zM14 3h4v1h-4zM20 3h1v1h-1zM22 3h1v1h-1zM25 3h7v1h-7zM33 3h1v1h-1zM35 3h2v1h-2zM38 3h1v1h-1zM41 3h1v1h-1zM43 3h1v1h-1zM45 3h4v1h-4zM53 3h3v1h-3zM58 3h1v1h-1zM60 3h3v1h-3zM64 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM10 4h1v1h-1zM13 4h3v1h-3zM18 4h2v1h-2zM21 4h1v1h-1zM23 4h2v1h-2zM30 4h7v1h-7zM39 4h1v1h-1zM41 4h4v1h-4zM48 4h1v1h-1zM52 4h2v1h-2zM56 4h1v1h-1zM58 4h1v1h-1zM60 4h3v1h-3zM64 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM20 5h1v1h-1zM23 5h1v1h-1zM25 5h2v1h-2zM29 5h2v1h-2zM34 5h2v1h-2zM37 5h5v1h-5zM43 5h1v1h-1zM45 5h2v1h-2zM50 5h2v1h-2zM54 5h1v1h-1zM58 5h1v1h-1zM64 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h1v1h-1zM28 6h1v1h-1zM30 6h1v1h-1zM32 6h1v1h-1zM34 6h1v1h-1zM36 6h1v1h-1zM38 6h1v1h-1zM40 6h1v1h-1zM42 6h1v1h-1zM44 6h1v1h-1zM46 6h1v1h-1zM48 6h1v1h-1zM50 6h1v1h-1zM52 6h1v1h-1zM54 6h1v1h-1zM56 6h1v1h-1zM58 6h7v1h-7zM9 7h2v1h-2zM13 7h3v1h-3zM17 7h2v1h-2zM20 7h1v1h-1zM23 7h2v1h-2zM27 7h2v1h-2zM30 7h1v1h-1zM34 7h1v1h-1zM37 7h1v1h-1zM39 7h1v1h-1zM41 7h2v1h-2zM45 7h1v1h-1zM47 7h5v1h-5zM53 7h4v1h-4zM0 8h5v1h-5zM6 8h3v1h-3zM10 8h1v1h-1zM12 8h5v1h-5zM18 8h2v1h-2zM25 8h1v1h-1zM27 8h1v1h-1zM30 8h7v1h-7zM38 8h1v1h-1zM42 8h2v1h-2zM46 8h5v1h-5zM53 8h5v1h-5zM59 8h1v1h-1zM61 8h1v1h-1zM63 8h1v1h-1zM0 9h2v1h-2zM3 9h3v1h-3zM8 9h7v1h-7zM17 9h1v1h-1zM19 9h1v1h-1zM22 9h3v1h-3zM30 9h1v1h-1zM35 9h3v1h-3zM40 9h3v1h-3zM47 9h1v1h-1zM49 9h1v1h-1zM53 9h3v1h-3zM57 9h1v1h-1zM59 9h1v1h-1zM61 9h1v1h-1zM63 9h2v1h-2zM0 10h2v1h-2zM3 10h1v1h-1zM5 10h2v1h-2zM9 10h1v1h-1zM12 10h5v1h-5zM18 10h2v1h-2zM33 10h3v1h-3zM37 10h2v1h-2zM42 10h1v1h-1zM44 10h3v1h-3zM48 10h3v1h-3zM52 10h1v1h-1zM56 10h1v1h-1zM58 10h1v1h-1zM60 10h3v1h-3zM1 11h3v1h-3zM8 11h3v1h-3zM13 11h2v1h-2zM17 11h2v1h-2zM20 11h1v1h-1zM24 11h1v1h-1zM26 11h7v1h-7zM35 11h1v1h-1zM38 11h2v1h-2zM41 11h2v1h-2zM44 11h2v1h-2zM52 11h5v1h-5zM58 11h1v1h-1zM63 11h2v1h-2zM4 12h3v1h-3zM10 12h2v1h-2zM15 12h5v1h-5zM23 12h3v1h-3zM27 12h1v1h-1zM29 12h3v1h-3zM33 12h1v1h-1zM36 12h1v1h-1zM38 12h1v1h-1zM42 12h1v1h-1zM45 12h2v1h-2zM48 12h1v1h-1zM50 12h1v1h-1zM53 12h1v1h-1zM55 12h1v1h-1zM58 12h5v1h-5zM64 12h1v1h-1zM1 13h1v1h-1zM7 13h1v1h-1zM9 13h2v1h-2zM12 13h3v1h-3zM17 13h2v1h-2zM24 13h1v1h-1zM26 13h2v1h-2zM37 13h1v1h-1zM41 13h2v1h-2zM44 13h1v1h-1zM48 13h1v1h-1zM53 13h3v1h-3zM64 13h1v1h-1zM3 14h1v1h-1zM5 14h3v1h-3zM10 14h4v1h-4zM15 14h2v1h-2zM18 14h2v1h-2zM21 14h4v1h-4zM27 14h1v1h-1zM29 14h3v1h-3zM34 14h1v1h-1zM36 14h1v1h-1zM38 14h3v1h-3zM46 14h2v1h-2zM49 14h2v1h-2zM55 14h1v1h-1zM58 14h1v1h-1zM62 14h1v1h-1zM0 15h2v1h-2zM8 15h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM17 15h2v1h-2zM21 15h2v1h-2zM24 15h4v1h-4zM29 15h2v1h-2zM34 15h2v1h-2zM37 15h1v1h-1zM40 15h1v1h-1zM43 15h1v1h-1zM45 15h1v1h-1zM49 15h1v1h-1zM52 15h5v1h-5zM61 15h1v1h-1zM63 15h1v1h-1zM0 16h1v1h-1zM3 16h2v1h-2zM6 16h1v1h-1zM9 16h1v1h-1zM14 16h1v1h-1zM17 16h4v1h-4zM25 16h1v1h-1zM28 16h1v1h-1zM30 16h2v1h-2zM33 16h1v1h-1zM36 16h4v1h-4zM42 16h2v1h-2zM45 16h1v1h-1zM47 16h2v1h-2zM50 16h1v1h-1zM55 16h3v1h-3zM59 16h6v1h-6zM1 17h2v1h-2zM5 17h1v1h-1zM11 17h1v1h-1zM13 17h1v1h-1zM15 17h1v1h-1zM17 17h3v1h-3zM23 17h2v1h-2zM26 17h1v1h-1zM29 17h1v1h-1zM35 17h1v1h-1zM37 17h1v1h-1zM40 17h5v1h-5zM49 17h1v1h-1zM53 17h2v1h-2zM60 17h2v1h-2zM63 17h1v1h-1zM4 18h3v1h-3zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h1v1h-1zM18 18h2v1h-2zM21 18h1v1h-1zM23 18h1v1h-1zM33 18h2v1h-2zM36 18h2v1h-2zM41 18h1v1h-1zM45 18h4v1h-4zM50 18h1v1h-1zM52 18h1v1h-1zM54 18h4v1h-4zM59 18h2v1h-2zM0 19h5v1h-5zM7 19h1v1h-1zM9 19h1v1h-1zM11 19h1v1h-1zM14 19h2v1h-2zM17 19h2v1h-2zM20 19h1v1h-1zM23 19h3v1h-3zM27 19h5v1h-5zM39 19h1v1h-1zM41 19h3v1h-3zM45 19h1v1h-1zM48 19h3v1h-3zM52 19h1v1h-1zM55 19h1v1h-1zM61 19h1v1h-1zM63 19h1v1h-1zM0 20h2v1h-2zM4 20h1v1h-1zM6 20h1v1h-1zM9 20h1v1h-1zM11 20h2v1h-2zM18 20h4v1h-4zM23 20h2v1h-2zM28 20h1v1h-1zM31 20h1v1h-1zM34 20h3v1h-3zM41 20h3v1h-3zM47 20h2v1h-2zM50 20h2v1h-2zM53 20h2v1h-2zM56 20h2v1h-2zM60 20h5v1h-5zM0 21h6v1h-6zM7 21h1v1h-1zM9 21h3v1h-3zM13 21h1v1h-1zM15 21h1v1h-1zM17 21h3v1h-3zM23 21h3v1h-3zM29 21h3v1h-3zM37 21h1v1h-1zM39 21h5v1h-5zM47 21h3v1h-3zM52 21h3v1h-3zM59 21h1v1h-1zM62 21h2v1h-2zM0 22h2v1h-2zM3 22h1v1h-1zM6 22h1v1h-1zM8 22h2v1h-2zM13 22h1v1h-1zM18 22h1v1h-1zM20 22h3v1h-3zM27 22h3v1h-3zM31 22h1v1h-1zM33 22h2v1h-2zM36 22h1v1h-1zM39 22h2v1h-2zM46 22h1v1h-1zM49 22h3v1h-3zM55 22h3v1h-3zM59 22h1v1h-1zM61 22h2v1h-2zM0 23h2v1h-2zM3 23h2v1h-2zM7 23h6v1h-6zM15 23h1v1h-1zM24 23h3v1h-3zM29 23h4v1h-4zM39 23h1v1h-1zM41 23h2v1h-2zM45 23h1v1h-1zM47 23h1v1h-1zM51 23h1v1h-1zM56 23h2v1h-2zM61 23h1v1h-1zM1 24h1v1h-1zM3 24h4v1h-4zM8 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h1v1h-1zM25 24h1v1h-1zM27 24h2v1h-2zM31 24h1v1h-1zM34 24h5v1h-5zM43 24h1v1h-1zM45 24h4v1h-4zM54 24h1v1h-1zM57 24h4v1h-4zM62 24h3v1h-3zM1 25h1v1h-1zM3 25h2v1h-2zM7 25h1v1h-1zM11 25h1v1h-1zM13 25h1v1h-1zM17 25h1v1h-1zM19 25h1v1h-1zM21 25h1v1h-1zM23 25h2v1h-2zM30 25h2v1h-2zM37 25h1v1h-1zM39 25h1v1h-1zM41 25h3v1h-3zM48 25h2v1h-2zM51 25h5v1h-5zM59 25h2v1h-2zM62 25h3v1h-3zM0 26h1v1h-1zM3 26h2v1h-2zM6 26h1v1h-1zM9 26h2v1h-2zM12 26h2v1h-2zM15 26h2v1h-2zM18 26h3v1h-3zM24 26h3v1h-3zM29 26h1v1h-1zM33 26h2v1h-2zM36 26h1v1h-1zM44 26h5v1h-5zM50 26h2v1h-2zM54 26h3v1h-3zM58 26h4v1h-4zM0 27h2v1h-2zM4 27h2v1h-2zM10 27h1v1h-1zM12 27h2v1h-2zM15 27h1v1h-1zM17 27h1v1h-1zM19 27h2v1h-2zM22 27h1v1h-1zM24 27h2v1h-2zM27 27h4v1h-4zM35 27h1v1h-1zM38 27h1v1h-1zM40 27h1v1h-1zM43 27h2v1h-2zM51 27h2v1h-2zM55 27h1v1h-1zM57 27h1v1h-1zM59 27h1v1h-1zM61 27h1v1h-1zM0 28h2v1h-2zM3 28h4v1h-4zM8 28h2v1h-2zM15 28h1v1h-1zM17 28h2v1h-2zM24 28h2v1h-2zM27 28h1v1h-1zM29 28h1v1h-1zM31 28h1v1h-1zM33 28h2v1h-2zM36 28h1v1h-1zM42 28h1v1h-1zM45 28h4v1h-4zM50 28h1v1h-1zM54 28h1v1h-1zM57 28h1v1h-1zM59 28h2v1h-2zM62 28h3v1h-3zM0 29h1v1h-1zM2 29h1v1h-1zM4 29h2v1h-2zM7 29h1v1h-1zM10 29h2v1h-2zM14 29h1v1h-1zM16 29h1v1h-1zM18 29h4v1h-4zM23 29h1v1h-1zM25 29h1v1h-1zM27 29h1v1h-1zM32 29h1v1h-1zM35 29h3v1h-3zM41 29h2v1h-2zM47 29h3v1h-3zM51 29h5v1h-5zM62 29h3v1h-3zM0 30h2v1h-2zM4 30h6v1h-6zM11 30h1v1h-1zM13 30h1v1h-1zM15 30h4v1h-4zM20 30h1v1h-1zM25 30h3v1h-3zM29 30h6v1h-6zM36 30h1v1h-1zM38 30h1v1h-1zM42 30h1v1h-1zM45 30h6v1h-6zM52 30h1v1h-1zM55 30h7v1h-7zM1 31h2v1h-2zM4 31h1v1h-1zM8 31h3v1h-3zM12 31h1v1h-1zM14 31h1v1h-1zM16 31h2v1h-2zM19 31h2v1h-2zM22 31h2v1h-2zM25 31h1v1h-1zM27 31h1v1h-1zM30 31h1v1h-1zM34 31h1v1h-1zM36 31h1v1h-1zM38 31h2v1h-2zM41 31h5v1h-5zM47 31h1v1h-1zM51 31h2v1h-2zM55 31h2v1h-2zM60 31h2v1h-2zM63 31h2v1h-2zM0 32h1v1h-1zM4 32h1v1h-1zM6 32h1v1h-1zM8 32h1v1h-1zM10 32h2v1h-2zM13 32h1v1h-1zM15 32h1v1h-1zM17 32h4v1h-4zM23 32h1v1h-1zM25 32h1v1h-1zM28 32h1v1h-1zM30 32h1v1h-1zM32 32h1v1h-1zM34 32h4v1h-4zM41 32h1v1h-1zM43 32h1v1h-1zM45 32h2v1h-2zM48 32h1v1h-1zM50 32h1v1h-1zM53 32h2v1h-2zM56 32h1v1h-1zM58 32h1v1h-1zM60 32h1v1h-1zM62 32h1v1h-1zM4 33h1v1h-1zM8 33h3v1h-3zM13 33h1v1h-1zM17 33h1v1h-1zM22 33h3v1h-3zM27 33h1v1h-1zM30 33h1v1h-1zM34 33h4v1h-4zM39 33h2v1h-2zM42 33h2v1h-2zM47 33h1v1h-1zM49 33h1v1h-1zM53 33h4v1h-4zM60 33h2v1h-2zM63 33h1v1h-1zM0 34h2v1h-2zM3 34h6v1h-6zM14 34h1v1h-1zM16 34h2v1h-2zM19 34h1v1h-1zM22 34h2v1h-2zM25 34h2v1h-2zM28 34h7v1h-7zM37 34h1v1h-1zM39 34h3v1h-3zM46 34h3v1h-3zM50 34h2v1h-2zM54 34h1v1h-1zM56 34h5v1h-5zM1 35h1v1h-1zM3 35h2v1h-2zM8 35h1v1h-1zM11 35h1v1h-1zM13 35h1v1h-1zM15 35h1v1h-1zM19 35h4v1h-4zM24 35h1v1h-1zM26 35h1v1h-1zM29 35h1v1h-1zM33 35h2v1h-2zM38 35h1v1h-1zM44 35h2v1h-2zM48 35h2v1h-2zM51 35h3v1h-3zM56 35h6v1h-6zM3 36h1v1h-1zM6 36h1v1h-1zM8 36h3v1h-3zM12 36h1v1h-1zM14 36h1v1h-1zM17 36h1v1h-1zM22 36h1v1h-1zM24 36h3v1h-3zM29 36h1v1h-1zM31 36h7v1h-7zM41 36h1v1h-1zM43 36h1v1h-1zM45 36h1v1h-1zM47 36h2v1h-2zM50 36h1v1h-1zM56 36h4v1h-4zM61 36h4v1h-4zM1 37h3v1h-3zM11 37h2v1h-2zM18 37h2v1h-2zM21 37h1v1h-1zM23 37h2v1h-2zM30 37h1v1h-1zM33 37h2v1h-2zM36 37h2v1h-2zM39 37h4v1h-4zM47 37h1v1h-1zM49 37h1v1h-1zM52 37h3v1h-3zM57 37h1v1h-1zM59 37h3v1h-3zM63 37h1v1h-1zM0 38h2v1h-2zM4 38h3v1h-3zM9 38h1v1h-1zM11 38h1v1h-1zM13 38h2v1h-2zM16 38h1v1h-1zM19 38h1v1h-1zM21 38h4v1h-4zM26 38h1v1h-1zM28 38h2v1h-2zM32 38h1v1h-1zM36 38h1v1h-1zM38 38h1v1h-1zM46 38h1v1h-1zM48 38h1v1h-1zM50 38h2v1h-2zM53 38h1v1h-1zM55 38h1v1h-1zM59 38h1v1h-1zM61 38h2v1h-2zM1 39h3v1h-3zM8 39h1v1h-1zM11 39h1v1h-1zM15 39h1v1h-1zM18 39h1v1h-1zM20 39h3v1h-3zM26 39h1v1h-1zM29 39h3v1h-3zM33 39h2v1h-2zM38 39h4v1h-4zM51 39h2v1h-2zM55 39h3v1h-3zM59 39h1v1h-1zM61 39h1v1h-1zM63 39h2v1h-2zM3 40h4v1h-4zM8 40h3v1h-3zM12 40h3v1h-3zM17 40h2v1h-2zM20 40h1v1h-1zM23 40h1v1h-1zM25 40h1v1h-1zM31 40h3v1h-3zM35 40h3v1h-3zM41 40h3v1h-3zM45 40h1v1h-1zM47 40h2v1h-2zM50 40h1v1h-1zM53 40h2v1h-2zM56 40h1v1h-1zM62 40h2v1h-2zM2 41h2v1h-2zM5 41h1v1h-1zM10 41h1v1h-1zM19 41h1v1h-1zM22 41h3v1h-3zM26 41h1v1h-1zM30 41h1v1h-1zM35 41h3v1h-3zM39 41h4v1h-4zM44 41h1v1h-1zM49 41h1v1h-1zM51 41h1v1h-1zM53 41h4v1h-4zM58 41h1v1h-1zM60 41h1v1h-1zM62 41h1v1h-1zM1 42h1v1h-1zM3 42h2v1h-2zM6 42h1v1h-1zM8 42h2v1h-2zM11 42h1v1h-1zM13 42h4v1h-4zM18 42h1v1h-1zM20 42h3v1h-3zM25 42h1v1h-1zM28 42h2v1h-2zM32 42h1v1h-1zM36 42h1v1h-1zM39 42h4v1h-4zM45 42h1v1h-1zM49 42h1v1h-1zM52 42h1v1h-1zM54 42h2v1h-2zM61 42h1v1h-1zM2 43h2v1h-2zM5 43h1v1h-1zM7 43h4v1h-4zM13 43h1v1h-1zM15 43h1v1h-1zM20 43h3v1h-3zM26 43h3v1h-3zM33 43h5v1h-5zM39 43h3v1h-3zM43 43h3v1h-3zM49 43h1v1h-1zM51 43h2v1h-2zM54 43h1v1h-1zM56 43h3v1h-3zM61 43h1v1h-1zM3 44h5v1h-5zM10 44h1v1h-1zM12 44h2v1h-2zM17 44h3v1h-3zM23 44h2v1h-2zM28 44h2v1h-2zM33 44h1v1h-1zM35 44h2v1h-2zM42 44h2v1h-2zM45 44h6v1h-6zM53 44h2v1h-2zM56 44h4v1h-4zM62 44h1v1h-1zM1 45h2v1h-2zM4 45h1v1h-1zM7 45h1v1h-1zM9 45h4v1h-4zM14 45h2v1h-2zM21 45h2v1h-2zM24 45h4v1h-4zM31 45h1v1h-1zM35 45h3v1h-3zM41 45h2v1h-2zM47 45h1v1h-1zM51 45h2v1h-2zM54 45h1v1h-1zM57 45h1v1h-1zM60 45h1v1h-1zM0 46h2v1h-2zM4 46h1v1h-1zM6 46h6v1h-6zM13 46h1v1h-1zM17 46h3v1h-3zM23 46h3v1h-3zM27 46h1v1h-1zM29 46h1v1h-1zM31 46h3v1h-3zM38 46h1v1h-1zM40 46h1v1h-1zM42 46h2v1h-2zM45 46h1v1h-1zM48 46h4v1h-4zM53 46h1v1h-1zM55 46h1v1h-1zM59 46h2v1h-2zM62 46h1v1h-1zM1 47h2v1h-2zM5 47h1v1h-1zM8 47h1v1h-1zM10 47h1v1h-1zM12 47h4v1h-4zM18 47h1v1h-1zM21 47h1v1h-1zM24 47h1v1h-1zM26 47h5v1h-5zM32 47h1v1h-1zM34 47h1v1h-1zM36 47h2v1h-2zM41 47h2v1h-2zM44 47h2v1h-2zM47 47h1v1h-1zM49 47h6v1h-6zM56 47h1v1h-1zM58 47h1v1h-1zM60 47h1v1h-1zM1 48h2v1h-2zM4 48h3v1h-3zM8 48h1v1h-1zM12 48h2v1h-2zM17 48h2v1h-2zM20 48h1v1h-1zM23 48h2v1h-2zM27 48h1v1h-1zM30 48h1v1h-1zM32 48h1v1h-1zM35 48h4v1h-4zM43 48h1v1h-1zM46 48h4v1h-4zM53 48h1v1h-1zM56 48h2v1h-2zM60 48h4v1h-4zM0 49h1v1h-1zM3 49h2v1h-2zM8 49h1v1h-1zM10 49h1v1h-1zM12 49h3v1h-3zM19 49h1v1h-1zM22 49h5v1h-5zM31 49h1v1h-1zM33 49h1v1h-1zM35 49h3v1h-3zM40 49h1v1h-1zM42 49h1v1h-1zM44 49h1v1h-1zM47 49h3v1h-3zM51 49h1v1h-1zM54 49h7v1h-7zM63 49h1v1h-1zM2 50h1v1h-1zM5 50h8v1h-8zM14 50h1v1h-1zM16 50h1v1h-1zM18 50h1v1h-1zM20 50h2v1h-2zM23 50h2v1h-2zM27 50h2v1h-2zM35 50h3v1h-3zM41 50h1v1h-1zM49 50h2v1h-2zM52 50h2v1h-2zM59 50h1v1h-1zM0 51h1v1h-1zM9 51h1v1h-1zM12 51h1v1h-1zM15 51h4v1h-4zM25 51h1v1h-1zM27 51h3v1h-3zM32 51h4v1h-4zM38 51h1v1h-1zM40 51h2v1h-2zM43 51h3v1h-3zM47 51h1v1h-1zM49 51h1v1h-1zM52 51h3v1h-3zM56 51h6v1h-6zM63 51h1v1h-1zM2 52h3v1h-3zM6 52h1v1h-1zM10 52h1v1h-1zM14 52h1v1h-1zM16 52h1v1h-1zM18 52h1v1h-1zM20 52h2v1h-2zM23 52h1v1h-1zM27 52h1v1h-1zM30 52h1v1h-1zM36 52h1v1h-1zM38 52h2v1h-2zM41 52h1v1h-1zM45 52h1v1h-1zM47 52h3v1h-3zM54 52h1v1h-1zM57 52h2v1h-2zM60 52h5v1h-5zM2 53h2v1h-2zM5 53h1v1h-1zM7 53h1v1h-1zM12 53h2v1h-2zM17 53h3v1h-3zM23 53h3v1h-3zM31 53h1v1h-1zM33 53h1v1h-1zM35 53h3v1h-3zM39 53h4v1h-4zM45 53h1v1h-1zM48 53h2v1h-2zM53 53h2v1h-2zM57 53h5v1h-5zM63 53h2v1h-2zM2 54h2v1h-2zM5 54h2v1h-2zM8 54h1v1h-1zM10 54h1v1h-1zM14 54h2v1h-2zM17 54h4v1h-4zM24 54h1v1h-1zM26 54h2v1h-2zM29 54h1v1h-1zM31 54h1v1h-1zM38 54h2v1h-2zM43 54h4v1h-4zM48 54h5v1h-5zM55 54h1v1h-1zM59 54h1v1h-1zM61 54h1v1h-1zM0 55h1v1h-1zM3 55h1v1h-1zM8 55h4v1h-4zM13 55h2v1h-2zM17 55h1v1h-1zM22 55h1v1h-1zM24 55h1v1h-1zM26 55h1v1h-1zM30 55h4v1h-4zM35 55h1v1h-1zM37 55h1v1h-1zM40 55h3v1h-3zM44 55h1v1h-1zM46 55h2v1h-2zM51 55h8v1h-8zM60 55h2v1h-2zM64 55h1v1h-1zM1 56h2v1h-2zM4 56h1v1h-1zM6 56h2v1h-2zM10 56h4v1h-4zM16 56h3v1h-3zM20 56h1v1h-1zM25 56h1v1h-1zM27 56h1v1h-1zM29 56h6v1h-6zM36 56h3v1h-3zM41 56h1v1h-1zM43 56h1v1h-1zM47 56h4v1h-4zM53 56h1v1h-1zM56 56h8v1h-8zM8 57h5v1h-5zM15 57h1v1h-1zM19 57h1v1h-1zM21 57h1v1h-1zM23 57h2v1h-2zM30 57h1v1h-1zM34 57h1v1h-1zM37 57h1v1h-1zM39 57h6v1h-6zM49 57h1v1h-1zM51 57h6v1h-6zM60 57h1v1h-1zM64 57h1v1h-1zM0 58h7v1h-7zM8 58h2v1h-2zM11 58h1v1h-1zM13 58h1v1h-1zM19 58h1v1h-1zM22 58h3v1h-3zM28 58h3v1h-3zM32 58h1v1h-1zM34 58h1v1h-1zM37 58h1v1h-1zM41 58h2v1h-2zM48 58h1v1h-1zM52 58h1v1h-1zM54 58h3v1h-3zM58 58h1v1h-1zM60 58h1v1h-1zM62 58h2v1h-2zM0 59h1v1h-1zM6 59h1v1h-1zM9 59h2v1h-2zM12 59h1v1h-1zM14 59h2v1h-2zM17 59h1v1h-1zM20 59h2v1h-2zM30 59h1v1h-1zM34 59h1v1h-1zM37 59h4v1h-4zM42 59h1v1h-1zM44 59h1v1h-1zM49 59h1v1h-1zM52 59h1v1h-1zM54 59h3v1h-3zM60 59h2v1h-2zM63 59h2v1h-2zM0 60h1v1h-1zM2 60h3v1h-3zM6 60h1v1h-1zM8 60h1v1h-1zM10 60h6v1h-6zM17 60h2v1h-2zM24 60h2v1h-2zM29 60h9v1h-9zM39 60h1v1h-1zM41 60h1v1h-1zM43 60h1v1h-1zM46 60h3v1h-3zM50 60h1v1h-1zM55 60h6v1h-6zM63 60h1v1h-1zM0 61h1v1h-1zM2 61h3v1h-3zM6 61h1v1h-1zM8 61h3v1h-3zM16 61h1v1h-1zM19 61h5v1h-5zM25 61h1v1h-1zM31 61h1v1h-1zM35 61h1v1h-1zM39 61h1v1h-1zM41 61h4v1h-4zM54 61h1v1h-1zM57 61h3v1h-3zM63 61h1v1h-1zM0 62h1v1h-1zM2 62h3v1h-3zM6 62h1v1h-1zM8 62h1v1h-1zM10 62h7v1h-7zM20 62h1v1h-1zM27 62h1v1h-1zM29 62h3v1h-3zM35 62h1v1h-1zM37 62h2v1h-2zM40 62h1v1h-1zM42 62h5v1h-5zM48 62h3v1h-3zM53 62h1v1h-1zM55 62h1v1h-1zM58 62h1v1h-1zM60 62h1v1h-1zM62 62h2v1h-2zM0 63h1v1h-1zM6 63h1v1h-1zM8 63h2v1h-2zM13 63h2v1h-2zM16 63h1v1h-1zM18 63h6v1h-6zM26 63h4v1h-4zM32 63h1v1h-1zM35 63h1v1h-1zM39 63h2v1h-2zM42 63h1v1h-1zM44 63h2v1h-2zM47 63h1v1h-1zM49 63h1v1h-1zM51 63h4v1h-4zM59 63h1v1h-1zM63 63h1v1h-1zM0 64h7v1h-7zM8 64h1v1h-1zM11 64h3v1h-3zM15 64h1v1h-1zM17 64h2v1h-2zM20 64h1v1h-1zM23 64h3v1h-3zM29 64h2v1h-2zM33 64h1v1h-1zM36 64h1v1h-1zM38 64h1v1h-1zM42 64h2v1h-2zM46 64h3v1h-3zM53 64h2v1h-2zM57 64h2v1h-2zM60 64h3v1h-3z" fill="#1E1B4B"/></g>
+  <text x="230" y="470" text-anchor="middle" font-size="22" font-weight="700" fill="#1E1B4B">AI zkoušející v p-booku</text>
+  <text x="230" y="502" text-anchor="middle" font-size="15" fill="#6B7280">pbook-internet.vercel.app · Co kdyby…</text>
+</svg></div><p class="note"><b>Aktivita s chatbotem (5 min).</b> Bot Tiny: <b>Co kdyby…</b> (<code>co-kdyby</code>).
+
+V Tiny spusť aktivitu s tímto zadáním (zkopíruj): „Co kdyby zítra na celém světě přestal fungovat internet? Vyber si dvě oblasti (školství, politika, zdravotnictví, doprava, ekonomika) a promysli co nejkonkrétnější dopady - i takové, které nejsou vidět na první pohled.“
+
+Koncepty: server, klient-server, datove-centrum, pozadavek-na-server · segment p-booku: seg/l1-klient-server (Klient a server: kdo komu slouží).
+
+Dozor: konverzace žáků vidíš v přehledu Tiny, po skončení máš shrnutí. Dokud Tiny tuto aktivitu nenabízí, vede stejnou otázku AI zkoušející v p-booku: https://pbook-internet.vercel.app/dp2#ukol-eyJ0IjoiQ28ga2R5YnnigKYiLCJjIjpbeyJwIjoiQ28ga2R5YnkgesOtdHJhIG5hIGNlbMOpbSBzdsSbdMSbIHDFmWVzdGFsIGZ1bmdvdmF0IGludGVybmV0PyBWeWJlciBzaSBkdsSbIG9ibGFzdGkgKMWha29sc3R2w60sIHBvbGl0aWthLCB6ZHJhdm90bmljdHbDrSwgZG9wcmF2YSwgZWtvbm9taWthKSBhIHByb215c2xpIGNvIG5lamtvbmtyw6l0bsSbasWhw60gZG9wYWR5IC0gaeKApiJ9XX0
+
+Po aktivitě pokračuj snímkem 6.</p><p class="key">Co kdyby zítra na celém světě přestal fungovat internet? Vyber si dvě oblasti (školství, politika, zdravotnictví, doprava, ekonomika) a promysli co nejkonkrétnější dopady - i takové, které nejsou vidět na první pohled.</p></div></div>
+<div class="act">UVĚDOMĚNÍ: SERVERY, ROUTERY, PAKETY · 30 min</div>
+<div class="s"><div class="n">006</div><div><p class="t">www.google.cz (kde jsou služby uloženy?)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="64 31 832 433" role="img" lang="cs">
+  <title>www.google.cz – kde jsou internetové služby uloženy?</title>
+  <desc>Koláž ikon internetových služeb: adresní řádek prohlížeče s www.google.cz, vyhledávač Google, e-mail, cloudová úložiště (OneDrive, iCloud, Google Drive, Dropbox) a videoslužby YouTube a Netflix. Navozuje otázku, kdo a kde nám tyto služby poskytuje.</desc>
+  <g aria-label="Adresní řádek prohlížeče">
+    <rect x="120" y="60" width="500" height="90" rx="14" fill="#e8823c" />
+    <rect x="145" y="85" width="380" height="42" rx="21" fill="#ffffff" />
+    <text x="170" y="113" font-family="sans-serif" font-size="24" fill="#1a1a1a">www.google.cz</text>
+    <path d="M 545 88 L 600 106 L 545 124 L 557 106 Z" fill="#ffffff" />
+  </g>
+  <g role="img" aria-label="Vyhledávač Google pod lupou">
+    <title>Fotografie lupy zvětšující logo Google na obrazovce vyhledávače.</title>
+    <circle cx="770" cy="130" r="85" fill="#ffffff" />
+    <circle cx="750" cy="112" r="38" fill="none" stroke="#333333" stroke-width="6" />
+    <line x1="778" y1="140" x2="812" y2="174" stroke="#333333" stroke-width="9" stroke-linecap="round" />
+    <text x="750" y="119" font-family="sans-serif" font-size="19" font-weight="bold" fill="#4a7fd0" text-anchor="middle">Google</text>
+  </g>
+  <g aria-label="E-mail">
+    <rect x="80" y="260" width="240" height="180" rx="14" fill="#ffffff" />
+    <rect x="120" y="300" width="70" height="46" rx="6" fill="none" stroke="#4a3a9e" stroke-width="3" />
+    <path d="M 120 300 L 155 328 L 190 300" fill="none" stroke="#4a3a9e" stroke-width="3" />
+    <rect x="210" y="300" width="70" height="46" rx="6" fill="none" stroke="#4a3a9e" stroke-width="3" />
+    <path d="M 210 300 L 245 328 L 280 300" fill="none" stroke="#4a3a9e" stroke-width="3" />
+    <text x="200" y="405" font-family="sans-serif" font-size="22" font-weight="bold" fill="#4a3a9e" text-anchor="middle">e-mail @</text>
+  </g>
+  <g role="img" aria-label="Cloudová úložiště">
+    <title>Mrak složený z log cloudových úložišť OneDrive, iCloud, Google Drive a Dropbox.</title>
+    <path d="M 400 400 C 370 400 355 375 370 355 C 360 325 395 305 420 315 C 430 285 485 280 505 305 C 535 290 570 310 565 340 C 590 350 590 385 560 395 C 555 405 545 410 530 410 L 410 410 Z" fill="#2e2650" />
+    <text x="470" y="345" font-family="sans-serif" font-size="16" fill="#ffffff" text-anchor="middle">OneDrive · iCloud</text>
+    <text x="470" y="372" font-family="sans-serif" font-size="16" fill="#ffffff" text-anchor="middle">Google Drive · Dropbox</text>
+    <text x="470" y="445" font-family="sans-serif" font-size="18" fill="#d9d2f5" text-anchor="middle">cloudová úložiště</text>
+  </g>
+  <g aria-label="Videoslužby">
+    <rect x="640" y="260" width="240" height="180" rx="14" fill="#e8823c" />
+    <rect x="675" y="300" width="80" height="54" rx="12" fill="#e02b2b" />
+    <path d="M 703 312 L 703 342 L 730 327 Z" fill="#ffffff" />
+    <rect x="775" y="300" width="70" height="54" rx="8" fill="#1a1a1a" />
+    <text x="810" y="337" font-family="sans-serif" font-size="26" font-weight="bold" fill="#e02b2b" text-anchor="middle">N</text>
+    <text x="760" y="405" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">YouTube · Netflix</text>
+  </g>
+  </svg></div><p class="note">Na začátku položíme několik otázek. Je možné o nich diskutovat nebo využít jiné metody diskuze. Záměrem je zjistit, jaké mají žáci představy ještě před výukou tématu. Je možné, že některé otázky se tematicky překrývají. Důvodem je skutečné zjištění znalostí žáků různými otázkami, směřujícími na stejné téma.
+
+- Kde ty jízdní řády/programy v nemocnicích/… tedy jsou?
+
+- Když zadáme do prohlížeče webovou adresu, kdo nebo co nám ji ukáže?
+
+- Kdo za nás pošle e-mail až k příjemci?
+
+- Přemýšleli jste, kde jsou vlastně uloženy všechny webové stránky, naše data na cloudových úložištích, videa na YouTube, a vše, o co bychom zánikem internetu přišli?
+
+Obrázek: Koláž ikon internetových služeb na fialovém pozadí: nahoře velký oranžový rámeček s adresním řádkem prohlížeče, v němž je napsáno „www.google.cz&quot;, a ikonou papírové vlaštovky (odeslat); vpravo nahoře fotografie lupy zvětšující logo Google na obrazovce vyhledávače. Dole zleva: bílý rámeček s ikonami e-mailových obálek (@), uprostřed tmavý mrak složený z log cloudových úložišť (OneDrive, iCloud, Google Drive, Dropbox) a vpravo oranžový rámeček s ikonami YouTube a Netflixu. Slide navozuje otázku, kdo/co nám tyto služby poskytuje a kde jsou uloženy.</p></div></div>
+<div class="s"><div class="n">007</div><div><p class="t">SERVERY</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="44 79 872 414" role="img" lang="cs">
+  <title>SERVERY</title>
+  <desc>Definice serveru: servery jsou počítače, kde je uloženo velké množství dat a které poskytují služby. Vlevo náznak fotografie rozebraného serveru, vpravo náznak fotografie chodby datového centra.</desc>
+  <text x="60" y="115" font-family="sans-serif" font-size="22" fill="#1a1a1a">jsou <tspan font-weight="bold">počítače</tspan>, kde je <tspan font-weight="bold">uloženo</tspan> velké množství dat,</text>
+  <text x="60" y="145" font-family="sans-serif" font-size="22" fill="#1a1a1a">a které poskytují nějaké <tspan font-weight="bold">služby</tspan>.</text>
+  <g role="img" aria-label="Fotografie serveru bez krytu">
+    <title>Kruhový výřez fotografie skutečného serveru bez krytu – deska s procesory, chladiči a diskovými šachtami (blade server).</title>
+    <circle cx="220" cy="330" r="120" fill="#ffffff" stroke="#333333" stroke-width="3" />
+    <rect x="140" y="270" width="160" height="120" rx="6" fill="#3a5a3a" />
+    <rect x="155" y="285" width="34" height="34" fill="#8a8a8a" />
+    <rect x="200" y="285" width="34" height="34" fill="#8a8a8a" />
+    <rect x="155" y="330" width="130" height="14" fill="#5a7a5a" />
+    <rect x="155" y="352" width="130" height="14" fill="#5a7a5a" />
+    <text x="220" y="475" font-family="sans-serif" font-size="15" fill="#555555" text-anchor="middle">server bez krytu (deska s procesory)</text>
+  </g>
+  <g role="img" aria-label="Fotografie interiéru datového centra">
+    <title>Fotografie interiéru moderního datového centra: dlouhá chodba s řadou prosklených serverových skříní osvětlených modrým světlem.</title>
+    <rect x="440" y="200" width="460" height="260" rx="10" fill="#1e2a4a" stroke="#333333" stroke-width="3" />
+    <path d="M 460 220 L 660 300 L 660 380 L 460 440 Z" fill="#2e3e6a" />
+    <path d="M 880 220 L 680 300 L 680 380 L 880 440 Z" fill="#2e3e6a" />
+    <rect x="470" y="235" width="26" height="190" fill="#4a6ab0" />
+    <rect x="510" y="255" width="24" height="150" fill="#4a6ab0" />
+    <rect x="545" y="270" width="22" height="120" fill="#4a6ab0" />
+    <rect x="864" y="235" width="26" height="190" fill="#4a6ab0" />
+    <rect x="826" y="255" width="24" height="150" fill="#4a6ab0" />
+    <rect x="793" y="270" width="22" height="120" fill="#4a6ab0" />
+    <text x="670" y="345" font-family="sans-serif" font-size="16" fill="#cfe0ff" text-anchor="middle">chodba datového centra</text>
+  </g>
+  </svg></div><p class="note">„Klíčová zařízení připojená k internetové síti, která fungují jako velká úložiště a zároveň nám poskytují své služby, se nazývají <b>servery</b>. Jsou to počítače trochu podobné těm, jako máme doma, někdy nemají monitor ani klávesnici, ale mají speciální úkoly. Jejich úkolem může být třeba vyhledat spojení v jízdním řádu, skladovat naše dokumenty na Google Drive nebo třeba ukládat obsah Instagramu. Připojujeme se k nim vzdáleně, proto server taky typicky nemá monitor nebo klávesnici. Tomuto přístupu říkáme přístup KLIENT-SERVER, kdy klient, typicky náš počítač nebo mobil, má nějaký požadavek, třeba že se chce podívat na video na YouTube, a server je tedy ten speciální počítač, který nám poskytne službu, v tomto případně poskytne video. Proto se koneckonců server jmenuje server – vychází to z anglického serve, což je sloužit.&quot;
+
+Text na snímku (je v obrázku): SERVERY jsou počítače, kde je uloženo velké množství dat, a které poskytují nějaké služby.
+
+Obrázek: Žluté pozadí. Vlevo kruhový výřez s fotografií skutečného serveru bez krytu – deska s procesory, chladiči a diskovými šachtami (blade server). Vpravo velká fotografie interiéru moderního datového centra: dlouhá chodba s řadou prosklených serverových skříní osvětlených modrým světlem.
+
+Zdroje: 1] Dmitry Nosachev, CC BY-SA 4.0 Deed; 2] Image by benzoix on Freepik</p></div></div>
+<div class="s"><div class="n">008</div><div><p class="t">Servery plní naše požadavky (1/4)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="99 136 827 338" role="img" lang="cs">
+  <title>Servery plní naše požadavky (1/4)</title>
+  <desc>Začátek schématu klient–server: dívka s tabletem (klient) posílá požadavek „Ukaž mi video o kočičkách“ YouTube serveru.</desc>
+  <defs>
+    <marker id="sipka" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#3a2a80" />
+    </marker>
+  </defs>
+  <g aria-label="Klient – dívka s tabletem">
+    <title>Kreslená dívka s brýlemi a tabletem – klient</title>
+    <circle cx="150" cy="230" r="35" fill="none" stroke="#333333" stroke-width="3" />
+    <circle cx="138" cy="225" r="7" fill="none" stroke="#333333" stroke-width="2" />
+    <circle cx="162" cy="225" r="7" fill="none" stroke="#333333" stroke-width="2" />
+    <line x1="145" y1="225" x2="155" y2="225" stroke="#333333" stroke-width="2" />
+    <line x1="150" y1="265" x2="150" y2="350" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="290" x2="195" y2="320" stroke="#333333" stroke-width="3" />
+    <rect x="185" y="310" width="55" height="40" rx="5" fill="#ffffff" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="350" x2="125" y2="420" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="350" x2="175" y2="420" stroke="#333333" stroke-width="3" />
+    <text x="150" y="455" font-family="sans-serif" font-size="18" font-weight="bold" fill="#6644cc" text-anchor="middle">klient</text>
+  </g>
+  <g aria-label="Požadavek na YouTube server">
+    <line x1="230" y1="215" x2="680" y2="195" stroke="#3a2a80" stroke-width="4" marker-end="url(#sipka)" />
+    <rect x="320" y="160" width="290" height="46" rx="10" fill="#7a5fd0" />
+    <text x="465" y="190" font-family="sans-serif" font-size="19" fill="#ffffff" text-anchor="middle">Ukaž mi video o kočičkách</text>
+  </g>
+  <g aria-label="YouTube server">
+    <rect x="690" y="150" width="220" height="90" rx="12" fill="#3a2a80" />
+    <rect x="715" y="172" width="62" height="44" rx="10" fill="#e02b2b" />
+    <path d="M 736 182 L 736 206 L 757 194 Z" fill="#ffffff" />
+    <text x="845" y="190" font-family="sans-serif" font-size="19" font-weight="bold" fill="#ffffff" text-anchor="middle">YouTube</text>
+    <text x="845" y="215" font-family="sans-serif" font-size="19" fill="#ffffff" text-anchor="middle">server</text>
+  </g>
+  </svg></div><p class="note"><b>Série snímků 8–11.</b>
+
+„Ukažme si to na konkrétním příkladu. Já jako uživatel chci vidět video o kočičkách, a tak můj počítač pošle na server YouTube požadavek, že chci vidět video o kočičkách. Server YouTube ho má uložené na svém disku a pošle mi ho zpátky. To samé udělá třeba server Wikipedie, když budu chtít zobrazit stránku wikipedia.org – pošle mi ji zpět a já ji uvidím na svém počítači.&quot;
+
+„Máme různé druhy serverů, které dělají různé věci. Zatímco některé jsou hlavně uživatelsky zaměřené, třeba herní, chatservery, webové servery a další, některé servery jsou jen služební a my jako uživatelé ani nevíme, že s nimi komunikujeme.&quot;
+
+- Kolik myslíte, že serverů tak na světě je?
+
+Obrázek: Začátek animovaného schématu klient–server na žlutém pozadí. Vlevo kreslená dívka s brýlemi a tabletem (klient). Od ní vede plná šipka doprava přes fialový rámeček s textem „Ukaž mi video o kočičkách&quot; k tmavě fialovému boxu „YouTube server&quot; s červenou ikonou přehrávání.</p></div></div>
+<div class="s"><div class="n">009</div><div><p class="t">Servery plní naše požadavky (2/4)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="99 136 827 338" role="img" lang="cs">
+  <title>Servery plní naše požadavky (2/4)</title>
+  <desc>Schéma klient–server doplněné o odpověď: YouTube server posílá čárkovanou šipkou zpět video s hláškou „Dobře, tady ho máš“.</desc>
+  <defs>
+    <marker id="sipka" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#3a2a80" />
+    </marker>
+    <marker id="sipkaZpet" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#7a5fd0" />
+    </marker>
+  </defs>
+  <g aria-label="Klient – dívka s tabletem">
+    <title>Kreslená dívka s brýlemi a tabletem – klient</title>
+    <circle cx="150" cy="230" r="35" fill="none" stroke="#333333" stroke-width="3" />
+    <circle cx="138" cy="225" r="7" fill="none" stroke="#333333" stroke-width="2" />
+    <circle cx="162" cy="225" r="7" fill="none" stroke="#333333" stroke-width="2" />
+    <line x1="145" y1="225" x2="155" y2="225" stroke="#333333" stroke-width="2" />
+    <line x1="150" y1="265" x2="150" y2="350" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="290" x2="195" y2="320" stroke="#333333" stroke-width="3" />
+    <rect x="185" y="310" width="55" height="40" rx="5" fill="#ffffff" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="350" x2="125" y2="420" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="350" x2="175" y2="420" stroke="#333333" stroke-width="3" />
+    <text x="150" y="455" font-family="sans-serif" font-size="18" font-weight="bold" fill="#6644cc" text-anchor="middle">klient</text>
+  </g>
+  <g aria-label="Požadavek na YouTube server">
+    <line x1="230" y1="215" x2="680" y2="195" stroke="#3a2a80" stroke-width="4" marker-end="url(#sipka)" />
+    <rect x="320" y="160" width="290" height="46" rx="10" fill="#7a5fd0" />
+    <text x="465" y="190" font-family="sans-serif" font-size="19" fill="#ffffff" text-anchor="middle">Ukaž mi video o kočičkách</text>
+  </g>
+  <g aria-label="YouTube server">
+    <rect x="690" y="150" width="220" height="90" rx="12" fill="#3a2a80" />
+    <rect x="715" y="172" width="62" height="44" rx="10" fill="#e02b2b" />
+    <path d="M 736 182 L 736 206 L 757 194 Z" fill="#ffffff" />
+    <text x="845" y="190" font-family="sans-serif" font-size="19" font-weight="bold" fill="#ffffff" text-anchor="middle">YouTube</text>
+    <text x="845" y="215" font-family="sans-serif" font-size="19" fill="#ffffff" text-anchor="middle">server</text>
+  </g>
+  <g aria-label="Odpověď serveru">
+    <title>Odpověď serveru: čárkovaná šipka zpět ke klientovi s videem koťátka a textem „Dobře, tady ho máš“</title>
+    <line x1="770" y1="270" x2="235" y2="315" stroke="#7a5fd0" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#sipkaZpet)" />
+    <circle cx="655" cy="300" r="38" fill="#ffffff" stroke="#7a5fd0" stroke-width="3" />
+    <text x="655" y="296" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">video</text>
+    <text x="655" y="312" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">koťátka</text>
+    <rect x="330" y="330" width="240" height="46" rx="10" fill="#e05252" />
+    <text x="450" y="360" font-family="sans-serif" font-size="19" fill="#ffffff" text-anchor="middle">Dobře, tady ho máš</text>
+  </g>
+  </svg></div><p class="note">Pokračování série od snímku 8 — poznámky tam.
+
+Obrázek: Stejné schéma doplněné o odpověď: od YouTube serveru vede zpět doleva čárkovaná fialová šipka přes kruhový obrázek koťátka a červený rámeček „Dobře, tady ho máš&quot; až k dívce. Znázorňuje odpověď serveru na požadavek.</p></div></div>
+<div class="s"><div class="n">010</div><div><p class="t">Servery plní naše požadavky (3/4)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="99 106 827 368" role="img" lang="cs">
+  <title>Servery plní naše požadavky (3/4)</title>
+  <desc>Schéma klient–server rozšířené o druhý požadavek: dívka žádá „Ukaž mi stránku wikipedia.org“ webový server Wikipedie.</desc>
+  <defs>
+    <marker id="sipka" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#3a2a80" />
+    </marker>
+    <marker id="sipkaZpet" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#7a5fd0" />
+    </marker>
+  </defs>
+  <g aria-label="Klient – dívka s tabletem">
+    <title>Kreslená dívka s brýlemi a tabletem – klient</title>
+    <circle cx="150" cy="230" r="35" fill="none" stroke="#333333" stroke-width="3" />
+    <circle cx="138" cy="225" r="7" fill="none" stroke="#333333" stroke-width="2" />
+    <circle cx="162" cy="225" r="7" fill="none" stroke="#333333" stroke-width="2" />
+    <line x1="145" y1="225" x2="155" y2="225" stroke="#333333" stroke-width="2" />
+    <line x1="150" y1="265" x2="150" y2="350" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="290" x2="195" y2="320" stroke="#333333" stroke-width="3" />
+    <rect x="185" y="310" width="55" height="40" rx="5" fill="#ffffff" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="350" x2="125" y2="420" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="350" x2="175" y2="420" stroke="#333333" stroke-width="3" />
+    <text x="150" y="455" font-family="sans-serif" font-size="18" font-weight="bold" fill="#6644cc" text-anchor="middle">klient</text>
+  </g>
+  <g aria-label="Požadavek na YouTube server">
+    <line x1="230" y1="200" x2="680" y2="170" stroke="#3a2a80" stroke-width="4" marker-end="url(#sipka)" />
+    <rect x="320" y="135" width="290" height="42" rx="10" fill="#7a5fd0" />
+    <text x="465" y="162" font-family="sans-serif" font-size="18" fill="#ffffff" text-anchor="middle">Ukaž mi video o kočičkách</text>
+  </g>
+  <g aria-label="YouTube server">
+    <rect x="690" y="120" width="220" height="80" rx="12" fill="#3a2a80" />
+    <rect x="710" y="140" width="55" height="40" rx="9" fill="#e02b2b" />
+    <path d="M 729 149 L 729 171 L 748 160 Z" fill="#ffffff" />
+    <text x="840" y="155" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">YouTube</text>
+    <text x="840" y="178" font-family="sans-serif" font-size="18" fill="#ffffff" text-anchor="middle">server</text>
+  </g>
+  <g aria-label="Odpověď YouTube serveru">
+    <line x1="740" y1="225" x2="240" y2="268" stroke="#7a5fd0" stroke-width="3" stroke-dasharray="10 7" marker-end="url(#sipkaZpet)" />
+    <circle cx="640" cy="248" r="26" fill="#ffffff" stroke="#7a5fd0" stroke-width="2" />
+    <text x="640" y="253" font-family="sans-serif" font-size="10" fill="#555555" text-anchor="middle">koťátko</text>
+    <rect x="350" y="245" width="200" height="38" rx="9" fill="#e05252" />
+    <text x="450" y="270" font-family="sans-serif" font-size="16" fill="#ffffff" text-anchor="middle">Dobře, tady ho máš</text>
+  </g>
+  <g aria-label="Požadavek na server Wikipedie">
+    <line x1="235" y1="340" x2="680" y2="390" stroke="#3a2a80" stroke-width="4" marker-end="url(#sipka)" />
+    <rect x="300" y="330" width="320" height="42" rx="10" fill="#7a5fd0" />
+    <text x="460" y="357" font-family="sans-serif" font-size="18" fill="#ffffff" text-anchor="middle">Ukaž mi stránku wikipedia.org</text>
+  </g>
+  <g aria-label="Webový server Wikipedie">
+    <rect x="690" y="360" width="220" height="90" rx="12" fill="#3a2a80" />
+    <circle cx="740" cy="405" r="26" fill="#ffffff" />
+    <text x="740" y="413" font-family="sans-serif" font-size="22" font-weight="bold" fill="#3a2a80" text-anchor="middle">W</text>
+    <text x="840" y="398" font-family="sans-serif" font-size="17" font-weight="bold" fill="#ffffff" text-anchor="middle">Webový server</text>
+    <text x="840" y="422" font-family="sans-serif" font-size="17" fill="#ffffff" text-anchor="middle">Wikipedie</text>
+  </g>
+  </svg></div><p class="note">Pokračování série od snímku 8 — poznámky tam.
+
+Text na snímku (je v obrázku): Servery plní naše požadavky — serve – angl. sloužit - Ukaž mi video o kočičkách → YouTube server / ← Dobře, tady ho máš - Ukaž mi stránku wikipedia.org → Webový server Wikipedie
+
+Obrázek: Ke schématu přibyl druhý požadavek: od dívky vede plná šipka přes fialový rámeček „Ukaž mi stránku wikipedia.org&quot; k druhému tmavému boxu „Webový server Wikipedie&quot; s logem Wikipedie (puzzle koule).</p></div></div>
+<div class="s"><div class="n">011</div><div><p class="t">Servery plní naše požadavky (4/4) + typy serverů</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="44 96 882 395" role="img" lang="cs">
+  <title>Servery plní naše požadavky (4/4) + typy serverů</title>
+  <desc>Kompletní schéma dvou požadavků a odpovědí mezi klientem, YouTube serverem a webovým serverem Wikipedie; dole výčet typů serverů: webové, herní, chatservery.</desc>
+  <defs>
+    <marker id="sipka" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#3a2a80" />
+    </marker>
+    <marker id="sipkaZpet" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#7a5fd0" />
+    </marker>
+  </defs>
+  <g aria-label="Klient – dívka s tabletem">
+    <title>Kreslená dívka s brýlemi a tabletem – klient</title>
+    <circle cx="150" cy="210" r="32" fill="none" stroke="#333333" stroke-width="3" />
+    <circle cx="139" cy="205" r="6" fill="none" stroke="#333333" stroke-width="2" />
+    <circle cx="161" cy="205" r="6" fill="none" stroke="#333333" stroke-width="2" />
+    <line x1="145" y1="205" x2="155" y2="205" stroke="#333333" stroke-width="2" />
+    <line x1="150" y1="242" x2="150" y2="320" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="265" x2="192" y2="292" stroke="#333333" stroke-width="3" />
+    <rect x="182" y="283" width="50" height="36" rx="5" fill="#ffffff" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="320" x2="128" y2="382" stroke="#333333" stroke-width="3" />
+    <line x1="150" y1="320" x2="172" y2="382" stroke="#333333" stroke-width="3" />
+    <text x="150" y="410" font-family="sans-serif" font-size="17" font-weight="bold" fill="#6644cc" text-anchor="middle">klient</text>
+  </g>
+  <g aria-label="Požadavek na YouTube server">
+    <line x1="230" y1="185" x2="680" y2="160" stroke="#3a2a80" stroke-width="4" marker-end="url(#sipka)" />
+    <rect x="320" y="125" width="280" height="40" rx="10" fill="#7a5fd0" />
+    <text x="460" y="151" font-family="sans-serif" font-size="17" fill="#ffffff" text-anchor="middle">Ukaž mi video o kočičkách</text>
+  </g>
+  <g aria-label="YouTube server">
+    <rect x="690" y="110" width="220" height="76" rx="12" fill="#3a2a80" />
+    <rect x="710" y="128" width="52" height="38" rx="9" fill="#e02b2b" />
+    <path d="M 728 137 L 728 157 L 746 147 Z" fill="#ffffff" />
+    <text x="840" y="142" font-family="sans-serif" font-size="17" font-weight="bold" fill="#ffffff" text-anchor="middle">YouTube</text>
+    <text x="840" y="165" font-family="sans-serif" font-size="17" fill="#ffffff" text-anchor="middle">server</text>
+  </g>
+  <g aria-label="Odpověď YouTube serveru">
+    <line x1="740" y1="210" x2="240" y2="245" stroke="#7a5fd0" stroke-width="3" stroke-dasharray="10 7" marker-end="url(#sipkaZpet)" />
+    <circle cx="645" cy="228" r="22" fill="#ffffff" stroke="#7a5fd0" stroke-width="2" />
+    <text x="645" y="233" font-family="sans-serif" font-size="9" fill="#555555" text-anchor="middle">koťátko</text>
+    <rect x="355" y="222" width="190" height="34" rx="8" fill="#e05252" />
+    <text x="450" y="245" font-family="sans-serif" font-size="15" fill="#ffffff" text-anchor="middle">Dobře, tady ho máš</text>
+  </g>
+  <g aria-label="Požadavek na server Wikipedie">
+    <line x1="235" y1="300" x2="680" y2="330" stroke="#3a2a80" stroke-width="4" marker-end="url(#sipka)" />
+    <rect x="300" y="285" width="310" height="40" rx="10" fill="#7a5fd0" />
+    <text x="455" y="311" font-family="sans-serif" font-size="17" fill="#ffffff" text-anchor="middle">Ukaž mi stránku wikipedia.org</text>
+  </g>
+  <g aria-label="Webový server Wikipedie">
+    <rect x="690" y="300" width="220" height="76" rx="12" fill="#3a2a80" />
+    <circle cx="738" cy="338" r="24" fill="#ffffff" />
+    <text x="738" y="346" font-family="sans-serif" font-size="20" font-weight="bold" fill="#3a2a80" text-anchor="middle">W</text>
+    <text x="838" y="331" font-family="sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">Webový server</text>
+    <text x="838" y="354" font-family="sans-serif" font-size="16" fill="#ffffff" text-anchor="middle">Wikipedie</text>
+  </g>
+  <g aria-label="Odpověď serveru Wikipedie">
+    <line x1="740" y1="400" x2="245" y2="370" stroke="#7a5fd0" stroke-width="3" stroke-dasharray="10 7" marker-end="url(#sipkaZpet)" />
+    <circle cx="645" cy="392" r="22" fill="#ffffff" stroke="#7a5fd0" stroke-width="2" />
+    <text x="645" y="389" font-family="sans-serif" font-size="8" fill="#555555" text-anchor="middle">stránka</text>
+    <text x="645" y="400" font-family="sans-serif" font-size="8" fill="#555555" text-anchor="middle">Wikipedie</text>
+    <rect x="360" y="368" width="180" height="34" rx="8" fill="#e05252" />
+    <text x="450" y="391" font-family="sans-serif" font-size="15" fill="#ffffff" text-anchor="middle">Dobře, tady ji máš</text>
+  </g>
+  <g aria-label="Různé typy serverů">
+    <text x="60" y="470" font-family="sans-serif" font-size="21" font-weight="bold" fill="#1a1a1a">Různé typy serverů:</text>
+    <circle cx="300" cy="463" r="14" fill="#ffffff" stroke="#333333" stroke-width="2" />
+    <text x="300" y="468" font-family="sans-serif" font-size="12" font-weight="bold" fill="#3a2a80" text-anchor="middle">W</text>
+    <text x="322" y="470" font-family="sans-serif" font-size="19" fill="#1a1a1a">webové,</text>
+    <rect x="415" y="450" width="26" height="26" fill="#7aa05a" stroke="#333333" stroke-width="2" />
+    <text x="452" y="470" font-family="sans-serif" font-size="19" fill="#1a1a1a">herní,</text>
+    <path d="M 520 450 h 44 a 8 8 0 0 1 8 8 v 12 a 8 8 0 0 1 -8 8 h -30 l -14 10 v -10 a 8 8 0 0 1 -8 -8 v -12 a 8 8 0 0 1 8 -8 z" fill="#7a5fd0" />
+    <circle cx="534" cy="468" r="2" fill="#ffffff" /><circle cx="543" cy="468" r="2" fill="#ffffff" /><circle cx="552" cy="468" r="2" fill="#ffffff" />
+    <text x="585" y="470" font-family="sans-serif" font-size="19" fill="#1a1a1a">chatservery, …</text>
+  </g>
+  </svg></div><p class="note">Pokračování série od snímku 8 — poznámky tam.
+
+Text na snímku (je v obrázku): Servery plní naše požadavky — serve – angl. sloužit - Ukaž mi video o kočičkách → YouTube server / ← Dobře, tady ho máš - Ukaž mi stránku wikipedia.org → Webový server Wikipedie / ← Dobře, tady ji máš Různé typy serverů: webové, herní, chatservery, …
+
+Obrázek: Kompletní schéma dvou požadavků a dvou odpovědí (odpověď Wikipedie vede zpět přes kruhový náhled úvodní stránky Wikipedie a rámeček „Dobře, tady ji máš&quot;). Vlevo dole je text o typech serverů doplněný třemi ikonami: logo Wikipedie (webové servery), blok trávy z Minecraftu (herní servery) a fialová bublina chatu se třemi tečkami (chatservery).</p></div></div>
+<div class="s"><div class="n">012</div><div><p class="t">DATOVÁ CENTRA</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="39 77 897 435" role="img" lang="cs">
+  <title>DATOVÁ CENTRA</title>
+  <desc>Slide o datových centrech: po světě jich je asi 8000. Vlevo mapa světa s bublinovým kartogramem počtu datových center, vpravo náznak fotografie budovy datového centra.</desc>
+  <text x="60" y="115" font-family="sans-serif" font-size="24" fill="#d9d2f5">Po světě je jich asi <tspan font-weight="bold" fill="#f5c518">8000</tspan>.</text>
+  <g role="img" aria-label="Mapa počtu datových center ve světě">
+    <title>Bublinový kartogram „Number of data centers“: fialové kroužky podle počtu datových center (legenda 194, 100, 30, 15, 5, 1), zeleně země s podílem uživatelů internetu nad světovým průměrem 48 %. Nejvíce kroužků je v USA a západní Evropě.</title>
+    <rect x="55" y="150" width="530" height="310" rx="10" fill="#f2f6fa" stroke="#b9aee8" stroke-width="2" />
+    <ellipse cx="170" cy="245" rx="70" ry="42" fill="#bfe3bf" />
+    <ellipse cx="330" cy="235" rx="40" ry="30" fill="#bfe3bf" />
+    <ellipse cx="460" cy="250" rx="65" ry="42" fill="#dddddd" />
+    <ellipse cx="215" cy="345" rx="32" ry="45" fill="#dddddd" />
+    <ellipse cx="360" cy="345" rx="30" ry="45" fill="#dddddd" />
+    <ellipse cx="505" cy="380" rx="38" ry="20" fill="#bfe3bf" />
+    <circle cx="135" cy="240" r="24" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="200" cy="248" r="16" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="328" cy="230" r="19" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="490" cy="245" r="9" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="415" cy="280" r="6" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="225" cy="345" r="6" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="368" cy="355" r="5" fill="#8a6fd0" fill-opacity="0.7" />
+    <circle cx="508" cy="380" r="6" fill="#8a6fd0" fill-opacity="0.7" />
+    <text x="90" y="415" font-family="sans-serif" font-size="13" font-weight="bold" fill="#333333">Number of data centers</text>
+    <circle cx="100" cy="438" r="12" fill="none" stroke="#8a6fd0" stroke-width="2" />
+    <circle cx="128" cy="441" r="8" fill="none" stroke="#8a6fd0" stroke-width="2" />
+    <circle cx="148" cy="443" r="5" fill="none" stroke="#8a6fd0" stroke-width="2" />
+    <circle cx="163" cy="445" r="3" fill="none" stroke="#8a6fd0" stroke-width="2" />
+    <text x="178" y="448" font-family="sans-serif" font-size="11" fill="#333333">194 / 100 / 30 / 15 / 5 / 1</text>
+    <rect x="330" y="430" width="12" height="12" fill="#bfe3bf" />
+    <text x="348" y="441" font-family="sans-serif" font-size="10" fill="#333333">uživatelé internetu nad prům. 48 %</text>
+  </g>
+  <g role="img" aria-label="Budova datového centra">
+    <title>Fotografie moderní prosklené budovy datového centra při západu slunce.</title>
+    <rect x="620" y="150" width="300" height="310" rx="10" fill="#f0d0a0" stroke="#b9aee8" stroke-width="2" />
+    <rect x="655" y="250" width="230" height="160" fill="#7a8ba8" />
+    <rect x="668" y="265" width="40" height="130" fill="#b8cce0" />
+    <rect x="716" y="265" width="40" height="130" fill="#b8cce0" />
+    <rect x="764" y="265" width="40" height="130" fill="#b8cce0" />
+    <rect x="812" y="265" width="40" height="130" fill="#b8cce0" />
+    <circle cx="700" cy="205" r="24" fill="#e8a04a" />
+    <text x="770" y="440" font-family="sans-serif" font-size="14" fill="#555555" text-anchor="middle">budova datového centra</text>
+  </g>
+  <text x="55" y="495" font-family="sans-serif" font-size="10" fill="#b9aee8">Zdroje: www.datacentermap.com; ITU, www.itu.int; PiDatacenters, CC BY-SA 4.0 Deed</text>
+  </svg></div><p class="note">„Serverů je na světě opravdu mnoho. Server můžete mít doma i vy, třeba na ovládání chytré domácnosti. Server máme i ve škole (řekněte, kde se ve vaší škole nachází). Obrovské společnosti jako Apple, Google nebo Meta mají serverů tolik, že je sdružují do takzvaných <b>datových center</b>. Ta jsou po celém světě, aby všichni obyvatelé Země měli přístup k jejich službám. Pokud tedy posíláte třeba zprávu přes Instagram, je možné, že k vašemu kamarádovi běží přes Irsko nebo Dánsko nebo třeba USA.&quot;
+
+„Všechno, co je na internetu, je umístěno na nějakém serveru. Ten může být kdekoli.&quot;
+
+<b>MOŽNÉ ROZŠÍŘENÍ</b>
+
+Obrázek: Vlevo bílý panel s mapou světa – bublinový kartogram „Number of data centers&quot;: fialové kroužky podle počtu datových center (legenda 194, 100, 30, 15, 5, 1), zelené vybarvení zemí s podílem uživatelů internetu nad světovým průměrem 48 %. Nejvíce kroužků je v USA a západní Evropě, dále východní Asie, Indie, Brazílie, Jižní Afrika, Austrálie. Vpravo fotografie moderní prosklené budovy datového centra při západu slunce.
+
+Zdroje: 1] www.datacentermap.com; International Telecommunications Union (ITU), www.itu.int; 2] PiDatacenters, CC BY-SA 4.0 Deed</p></div></div>
+<div class="s skip"><div class="n">013</div><div><p class="t">Rozšíření: Procházka datovým centrem Googlu</p><p class="note"><b>Skrytý snímek</b> (rozšíření) — klávesa H ho při prezentaci odkryje.
+
+<b>Aktivita procházka datovým centrem Googlu:</b>
+
+„Pusťme si video o Data centru Google.&quot;
+
+<i>Explore a Google data center with Street View</i> (1:45 min)
+
+- Najděte ve videu, jak se Google snaží předejít ztrátě našich dat.
+
+„Ještě se na datacentrum můžeme podívat díky Google Mapám a Street View.&quot;
+
+https://goo.gl/maps/JSRRqgaBKbnTjpar5 (StreetView)</p></div></div>
+<div class="s"><div class="n">014</div><div><p class="t">Komunikace KLIENT–SERVER</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="104 82 735 388" role="img" lang="cs">
+  <title>Komunikace KLIENT–SERVER</title>
+  <desc>Otázka, jak se data ze serveru dostanou až ke klientovi: vlevo rack se servery, vpravo dívka s tabletem, mezi nimi tečkovaná šipka přerušená otazníkem. (Slide 12; skrytý slide 11 v PDF chybí.)</desc>
+  <defs>
+    <marker id="sipka" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#6644cc" />
+    </marker>
+  </defs>
+  <text x="480" y="120" font-family="sans-serif" font-size="24" fill="#1a1a1a" text-anchor="middle">Jak se ale <tspan font-weight="bold">data ze serveru</tspan> dostanou až ke <tspan font-weight="bold">klientovi</tspan>?</text>
+  <g aria-label="Server – rack se čtyřmi servery">
+    <title>Kreslený rack se čtyřmi servery</title>
+    <rect x="120" y="200" width="200" height="200" rx="8" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="135" y="215" width="170" height="38" rx="4" fill="#4a4a55" />
+    <rect x="135" y="261" width="170" height="38" rx="4" fill="#4a4a55" />
+    <rect x="135" y="307" width="170" height="38" rx="4" fill="#4a4a55" />
+    <rect x="135" y="353" width="170" height="38" rx="4" fill="#4a4a55" />
+    <circle cx="152" cy="234" r="4" fill="#7ee07e" /><circle cx="152" cy="280" r="4" fill="#7ee07e" />
+    <circle cx="152" cy="326" r="4" fill="#7ee07e" /><circle cx="152" cy="372" r="4" fill="#7ee07e" />
+    <text x="220" y="440" font-family="sans-serif" font-size="22" font-weight="bold" fill="#e05252" text-anchor="middle">server</text>
+  </g>
+  <g aria-label="Tečkovaná šipka s otazníkem">
+    <line x1="340" y1="300" x2="440" y2="300" stroke="#6644cc" stroke-width="4" stroke-dasharray="4 10" />
+    <circle cx="490" cy="300" r="42" fill="#ffffff" stroke="#6644cc" stroke-width="3" />
+    <text x="490" y="316" font-family="sans-serif" font-size="46" font-weight="bold" fill="#6644cc" text-anchor="middle">?</text>
+    <line x1="540" y1="300" x2="650" y2="300" stroke="#6644cc" stroke-width="4" stroke-dasharray="4 10" marker-end="url(#sipka)" />
+  </g>
+  <g aria-label="Klient – dívka s tabletem">
+    <title>Kreslená dívka s tabletem – klient</title>
+    <circle cx="760" cy="235" r="32" fill="none" stroke="#333333" stroke-width="3" />
+    <circle cx="749" cy="230" r="6" fill="none" stroke="#333333" stroke-width="2" />
+    <circle cx="771" cy="230" r="6" fill="none" stroke="#333333" stroke-width="2" />
+    <line x1="755" y1="230" x2="765" y2="230" stroke="#333333" stroke-width="2" />
+    <line x1="760" y1="267" x2="760" y2="350" stroke="#333333" stroke-width="3" />
+    <line x1="760" y1="292" x2="718" y2="320" stroke="#333333" stroke-width="3" />
+    <rect x="678" y="310" width="52" height="38" rx="5" fill="#ffffff" stroke="#333333" stroke-width="3" />
+    <line x1="760" y1="350" x2="738" y2="415" stroke="#333333" stroke-width="3" />
+    <line x1="760" y1="350" x2="782" y2="415" stroke="#333333" stroke-width="3" />
+    <text x="760" y="450" font-family="sans-serif" font-size="22" font-weight="bold" fill="#6644cc" text-anchor="middle">klient</text>
+  </g>
+  </svg></div><p class="note">„Jak jsme řekli, servery poskytují služby klientům. Tento způsob komunikace po internetu označujeme jako KLIENT-SERVER. Jak je ovšem klient a server propojen, že spolu mohou komunikovat?&quot;
+
+- <b>Kdyby vedlo z každého serveru propojení až ke klientovi, kolik by těch propojení ze serveru muselo vést?</b>
+
+Nakreslíme na tabuli.
+
+<b>Náčrt na tabuli:</b> Ruční náčrtek (skica pro tabuli): vlevo dva domečky a postavička, vpravo dva obdélníky s nápisem „SERVER&quot;. Z každého serveru vede vějíř mnoha čar ke všem domům/klientům – znázorňuje nepraktičnost přímého propojení každého klienta s každým serverem.
+
+„Bylo by jich strašně moc, asi tolik, kolik je domácích sítí (tedy domů například).&quot;
+
+- <b>Jak byste to tedy vyřešili?</b> Pokud se někdo přihlásí, tak ať to zkusí nakreslit na tabuli.
+
+<b>Náčrt na tabuli:</b> Druhý ruční náčrtek: domečky a servery už nejsou propojeny každý s každým, ale přes dva mezilehlé uzly (kroužky – routery). Každý dům i server je připojen krátkou čarou k nejbližšímu uzlu a uzly jsou propojeny mezi sebou – vzniká úsporná síť propojených uzlů.
+
+Navádíme na myšlenku propojených uzlů (routerů), které si mezi sebou posílají informace, například pomocí analogie s dopravou.
+
+Text na snímku (je v obrázku): Jak se ale data ze serveru dostanou až ke klientovi?
+
+Obrázek: Na bílém pozadí vlevo kreslený rack se čtyřmi servery s popiskem „<b>server</b>&quot; (červeně), vpravo dívka s tabletem s popiskem „<b>klient</b>&quot; (fialově). Mezi nimi vede tečkovaná šipka zleva doprava, uprostřed přerušená kroužkem s velkým otazníkem – jak přesně jsou propojeni?</p></div></div>
+<div class="s"><div class="n">015</div><div><p class="t">Analogie s dopravou (vlakové spojení)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="19 56 939 442" role="img" lang="cs">
+  <title>Analogie s dopravou – vlakové spojení Vlašim–Dobruška</title>
+  <desc>Analogie cestování vlakem: mapa s pěti stanicemi spojenými šipkami (Vlašim, Kolín, Chlumec n. Cidlinou, Třebechovice p. Orebem, Dobruška) a jízdní řád s časy. Cesta se skládá z přestupů – přímé spojení mezi každými dvěma místy neexistuje.</desc>
+  <defs>
+    <marker id="sipka" markerWidth="10" markerHeight="10" refX="7" refY="4" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 Z" fill="#3a2a80" />
+    </marker>
+  </defs>
+  <g role="img" aria-label="Mapa trasy vlaku">
+    <title>Výřez automapy středních a východních Čech se stanicemi vyznačenými kroužky a tlustými šipkami spojujícími stanice v pořadí cesty z jihozápadu na severovýchod.</title>
+    <rect x="35" y="70" width="470" height="360" rx="12" fill="#eef4e8" stroke="#3a2a80" stroke-width="3" />
+    
+    <line x1="110" y1="380" x2="185" y2="255" stroke="#3a2a80" stroke-width="8" marker-end="url(#sipka)" />
+    <line x1="195" y1="240" x2="255" y2="200" stroke="#3a2a80" stroke-width="8" marker-end="url(#sipka)" />
+    <line x1="270" y1="195" x2="360" y2="180" stroke="#3a2a80" stroke-width="8" marker-end="url(#sipka)" />
+    <line x1="380" y1="172" x2="425" y2="145" stroke="#3a2a80" stroke-width="8" marker-end="url(#sipka)" />
+    
+    <circle cx="105" cy="388" r="10" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="192" cy="245" r="10" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="263" cy="197" r="10" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="370" cy="177" r="10" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="432" cy="140" r="10" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    
+    <text x="105" y="420" font-family="sans-serif" font-size="17" font-weight="bold" fill="#c0392b" text-anchor="middle">Vlašim</text>
+    <text x="140" y="250" font-family="sans-serif" font-size="17" font-weight="bold" fill="#c0392b" text-anchor="middle">Kolín</text>
+    <text x="240" y="140" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Chlumec n. Cidlinou</text>
+    <text x="365" y="235" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Třebechovice</text>
+    <text x="365" y="255" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">p. Orebem</text>
+    <text x="432" y="110" font-family="sans-serif" font-size="17" font-weight="bold" fill="#c0392b" text-anchor="middle">Dobruška</text>
+  </g>
+  <g aria-label="Jízdní řád – časová osa">
+    <title>Svislá časová osa se zastávkami a časy jako v jízdním řádu.</title>
+    <line x1="590" y1="140" x2="590" y2="390" stroke="#3a2a80" stroke-width="6" marker-end="url(#sipka)" />
+    <circle cx="590" cy="140" r="9" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="590" cy="205" r="9" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="590" cy="270" r="9" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="590" cy="335" r="9" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <circle cx="590" cy="400" r="9" fill="#ffffff" stroke="#3a2a80" stroke-width="4" />
+    <text x="625" y="147" font-family="sans-serif" font-size="20" font-weight="bold" fill="#3a2a80">11:10</text>
+    <text x="700" y="147" font-family="sans-serif" font-size="20" font-weight="bold" fill="#c0392b">Vlašim</text>
+    <text x="625" y="212" font-family="sans-serif" font-size="20" font-weight="bold" fill="#3a2a80">13:00</text>
+    <text x="700" y="212" font-family="sans-serif" font-size="20" font-weight="bold" fill="#c0392b">Kolín</text>
+    <text x="625" y="277" font-family="sans-serif" font-size="20" font-weight="bold" fill="#3a2a80">15:20</text>
+    <text x="700" y="277" font-family="sans-serif" font-size="20" font-weight="bold" fill="#c0392b">Chlumec n. Cidlinou</text>
+    <text x="625" y="342" font-family="sans-serif" font-size="20" font-weight="bold" fill="#3a2a80">16:50</text>
+    <text x="700" y="342" font-family="sans-serif" font-size="20" font-weight="bold" fill="#c0392b">Třebechovice p. Orebem</text>
+    <text x="625" y="407" font-family="sans-serif" font-size="20" font-weight="bold" fill="#3a2a80">18:10</text>
+    <text x="700" y="407" font-family="sans-serif" font-size="20" font-weight="bold" fill="#c0392b">Dobruška</text>
+  </g>
+  <text x="480" y="480" font-family="sans-serif" font-size="16" fill="#555555" text-anchor="middle">Cesta se skládá z přestupů – přímé spojení mezi každými dvěma místy neexistuje.</text>
+  </svg></div><p class="note">„Představte si, jak funguje doprava: také není každá zastávka spojená s každou zastávkou. Někde člověk občas musí přestoupit. Není tedy přímá cesta mezi mnou a nějakou vesničkou na druhé straně republiky, ale dojedu do nějakého většího města dálkovým vlakem, a tam přesednu na nějaký vlak nebo autobus, co objíždí zase jen tamější okolí.&quot;
+
+Text na snímku (je v obrázku): Jízdní řád: 11:10 Vlašim → 13:00 Kolín → 15:20 Chlumec n. Cidlinou → 16:50 Třebechovice p. Orebem → 18:10 Dobruška
+
+Obrázek: Vlevo výřez automapy středních/východních Čech, na němž jsou bílými kroužky vyznačeny stanice Vlašim, Kolín, Chlumec n. Cidlinou, Třebechovice p. Orebem a Dobruška; tmavě fialové tlusté šipky spojují stanice v pořadí cesty (z jihozápadu na severovýchod). Vpravo je svislá časová osa se zastávkami a časy (11:10 Vlašim, 13:00 Kolín, 15:20 Chlumec n. Cidlinou, 16:50 Třebechovice p. Orebem, 18:10 Dobruška) – jako v jízdním řádu. Analogie: cesta se skládá z přestupů, neexistuje přímé spojení mezi každými dvěma místy.
+
+Slide bez nadpisu – analogie cestování vlakem</p></div></div>
+<div class="s"><div class="n">016</div><div><p class="t">ROUTER (1/6)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="24 11 902 485" role="img" lang="cs">
+  <title>ROUTER (1/6) – silniční síť</title>
+  <desc>Analogie směrování: schéma silniční sítě s křižovatkami (routery) jako bílými kroužky; vlevo čeká náklaďák (balíček dat), který se chystá vyrazit. Routery směrují posílané informace po internetu.</desc>
+  <g role="img" aria-label="Fotografie routeru Cisco">
+    <title>Fotografie skutečného routeru Cisco – plochá černá skříň do racku.</title>
+    <rect x="40" y="25" width="200" height="70" rx="8" fill="#2a2a30" stroke="#ffffff" stroke-width="3" />
+    <circle cx="65" cy="60" r="6" fill="#555560" />
+    <rect x="85" y="45" width="130" height="8" fill="#44444e" />
+    <rect x="85" y="60" width="130" height="8" fill="#44444e" />
+    <text x="140" y="88" font-family="sans-serif" font-size="10" fill="#aaaaaa" text-anchor="middle">router Cisco (foto)</text>
+  </g>
+  <g aria-label="Silniční síť s routery na křižovatkách">
+    <rect x="50" y="125" width="860" height="310" rx="16" fill="#ffffff" />
+    <g stroke="#2d1b69" stroke-width="7" aria-label="Silnice">
+      <line x1="50" y1="176" x2="255" y2="176" />
+      <line x1="255" y1="125" x2="255" y2="435" />
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="480" y1="125" x2="480" y2="435" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+      <line x1="480" y1="245" x2="700" y2="323" />
+      <line x1="700" y1="125" x2="700" y2="169" />
+      <line x1="700" y1="169" x2="910" y2="169" />
+      <line x1="700" y1="323" x2="910" y2="323" />
+      <line x1="700" y1="323" x2="910" y2="430" />
+    </g>
+    <g aria-label="Routery na křižovatkách">
+      <circle cx="255" cy="176" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="255" cy="325" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="480" cy="245" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="169" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="323" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+    </g>
+    <g aria-label="Náklaďák – balíček dat">
+      <title>Fialový náklaďák představující posílaný balíček dat</title>
+      <rect x="80" y="290" width="34" height="20" rx="3" fill="#6644cc" />
+      <path d="M 114 296 L 128 296 L 132 304 L 132 310 L 114 310 Z" fill="#6644cc" />
+      <circle cx="92" cy="312" r="5" fill="#2d1b69" />
+      <circle cx="122" cy="312" r="5" fill="#2d1b69" />
+    </g>
+  </g>
+  <text x="60" y="475" font-family="sans-serif" font-size="24" fill="#1a1a1a">Routery <tspan font-weight="bold" fill="#2d1b69">směrují posílané informace</tspan> po internetu.</text>
+  </svg></div><p class="note"><b>Série snímků 16–21.</b>
+
+„Když někam jedeme, orientujeme se podle adresy, kam chceme dojet. Na každém přestupu bychom se tak mohli někoho zeptat, když chceme jet do Prahy, tak na co máme nasednout dál. Když bychom jeli autem a chtěli jsme jet do Prahy, tak na každé křižovatce vybereme odbočku, která vede do Prahy. Tato přestupní místa, tyto křižovatky v internetové síti nazýváme <b>routery</b>. Jsou to směrovací zařízení, která směrují po síti posílané informace.&quot;
+
+Text na snímku (je v obrázku): ROUTER — route – angl. směrovat Routery směrují posílané informace po internetu.
+
+Obrázek: Vlevo nahoře fotografie skutečného routeru Cisco (plochá černá skříň do racku). Hlavní plochu slidu tvoří bílý panel se schématem „silniční sítě&quot;: tmavě fialové čáry jako silnice, na křižovatkách bílé kroužky (routery). Vlevo u okraje stojí malá fialová ikona nákladního auta – balíček dat, který se chystá vyrazit.</p></div></div>
+<div class="s"><div class="n">017</div><div><p class="t">ROUTER (2/6)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="24 11 902 485" role="img" lang="cs">
+  <title>ROUTER (2/6) – první křižovatka ukazuje směr</title>
+  <desc>Náklaďák dojel k první křižovatce (routeru), u níž je cedule „Londýn“. První úsek silnice je zvýrazněn – router ukazuje směr k cíli.</desc>
+  <g role="img" aria-label="Fotografie routeru Cisco">
+    <title>Fotografie skutečného routeru Cisco – plochá černá skříň do racku.</title>
+    <rect x="40" y="25" width="200" height="70" rx="8" fill="#2a2a30" stroke="#ffffff" stroke-width="3" />
+    <circle cx="65" cy="60" r="6" fill="#555560" />
+    <rect x="85" y="45" width="130" height="8" fill="#44444e" />
+    <rect x="85" y="60" width="130" height="8" fill="#44444e" />
+    <text x="140" y="88" font-family="sans-serif" font-size="10" fill="#aaaaaa" text-anchor="middle">router Cisco (foto)</text>
+  </g>
+  <g aria-label="Silniční síť s routery na křižovatkách">
+    <rect x="50" y="125" width="860" height="310" rx="16" fill="#ffffff" />
+    <g stroke="#2d1b69" stroke-width="7" aria-label="Silnice">
+      <line x1="50" y1="176" x2="255" y2="176" />
+      <line x1="255" y1="125" x2="255" y2="435" />
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="480" y1="125" x2="480" y2="435" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+      <line x1="480" y1="245" x2="700" y2="323" />
+      <line x1="700" y1="125" x2="700" y2="169" />
+      <line x1="700" y1="169" x2="910" y2="169" />
+      <line x1="700" y1="323" x2="910" y2="323" />
+      <line x1="700" y1="323" x2="910" y2="430" />
+    </g>
+    <line x1="50" y1="325" x2="255" y2="325" stroke="#b39df5" stroke-width="7" aria-label="Zvýrazněný projetý úsek" />
+    <g aria-label="Routery na křižovatkách">
+      <circle cx="255" cy="176" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="255" cy="325" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="480" cy="245" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="169" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="323" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+    </g>
+    <g aria-label="Cedule Londýn u první křižovatky">
+      <rect x="275" y="345" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="325" y="365" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+    </g>
+    <g aria-label="Náklaďák u první křižovatky">
+      <title>Náklaďák (balíček dat) dojel k prvnímu routeru</title>
+      <rect x="185" y="290" width="34" height="20" rx="3" fill="#6644cc" />
+      <path d="M 219 296 L 233 296 L 237 304 L 237 310 L 219 310 Z" fill="#6644cc" />
+      <circle cx="197" cy="312" r="5" fill="#2d1b69" />
+      <circle cx="227" cy="312" r="5" fill="#2d1b69" />
+    </g>
+  </g>
+  <text x="60" y="475" font-family="sans-serif" font-size="24" fill="#1a1a1a">Routery <tspan font-weight="bold" fill="#2d1b69">směrují posílané informace</tspan> po internetu.</text>
+  </svg></div><p class="note">Pokračování série od snímku 16 — poznámky tam.
+
+Text na snímku (je v obrázku): ROUTER — route – angl. směrovat Routery směrují posílané informace po internetu. (cíl: Londýn)
+
+Obrázek: Stejná silniční síť; náklaďák dojel k první křižovatce (routeru) vlevo dole, u níž je cedule „<b>Londýn ➤</b>&quot;. První úsek silnice je zvýrazněn světle fialově – router ukazuje směr k cíli.</p></div></div>
+<div class="s"><div class="n">018</div><div><p class="t">ROUTER (3/6)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="24 11 902 485" role="img" lang="cs">
+  <title>ROUTER (3/6) – cesta pokračuje k prostřední křižovatce</title>
+  <desc>Náklaďák pokračuje po zvýrazněné trase k prostřední křižovatce; u trasy jsou dvě cedule „Londýn“. Projetá křižovatka je vybarvena oranžově.</desc>
+  <g role="img" aria-label="Fotografie routeru Cisco">
+    <title>Fotografie skutečného routeru Cisco – plochá černá skříň do racku.</title>
+    <rect x="40" y="25" width="200" height="70" rx="8" fill="#2a2a30" stroke="#ffffff" stroke-width="3" />
+    <circle cx="65" cy="60" r="6" fill="#555560" />
+    <rect x="85" y="45" width="130" height="8" fill="#44444e" />
+    <rect x="85" y="60" width="130" height="8" fill="#44444e" />
+    <text x="140" y="88" font-family="sans-serif" font-size="10" fill="#aaaaaa" text-anchor="middle">router Cisco (foto)</text>
+  </g>
+  <g aria-label="Silniční síť s routery na křižovatkách">
+    <rect x="50" y="125" width="860" height="310" rx="16" fill="#ffffff" />
+    <g stroke="#2d1b69" stroke-width="7" aria-label="Silnice">
+      <line x1="50" y1="176" x2="255" y2="176" />
+      <line x1="255" y1="125" x2="255" y2="435" />
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="480" y1="125" x2="480" y2="435" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+      <line x1="480" y1="245" x2="700" y2="323" />
+      <line x1="700" y1="125" x2="700" y2="169" />
+      <line x1="700" y1="169" x2="910" y2="169" />
+      <line x1="700" y1="323" x2="910" y2="323" />
+      <line x1="700" y1="323" x2="910" y2="430" />
+    </g>
+    <g stroke="#b39df5" stroke-width="7" aria-label="Zvýrazněná projetá trasa">
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+    </g>
+    <g aria-label="Routery na křižovatkách">
+      <circle cx="255" cy="176" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="255" cy="325" r="12" fill="#e8823c" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="480" cy="245" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="169" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="323" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+    </g>
+    <g aria-label="Cedule Londýn">
+      <rect x="275" y="345" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="325" y="365" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+      <rect x="330" y="230" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="380" y="250" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+    </g>
+    <g aria-label="Náklaďák na diagonále k prostřední křižovatce">
+      <title>Náklaďák (balíček dat) jede po zvýrazněné trase k prostřednímu routeru</title>
+      <rect x="350" y="272" width="34" height="20" rx="3" fill="#6644cc" />
+      <path d="M 384 278 L 398 278 L 402 286 L 402 292 L 384 292 Z" fill="#6644cc" />
+      <circle cx="362" cy="294" r="5" fill="#2d1b69" />
+      <circle cx="392" cy="294" r="5" fill="#2d1b69" />
+    </g>
+  </g>
+  <text x="60" y="475" font-family="sans-serif" font-size="24" fill="#1a1a1a">Routery <tspan font-weight="bold" fill="#2d1b69">směrují posílané informace</tspan> po internetu.</text>
+  </svg></div><p class="note">Pokračování série od snímku 16 — poznámky tam.
+
+Obrázek: Náklaďák pokračuje po zvýrazněné trase k prostřední křižovatce; u trasy jsou už dvě cedule „Londýn ➤&quot; (u první křižovatky a na diagonálním úseku). Projetá křižovatka je vybarvena oranžově.</p></div></div>
+<div class="s"><div class="n">019</div><div><p class="t">ROUTER (4/6)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="24 11 902 485" role="img" lang="cs">
+  <title>ROUTER (4/6) – za prostřední křižovatkou</title>
+  <desc>Náklaďák minul prostřední křižovatku (nyní oranžovou) a jede po dalším zvýrazněném úseku vpravo nahoru; u trasy jsou tři cedule „Londýn“. Trasa se skládá z rozhodnutí na jednotlivých routerech.</desc>
+  <g role="img" aria-label="Fotografie routeru Cisco">
+    <title>Fotografie skutečného routeru Cisco – plochá černá skříň do racku.</title>
+    <rect x="40" y="25" width="200" height="70" rx="8" fill="#2a2a30" stroke="#ffffff" stroke-width="3" />
+    <circle cx="65" cy="60" r="6" fill="#555560" />
+    <rect x="85" y="45" width="130" height="8" fill="#44444e" />
+    <rect x="85" y="60" width="130" height="8" fill="#44444e" />
+    <text x="140" y="88" font-family="sans-serif" font-size="10" fill="#aaaaaa" text-anchor="middle">router Cisco (foto)</text>
+  </g>
+  <g aria-label="Silniční síť s routery na křižovatkách">
+    <rect x="50" y="125" width="860" height="310" rx="16" fill="#ffffff" />
+    <g stroke="#2d1b69" stroke-width="7" aria-label="Silnice">
+      <line x1="50" y1="176" x2="255" y2="176" />
+      <line x1="255" y1="125" x2="255" y2="435" />
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="480" y1="125" x2="480" y2="435" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+      <line x1="480" y1="245" x2="700" y2="323" />
+      <line x1="700" y1="125" x2="700" y2="169" />
+      <line x1="700" y1="169" x2="910" y2="169" />
+      <line x1="700" y1="323" x2="910" y2="323" />
+      <line x1="700" y1="323" x2="910" y2="430" />
+    </g>
+    <g stroke="#b39df5" stroke-width="7" aria-label="Zvýrazněná projetá trasa">
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+    </g>
+    <g aria-label="Routery na křižovatkách">
+      <circle cx="255" cy="176" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="255" cy="325" r="12" fill="#e8823c" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="480" cy="245" r="12" fill="#e8823c" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="169" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="323" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+    </g>
+    <g aria-label="Cedule Londýn">
+      <rect x="275" y="345" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="325" y="365" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+      <rect x="330" y="230" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="380" y="250" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+      <rect x="530" y="255" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="580" y="275" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+    </g>
+    <g aria-label="Náklaďák na cestě k pravé horní křižovatce">
+      <title>Náklaďák (balíček dat) jede po zvýrazněném úseku ke třetímu routeru</title>
+      <rect x="565" y="188" width="34" height="20" rx="3" fill="#6644cc" />
+      <path d="M 599 194 L 613 194 L 617 202 L 617 208 L 599 208 Z" fill="#6644cc" />
+      <circle cx="577" cy="210" r="5" fill="#2d1b69" />
+      <circle cx="607" cy="210" r="5" fill="#2d1b69" />
+    </g>
+  </g>
+  <text x="60" y="475" font-family="sans-serif" font-size="24" fill="#1a1a1a">Routery <tspan font-weight="bold" fill="#2d1b69">směrují posílané informace</tspan> po internetu.</text>
+  </svg></div><p class="note">Pokračování série od snímku 16 — poznámky tam.
+
+Text na snímku (je v obrázku): ROUTER — route – angl. směrovat Routery směrují posílané informace po internetu.
+
+Obrázek: Náklaďák minul prostřední křižovatku (nyní oranžovou) a jede po dalším zvýrazněném úseku vpravo nahoru; přibyla třetí cedule „Londýn ➤&quot;. Trasa se skládá z postupných rozhodnutí na jednotlivých křižovatkách/routerech.</p></div></div>
+<div class="s"><div class="n">020</div><div><p class="t">ROUTER (5/6)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="24 11 902 485" role="img" lang="cs">
+  <title>ROUTER (5/6) – celá trasa k cíli</title>
+  <desc>Náklaďák dorazil k pravé horní křižovatce a pokračuje doprava k výjezdu (k cíli Londýn); celá projetá trasa je zvýrazněna a projeté routery jsou oranžové. U výjezdu je čtvrtá cedule „Londýn“.</desc>
+  <g role="img" aria-label="Fotografie routeru Cisco">
+    <title>Fotografie skutečného routeru Cisco – plochá černá skříň do racku.</title>
+    <rect x="40" y="25" width="200" height="70" rx="8" fill="#2a2a30" stroke="#ffffff" stroke-width="3" />
+    <circle cx="65" cy="60" r="6" fill="#555560" />
+    <rect x="85" y="45" width="130" height="8" fill="#44444e" />
+    <rect x="85" y="60" width="130" height="8" fill="#44444e" />
+    <text x="140" y="88" font-family="sans-serif" font-size="10" fill="#aaaaaa" text-anchor="middle">router Cisco (foto)</text>
+  </g>
+  <g aria-label="Silniční síť s routery na křižovatkách">
+    <rect x="50" y="125" width="860" height="310" rx="16" fill="#ffffff" />
+    <g stroke="#2d1b69" stroke-width="7" aria-label="Silnice">
+      <line x1="50" y1="176" x2="255" y2="176" />
+      <line x1="255" y1="125" x2="255" y2="435" />
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="480" y1="125" x2="480" y2="435" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+      <line x1="480" y1="245" x2="700" y2="323" />
+      <line x1="700" y1="125" x2="700" y2="169" />
+      <line x1="700" y1="169" x2="910" y2="169" />
+      <line x1="700" y1="323" x2="910" y2="323" />
+      <line x1="700" y1="323" x2="910" y2="430" />
+    </g>
+    <g stroke="#b39df5" stroke-width="7" aria-label="Zvýrazněná celá projetá trasa">
+      <line x1="50" y1="325" x2="255" y2="325" />
+      <line x1="255" y1="325" x2="480" y2="245" />
+      <line x1="480" y1="245" x2="700" y2="169" />
+      <line x1="700" y1="169" x2="910" y2="169" />
+    </g>
+    <g aria-label="Routery na křižovatkách">
+      <circle cx="255" cy="176" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="255" cy="325" r="12" fill="#e8823c" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="480" cy="245" r="12" fill="#e8823c" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="169" r="12" fill="#e8823c" stroke="#2d1b69" stroke-width="4" />
+      <circle cx="700" cy="323" r="12" fill="#ffffff" stroke="#2d1b69" stroke-width="4" />
+    </g>
+    <g aria-label="Cedule Londýn">
+      <rect x="275" y="345" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="325" y="365" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+      <rect x="330" y="230" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="380" y="250" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+      <rect x="530" y="255" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="580" y="275" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+      <rect x="770" y="190" width="100" height="28" rx="6" fill="#ffffff" stroke="#2d1b69" stroke-width="2" />
+      <text x="820" y="210" font-family="sans-serif" font-size="16" font-weight="bold" fill="#c0392b" text-anchor="middle">Londýn ➔</text>
+    </g>
+    <g aria-label="Náklaďák u výjezdu k cíli">
+      <title>Náklaďák (balíček dat) míří po posledním zvýrazněném úseku k výjezdu vpravo</title>
+      <rect x="835" y="134" width="34" height="20" rx="3" fill="#6644cc" />
+      <path d="M 869 140 L 883 140 L 887 148 L 887 154 L 869 154 Z" fill="#6644cc" />
+      <circle cx="847" cy="156" r="5" fill="#2d1b69" />
+      <circle cx="877" cy="156" r="5" fill="#2d1b69" />
+    </g>
+  </g>
+  <text x="60" y="475" font-family="sans-serif" font-size="24" fill="#1a1a1a">Routery <tspan font-weight="bold" fill="#2d1b69">směrují posílané informace</tspan> po internetu.</text>
+  </svg></div><p class="note">Pokračování série od snímku 16 — poznámky tam.
+
+Text na snímku (je v obrázku): ROUTER — route – angl. směrovat Routery směrují posílané informace po internetu.
+
+Obrázek: Náklaďák dorazil k pravé horní křižovatce a pokračuje doprava k okraji (k cíli); u výjezdu je čtvrtá cedule „Londýn ➤&quot;. Celá projetá trasa je zvýrazněna světle fialovou, projeté routery oranžově.</p></div></div>
+<div class="s"><div class="n">021</div><div><p class="t">ROUTER (6/6) – objížďka</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="24 11 812 463" role="img" lang="cs">
+  <title>ROUTER (6/6) – objížďka</title>
+  <desc>Pokud nějaká cesta nefunguje, routery umí najít objížďku. Schéma mapy ČR: přímá trasa mezi Prahou a Brnem je přerušena červeným křížkem, objízdná trasa vede přes třetí uzel a je průchozí.</desc>
+  <g role="img" aria-label="Fotografie routeru Cisco">
+    <title>Fotografie skutečného routeru Cisco – plochá černá skříň do racku.</title>
+    <rect x="40" y="25" width="200" height="70" rx="8" fill="#2a2a30" stroke="#ffffff" stroke-width="3" />
+    <circle cx="65" cy="60" r="6" fill="#555560" />
+    <rect x="85" y="45" width="130" height="8" fill="#44444e" />
+    <rect x="85" y="60" width="130" height="8" fill="#44444e" />
+    <text x="140" y="88" font-family="sans-serif" font-size="10" fill="#aaaaaa" text-anchor="middle">router Cisco (foto)</text>
+  </g>
+  <text x="60" y="140" font-family="sans-serif" font-size="24" fill="#1a1a1a">Pokud nějaká cesta nefunguje, <tspan font-weight="bold" fill="#2d1b69">umí najít objížďku</tspan>.</text>
+  <g aria-label="Schéma: překopnutá trasa Praha–Brno a objížďka">
+    <title>Obrys mapy ČR se žlutými uzly Praha a Brno; přímá trasa je přerušena červeným křížkem, objízdná trasa vede přes tyrkysový uzel a je průchozí – routery najdou náhradní cestu jako navigace při uzavírce.</title>
+    <rect x="140" y="170" width="680" height="290" rx="14" fill="#3a2d85" />
+    <path d="M 330 260 C 420 320 520 370 640 405" fill="none" stroke="#cfd8cf" stroke-width="5" />
+    <path d="M 330 260 C 410 230 480 230 540 245 C 600 260 630 330 640 405" fill="none" stroke="#cfd8cf" stroke-width="5" />
+    <g aria-label="Překopnutý kabel">
+      <line x1="465" y1="315" x2="505" y2="355" stroke="#e05252" stroke-width="14" stroke-linecap="round" />
+      <line x1="505" y1="315" x2="465" y2="355" stroke="#e05252" stroke-width="14" stroke-linecap="round" />
+    </g>
+    <circle cx="330" cy="260" r="18" fill="#f5c518" /><circle cx="330" cy="260" r="6" fill="#3a2d85" />
+    <circle cx="540" cy="245" r="14" fill="#2ec4c4" /><circle cx="540" cy="245" r="5" fill="#3a2d85" />
+    <circle cx="640" cy="405" r="18" fill="#f5c518" /><circle cx="640" cy="405" r="6" fill="#3a2d85" />
+    <text x="303" y="268" font-family="sans-serif" font-size="26" font-weight="bold" fill="#f5c518" text-anchor="end">Praha</text>
+    <text x="670" y="415" font-family="sans-serif" font-size="26" font-weight="bold" fill="#f5c518">Brno</text>
+    <text x="540" y="220" font-family="sans-serif" font-size="14" fill="#9fe8e8" text-anchor="middle">objízdná trasa přes další uzel</text>
+    <text x="448" y="390" font-family="sans-serif" font-size="14" fill="#f0a0a0" text-anchor="end">přerušená přímá trasa</text>
+  </g>
+  </svg></div><p class="note">Pokračování série od snímku 16 — poznámky tam.
+
+Text na snímku (je v obrázku): ROUTER — route – angl. směrovat Pokud nějaká cesta nefunguje, umí najít objížďku.
+
+Obrázek: Vlevo fotografie routeru Cisco (stejná jako na předchozích slidech). Hlavní obrázek: obrys mapy České republiky na tmavě fialovém pozadí, v něm dva žluté uzly (přibl. Praha a Brno) spojené dvěma kabelovými trasami. Přímá trasa je přerušená červeným křížkem, objízdná trasa vede přes tyrkysový uzel nahoře a je průchozí – routery najdou náhradní cestu (jako navigace při uzavírce).</p></div></div>
+<div class="s"><div class="n">022</div><div><p class="t">Podle čeho routery směrují posílané informace?</p><p class="note">„Mluvili jsme tu o adrese. Každý dům má svou adresu, která ho přesně určuje. Každý člověk má své rodné číslo, které ho přesně určuje. Počítačová zařízení v internetu mají něco podobného, a to <b>IP adresu</b>.&quot;
+
+- Setkali jste se někde s pojmem IP adresa?
+
+Většina dětí se setkala s IP adresou alespoň v hrách, např. server v Minecraftu.
+
+Obrázek v originále: Pouze textový přechodový slide na fialovém pozadí.</p></div></div>
+<div class="s"><div class="n">023</div><div><p class="t">Jaké routery jsou po cestě? (TRACEROUTE)</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="44 59 882 455" role="img" lang="cs">
+  <title>Jaké routery jsou po cestě? – TRACEROUTE</title>
+  <desc>Aktivita s nástrojem traceroute: otázky pro žáky, QR kód na traceroute-online.com, náznak mapy s trasou paketu a rekonstruovaný výstup příkazu tracert google.cz s šesti hopy.</desc>
+  <text x="60" y="95" font-family="sans-serif" font-size="22" font-weight="bold" fill="#6644cc">TRACEROUTE-ONLINE.COM</text>
+  <g aria-label="Otázky pro žáky">
+    <text x="60" y="140" font-family="sans-serif" font-size="18" fill="#1a1a1a">• Jaké <tspan font-weight="bold">země</tspan> vidíte na mapě?</text>
+    <text x="60" y="172" font-family="sans-serif" font-size="18" fill="#1a1a1a">• Na <tspan font-weight="bold">kolik hopů</tspan> se dostanete od sebe</text>
+    <text x="76" y="196" font-family="sans-serif" font-size="18" fill="#1a1a1a">k školnímu webu?</text>
+    <text x="60" y="228" font-family="sans-serif" font-size="18" fill="#1a1a1a">• Jakou <tspan font-weight="bold">IP adresu</tspan> má web naší školy?</text>
+  </g>
+  <g aria-label="QR kód">
+    <rect x="450" y="120" width="130" height="130" rx="6" fill="#FFFFFF" stroke="#333333" stroke-width="3" />
+    <g transform="translate(460.4 130.4) scale(3.7655)"><path d="M0 0h7v1h-7zM9 0h3v1h-3zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h1v1h-1zM22 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM10 1h2v1h-2zM14 1h1v1h-1zM18 1h2v1h-2zM22 1h1v1h-1zM28 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM8 2h1v1h-1zM11 2h2v1h-2zM15 2h5v1h-5zM22 2h1v1h-1zM24 2h3v1h-3zM28 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM14 3h1v1h-1zM18 3h1v1h-1zM22 3h1v1h-1zM24 3h3v1h-3zM28 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h5v1h-5zM15 4h1v1h-1zM17 4h2v1h-2zM22 4h1v1h-1zM24 4h3v1h-3zM28 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h4v1h-4zM15 5h1v1h-1zM17 5h1v1h-1zM19 5h2v1h-2zM22 5h1v1h-1zM28 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h7v1h-7zM13 7h1v1h-1zM16 7h4v1h-4zM1 8h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM11 8h2v1h-2zM17 8h1v1h-1zM19 8h3v1h-3zM23 8h2v1h-2zM26 8h1v1h-1zM0 9h1v1h-1zM2 9h2v1h-2zM5 9h1v1h-1zM9 9h8v1h-8zM18 9h1v1h-1zM22 9h3v1h-3zM26 9h3v1h-3zM2 10h2v1h-2zM6 10h4v1h-4zM11 10h2v1h-2zM15 10h1v1h-1zM21 10h1v1h-1zM23 10h1v1h-1zM25 10h1v1h-1zM28 10h1v1h-1zM0 11h2v1h-2zM4 11h1v1h-1zM7 11h3v1h-3zM11 11h2v1h-2zM16 11h6v1h-6zM24 11h1v1h-1zM27 11h2v1h-2zM1 12h1v1h-1zM4 12h1v1h-1zM6 12h2v1h-2zM12 12h1v1h-1zM17 12h1v1h-1zM23 12h1v1h-1zM25 12h1v1h-1zM28 12h1v1h-1zM0 13h2v1h-2zM3 13h1v1h-1zM7 13h6v1h-6zM14 13h1v1h-1zM16 13h3v1h-3zM22 13h1v1h-1zM24 13h1v1h-1zM26 13h1v1h-1zM28 13h1v1h-1zM1 14h1v1h-1zM6 14h1v1h-1zM8 14h3v1h-3zM12 14h1v1h-1zM15 14h4v1h-4zM21 14h1v1h-1zM24 14h1v1h-1zM28 14h1v1h-1zM3 15h1v1h-1zM5 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM12 15h3v1h-3zM17 15h2v1h-2zM20 15h1v1h-1zM22 15h2v1h-2zM25 15h1v1h-1zM27 15h2v1h-2zM2 16h1v1h-1zM6 16h1v1h-1zM9 16h2v1h-2zM12 16h1v1h-1zM17 16h5v1h-5zM27 16h1v1h-1zM0 17h2v1h-2zM5 17h1v1h-1zM13 17h2v1h-2zM16 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM22 17h3v1h-3zM28 17h1v1h-1zM2 18h2v1h-2zM6 18h2v1h-2zM9 18h1v1h-1zM11 18h2v1h-2zM16 18h3v1h-3zM20 18h1v1h-1zM23 18h3v1h-3zM28 18h1v1h-1zM2 19h1v1h-1zM5 19h1v1h-1zM7 19h1v1h-1zM14 19h1v1h-1zM17 19h2v1h-2zM20 19h1v1h-1zM24 19h2v1h-2zM27 19h1v1h-1zM0 20h3v1h-3zM4 20h1v1h-1zM6 20h5v1h-5zM13 20h1v1h-1zM15 20h3v1h-3zM19 20h7v1h-7zM27 20h2v1h-2zM8 21h1v1h-1zM10 21h2v1h-2zM13 21h1v1h-1zM15 21h3v1h-3zM20 21h1v1h-1zM24 21h1v1h-1zM26 21h3v1h-3zM0 22h7v1h-7zM12 22h4v1h-4zM18 22h3v1h-3zM22 22h1v1h-1zM24 22h1v1h-1zM28 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM9 23h1v1h-1zM12 23h2v1h-2zM17 23h4v1h-4zM24 23h2v1h-2zM28 23h1v1h-1zM0 24h1v1h-1zM2 24h3v1h-3zM6 24h1v1h-1zM8 24h5v1h-5zM14 24h2v1h-2zM18 24h7v1h-7zM27 24h1v1h-1zM0 25h1v1h-1zM2 25h3v1h-3zM6 25h1v1h-1zM9 25h1v1h-1zM12 25h2v1h-2zM18 25h1v1h-1zM23 25h1v1h-1zM27 25h1v1h-1zM0 26h1v1h-1zM2 26h3v1h-3zM6 26h1v1h-1zM9 26h1v1h-1zM11 26h1v1h-1zM13 26h4v1h-4zM19 26h3v1h-3zM25 26h4v1h-4zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h1v1h-1zM10 27h4v1h-4zM15 27h3v1h-3zM20 27h1v1h-1zM23 27h1v1h-1zM25 27h1v1h-1zM27 27h2v1h-2zM0 28h7v1h-7zM10 28h1v1h-1zM12 28h3v1h-3zM17 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM24 28h2v1h-2zM27 28h1v1h-1z" fill="#1E1B4B" /></g><title>QR: https://traceroute-online.com/</title></g>
+  <g role="img" aria-label="Mapa s trasou paketu">
+    <title>Výřez mapy Atlantiku a Evropy s vyznačenou trasou paketu a popisky uzlů – výstup webového traceroute.</title>
+    <rect x="640" y="110" width="270" height="160" rx="8" fill="#f7edc8" stroke="#999999" stroke-width="2" />
+    <ellipse cx="700" cy="170" rx="35" ry="45" fill="#e8d89a" />
+    <ellipse cx="855" cy="160" rx="35" ry="30" fill="#e8d89a" />
+    <path d="M 700 165 C 760 130 810 140 850 158" fill="none" stroke="#c0392b" stroke-width="3" />
+    <circle cx="700" cy="165" r="6" fill="#c0392b" />
+    <circle cx="778" cy="142" r="5" fill="#c0392b" />
+    <circle cx="850" cy="158" r="6" fill="#c0392b" />
+    <text x="775" y="250" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">trasa paketu přes Atlantik do Evropy</text>
+  </g>
+  <g aria-label="Výstup příkazu tracert google.cz">
+    <rect x="60" y="300" width="850" height="200" rx="6" fill="#101018" />
+    <text x="80" y="328" font-family="monospace" font-size="15" fill="#d8d8d8">Tracing route to google.cz [142.251.36.131] over a maximum of 30 hops</text>
+    <text x="80" y="352" font-family="monospace" font-size="15" fill="#d8d8d8">  1    2 ms   192.168.1.1</text>
+    <text x="80" y="374" font-family="monospace" font-size="15" fill="#d8d8d8">  2    9 ms   62.141.5.9</text>
+    <text x="80" y="396" font-family="monospace" font-size="15" fill="#d8d8d8">  3   11 ms   89-24-28-9.customers.tmcz.cz [89.24.28.9]</text>
+    <text x="80" y="418" font-family="monospace" font-size="15" fill="#d8d8d8">  4   12 ms   172.253.50.249</text>
+    <text x="80" y="440" font-family="monospace" font-size="15" fill="#d8d8d8">  5   13 ms   142.251.224.127</text>
+    <text x="80" y="462" font-family="monospace" font-size="15" fill="#d8d8d8">  6   13 ms   prg03s12-in-f3.1e100.net [142.251.36.131]</text>
+    <text x="80" y="488" font-family="monospace" font-size="15" fill="#d8d8d8">Trace complete.</text>
+  </g>
+  </svg></div><p class="note"><b>Pracovní list, úkol 2.</b>
+
+<b>Aktivita Traceroute:</b> „Pojďme se podívat, přes jaké všechny routery a servery náš požadavek běží, když se chceme podívat na školní webovky. Otevřete si stránku https://traceroute-online.com a do políčka zadejte stránky naší školy. Pozor, stránka je to americká, takže vždycky začíná posílat pakety z USA.&quot;
+
+„Vidíte, přes jaké všechny servery a routery náš požadavek běžel.&quot;
+
+- Jaké země vidíte na mapě?
+
+- Na kolik přestupů se dostanete od sebe k školnímu webu?
+
+- Jakou IP adresu má web naší školy?
+
+<b>MOŽNÉ ROZŠÍŘENÍ</b>
+
+URL adresa naší školy se překládá na IP adresu webového serveru.
+
+Analogie s telefonními kontakty: také si nepamatujeme telefonní čísla všech našich kamarádů – ukládáme si je do kontaktů pod jejich jménem. Abychom si nemuseli pamatovat IP adresu každé webové stránky, má každá zapamatovatelnou URL adresu, kterou za nás zase nějaký server (DNS server) přeloží na IP adresu.
+
+Text na snímku (je v obrázku): TRACEROUTE-ONLINE.COM - Jaké země vidíte na mapě? - Na kolik hopů se dostanete od sebe k školnímu webu? - Jakou IP adresu má web naší školy?
+
+Obrázek: Vlevo otázky, uprostřed QR kód vedoucí na traceroute-online.com. Vpravo nahoře výřez mapy (Atlantik a Evropa ve žlutém podání) s vyznačenou trasou paketu a popisky uzlů – výstup webového traceroute. Dole snímek příkazové řádky Windows s výstupem příkazu <code>tracert google.cz</code>: „Tracing route to google.cz [142.251.36.131] over a maximum of 30 hops&quot; a šest řádků hopů s časy v ms a IP adresami (192.168.1.1; 62.141.5.9; 89-24-28-9.customers.tmcz.cz [89.24.28.9]; 172.253.50.249; 142.251.224.127; prg03s12-in-f3.1e100.net [142.251.36.131]), zakončeno „Trace complete.&quot;</p></div></div>
+<div class="s"><div class="n">024</div><div><p class="t">IP ADRESA</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="44 92 862 372" role="img" lang="cs">
+  <title>IP ADRESA</title>
+  <desc>IP adresa (Internet Protocol) jednoznačně určuje zařízení v internetové síti. Dva panely ukazují tvar starší verze (IPv4) a nové verze (IPv6) s příklady.</desc>
+  <text x="60" y="130" font-family="sans-serif" font-size="24" fill="#ffffff"><tspan font-weight="bold">Jednoznačně určuje</tspan> zařízení v internetové síti.</text>
+  <text x="480" y="200" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Tvar IP adresy</text>
+  <line x1="440" y1="215" x2="270" y2="265" stroke="#ffffff" stroke-width="4" />
+  <path d="M 270 265 L 288 253 L 280 271 Z" fill="#ffffff" />
+  <line x1="520" y1="215" x2="690" y2="265" stroke="#ffffff" stroke-width="4" />
+  <path d="M 690 265 L 672 253 L 680 271 Z" fill="#ffffff" />
+  <g aria-label="Starší verze IPv4">
+    <rect x="70" y="280" width="390" height="170" rx="14" fill="#ffffff" />
+    <text x="265" y="320" font-family="sans-serif" font-size="21" font-weight="bold" fill="#1a1a1a" text-anchor="middle">starší verze</text>
+    <text x="265" y="360" font-family="sans-serif" font-size="19" fill="#1a1a1a" text-anchor="middle">X.X.X.X, kde X je číslo od 0 do 255</text>
+    <text x="265" y="405" font-family="sans-serif" font-size="19" fill="#1a1a1a" text-anchor="middle">příklad: <tspan font-family="monospace" font-weight="bold">193.179.60.95</tspan></text>
+  </g>
+  <g aria-label="Nová verze IPv6">
+    <rect x="500" y="280" width="390" height="170" rx="14" fill="#ffffff" />
+    <text x="695" y="320" font-family="sans-serif" font-size="21" font-weight="bold" fill="#1a1a1a" text-anchor="middle">nová verze (IPv6)</text>
+    <text x="695" y="370" font-family="sans-serif" font-size="17" fill="#1a1a1a" text-anchor="middle">příklad:</text>
+    <text x="695" y="402" font-family="monospace" font-size="15" font-weight="bold" fill="#1a1a1a" text-anchor="middle">2001:2000:8002:2030:47ff:fea5:3085</text>
+  </g>
+  </svg></div><p class="note">IP adresa má tvar: X.X.X.X, kde X je číslo v rozsahu 0–255.
+
+<b>Kolik různých IP adres existuje?</b>
+
+- ~4 miliardy adres IPv4
+
+- dochází nám, a proto nový typ (delší) IPv6
+
+- IPv6: 128 bitů
+
+- IPv6 je asi 10^28 adres na člověka
+
+Text na snímku (je v obrázku): IP ADRESA — IP – Internet Protocol Jednoznačně určuje zařízení v internetové síti. Tvar IP adresy: | starší verze | nová verze (IPv6) | |---|---| | X.X.X.X, kde X je číslo od 0 do 255 | — | | příklad: 193.179.60.95 | příklad: 2001:2000:8002:2030:47ff:fea5:3085 |
+
+Obrázek: Červeno-růžové pozadí; pod nadpisem „Tvar IP adresy&quot; vedou dvě šipky do dvou bílých panelů – vlevo starší verze (IPv4) s formátem a příkladem, vpravo nová verze IPv6 s příkladem. Bez dalších ilustrací.</p></div></div>
+<div class="s"><div class="n">025</div><div><p class="t">Jak můžeme dinosaura rozebrat a poslat z muzea do muzea?</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="74 126 886 382" role="img" lang="cs">
+  <title>Jak můžeme dinosaura rozebrat a poslat z muzea do muzea?</title>
+  <desc>Motivační úloha: jak převézt velkou kostru dinosaura třemi malými auty z jednoho muzea do druhého. Piktogram kostry dinosaura a schéma muzeum – otazník – muzeum.</desc>
+  <g role="img" aria-label="Kostra dinosaura">
+    <title>Fotografie kostry dlouhokrkého dinosaura (sauropoda) v muzejní expozici.</title>
+    <rect x="90" y="140" width="330" height="180" rx="10" fill="#f2f2f2" stroke="#999999" stroke-width="2" />
+    <path d="M 130 280 C 170 275 200 270 240 265 C 300 258 330 250 345 225 C 355 205 350 185 340 175" fill="none" stroke="#8a7a5a" stroke-width="6" />
+    <circle cx="338" cy="170" r="10" fill="none" stroke="#8a7a5a" stroke-width="4" />
+    <line x1="180" y1="272" x2="180" y2="300" stroke="#8a7a5a" stroke-width="5" />
+    <line x1="280" y1="260" x2="280" y2="300" stroke="#8a7a5a" stroke-width="5" />
+    <line x1="200" y1="268" x2="230" y2="250" stroke="#8a7a5a" stroke-width="3" />
+    <line x1="220" y1="266" x2="250" y2="248" stroke="#8a7a5a" stroke-width="3" />
+    <text x="255" y="312" font-family="sans-serif" font-size="13" fill="#777777" text-anchor="middle">kostra sauropoda v muzeu</text>
+  </g>
+  <g aria-label="Schéma přesunu z muzea do muzea">
+    <circle cx="180" cy="420" r="48" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="155" y="410" width="50" height="30" fill="none" stroke="#333333" stroke-width="3" />
+    <path d="M 150 410 L 180 390 L 210 410" fill="none" stroke="#333333" stroke-width="3" />
+    <text x="180" y="490" font-family="sans-serif" font-size="15" fill="#333333" text-anchor="middle">muzeum A</text>
+    <line x1="240" y1="420" x2="420" y2="420" stroke="#6644cc" stroke-width="4" stroke-dasharray="5 9" />
+    <circle cx="480" cy="420" r="38" fill="#ffffff" stroke="#6644cc" stroke-width="3" />
+    <text x="480" y="434" font-family="sans-serif" font-size="38" font-weight="bold" fill="#6644cc" text-anchor="middle">?</text>
+    <line x1="530" y1="420" x2="710" y2="420" stroke="#6644cc" stroke-width="4" stroke-dasharray="5 9" />
+    <path d="M 710 420 L 696 412 L 696 428 Z" fill="#6644cc" />
+    <circle cx="770" cy="420" r="48" fill="#fdeeb3" stroke="#c9a000" stroke-width="3" />
+    <rect x="745" y="410" width="50" height="30" fill="none" stroke="#333333" stroke-width="3" />
+    <path d="M 740 410 L 770 390 L 800 410" fill="none" stroke="#333333" stroke-width="3" />
+    <text x="770" y="490" font-family="sans-serif" font-size="15" fill="#333333" text-anchor="middle">muzeum B (cíl)</text>
+  </g>
+  <text x="640" y="230" font-family="sans-serif" font-size="18" fill="#555555">Úkol: vymyslete, jak velkou kostru</text>
+  <text x="640" y="258" font-family="sans-serif" font-size="18" fill="#555555">převézt třemi malými auty.</text>
+  </svg></div><p class="note"><b>Aktivita Dinosaurus:</b>
+
+„Představte si, že jste ředitelé muzea. Ve své sbírce byste rádi měli i kostru dinosaura. Dali jste si tedy inzerát a ozval se vám ředitel jiného muzea, že vám dinosaura dá, že jich má dost. Bohužel jeho muzeum je přes celou republiku od toho vašeho. Je tedy potřeba dinosaura převézt. Jelikož vaše muzeum je malé, nemáte k dispozici žádný náklaďák ani vlak. Máte jen tři malá osobní auta, vaše, pana vrátného a paní účetní. Jak tedy asi dinosaura převezete? Vymyslete způsob, jak to udělat.&quot;
+
+V aktivitě jde o to, aby si děti rozmyslely, že jeden dinosaurus se do osobního auta nevejde, a tak je potřeba kostru rozebrat, očíslovat jednotlivé kosti, udělat plánek, kam co patří, dát to do beden a poslat.
+
+- Vadí, když pojede více aut a každé pojede jinudy?
+
+- Myslíte si, že takto to funguje i na internetu?
+
+Obrázek: Vlevo nahoře fotografie kostry dlouhokrkého dinosaura (sauropoda) v muzejní expozici. Pod ní schéma: ikona budovy muzea v kroužku (vlevo), tečkovaná šipka vedoucí doprava přes kroužek s otazníkem k druhé ikoně muzea ve žlutém kroužku (cíl). Úloha: vymyslet, jak velkou kostru převézt třemi malými auty.</p></div></div>
+<div class="s"><div class="n">026</div><div><p class="t">Jak můžeme dinosaura rozebrat a poslat? – řešení</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="54 71 827 453" role="img" lang="cs">
+  <title>Jak můžeme dinosaura rozebrat a poslat? – řešení</title>
+  <desc>Řešení úlohy: udělat plánek dinosaura, očíslovat kosti a uložit je do označených krabic. Dvě různé trasy náklaďáků mezi muzei ukazují, že náklaďáky (pakety) nemusí jet stejnou cestou.</desc>
+  <g role="img" aria-label="Kostra dinosaura">
+    <title>Fotografie kostry dlouhokrkého dinosaura v muzejní expozici.</title>
+    <rect x="70" y="85" width="250" height="140" rx="10" fill="#f2f2f2" stroke="#999999" stroke-width="2" />
+    <path d="M 100 195 C 140 190 170 185 205 180 C 250 173 270 165 282 145 C 290 130 286 115 278 108" fill="none" stroke="#8a7a5a" stroke-width="5" />
+    <circle cx="277" cy="104" r="8" fill="none" stroke="#8a7a5a" stroke-width="3" />
+    <line x1="140" y1="192" x2="140" y2="215" stroke="#8a7a5a" stroke-width="4" />
+    <line x1="220" y1="178" x2="220" y2="215" stroke="#8a7a5a" stroke-width="4" />
+    <text x="195" y="240" font-family="sans-serif" font-size="12" fill="#777777" text-anchor="middle">kostra dinosaura</text>
+  </g>
+  <g aria-label="Postup řešení">
+    <text x="380" y="115" font-family="sans-serif" font-size="21" fill="#1a1a1a">• Udělat si <tspan font-weight="bold">plánek</tspan> dinosaura</text>
+    <text x="380" y="152" font-family="sans-serif" font-size="21" fill="#1a1a1a">• <tspan font-weight="bold">Očíslovat</tspan> si kosti</text>
+    <text x="380" y="189" font-family="sans-serif" font-size="21" fill="#1a1a1a">• <tspan font-weight="bold">Uložit</tspan> je do označených krabic</text>
+  </g>
+  <text x="480" y="280" font-family="sans-serif" font-size="24" font-weight="bold" fill="#1a1a1a" text-anchor="middle">Náklaďáky nemusí jet stejnou cestou.</text>
+  <g aria-label="Dvě různé trasy náklaďáků mezi muzei">
+    <title>Horní červenohnědá a dolní fialová trasa mezi muzeem A a muzeem B; každá vede přes jiné uzly a obě se sbíhají v cíli – jako pakety putující různými cestami.</title>
+    <circle cx="140" cy="410" r="45" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="117" y="402" width="46" height="27" fill="none" stroke="#333333" stroke-width="3" />
+    <path d="M 112 402 L 140 384 L 168 402" fill="none" stroke="#333333" stroke-width="3" />
+    <text x="140" y="478" font-family="sans-serif" font-size="14" fill="#333333" text-anchor="middle">muzeum A</text>
+    
+    <path d="M 185 395 C 280 330 480 330 640 350 C 700 358 750 375 775 395" fill="none" stroke="#b04a3a" stroke-width="4" />
+    <circle cx="330" cy="352" r="9" fill="#ffffff" stroke="#b04a3a" stroke-width="3" />
+    <circle cx="510" cy="337" r="9" fill="#ffffff" stroke="#b04a3a" stroke-width="3" />
+    <circle cx="670" cy="357" r="9" fill="#ffffff" stroke="#b04a3a" stroke-width="3" />
+    <rect x="400" y="318" width="28" height="16" rx="3" fill="#b04a3a" />
+    <circle cx="408" cy="336" r="4" fill="#5a2a20" /><circle cx="421" cy="336" r="4" fill="#5a2a20" />
+    
+    <path d="M 185 425 C 280 480 480 485 640 465 C 700 457 750 440 775 425" fill="none" stroke="#6644cc" stroke-width="4" />
+    <circle cx="330" cy="462" r="9" fill="#ffffff" stroke="#6644cc" stroke-width="3" />
+    <circle cx="510" cy="477" r="9" fill="#ffffff" stroke="#6644cc" stroke-width="3" />
+    <circle cx="670" cy="462" r="9" fill="#ffffff" stroke="#6644cc" stroke-width="3" />
+    <rect x="400" y="488" width="28" height="16" rx="3" fill="#6644cc" />
+    <circle cx="408" cy="506" r="4" fill="#2d1b69" /><circle cx="421" cy="506" r="4" fill="#2d1b69" />
+    <circle cx="820" cy="410" r="45" fill="#fdeeb3" stroke="#c9a000" stroke-width="3" />
+    <rect x="797" y="402" width="46" height="27" fill="none" stroke="#333333" stroke-width="3" />
+    <path d="M 792 402 L 820 384 L 848 402" fill="none" stroke="#333333" stroke-width="3" />
+    <text x="820" y="478" font-family="sans-serif" font-size="14" fill="#333333" text-anchor="middle">muzeum B</text>
+  </g>
+  </svg></div><p class="note"><b>Série snímků 26–27.</b>
+
+„Ano, funguje! Můžeme si spojení mezi počítači, servery a routery představit jako silnici. Na internetu se tedy vše, co posíláme, rozdělí na stejně velké části, říkáme jim <b>pakety</b>. Ty z místa odeslání, třeba našeho počítače, putují do místa určení, třeba serveru YouTube. Každý paket tam může dorazit jinou cestou, záleží, kde zrovna na té imaginární silnici je kolona.&quot;
+
+Text na snímku (je v obrázku): Jak můžeme dinosaura rozebrat a poslat z muzea do muzea? - Udělat si plánek dinosaura - Očíslovat si kosti - Uložit je do označených krabic Náklaďáky nemusí jet stejnou cestou.
+
+Obrázek: Stejná fotografie kostry dinosaura vlevo nahoře. Dole schéma dvou tras mezi levým muzeem a pravým (žlutým) muzeem: horní trasa červenohnědá s červeným náklaďákem, dolní trasa fialová s fialovým náklaďákem; obě procházejí přes několik kroužků (uzlů) a sbíhají se v cílovém muzeu. Uprostřed text „Náklaďáky nemusí jet stejnou cestou&quot; – analogie paketů putujících různými cestami.</p></div></div>
+<div class="s"><div class="n">027</div><div><p class="t">Směrování paketů</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="114 81 732 438" role="img" lang="cs">
+  <title>Směrování paketů</title>
+  <desc>Schéma sítě 3×3: Start vlevo nahoře, Cíl vpravo dole a osm routerů propojených linkami (mřížka s diagonálami přes prostřední Router 5). Soubor (obrázek) se rozdělí na pakety a pošle sítí. Čím větší soubor posíláme, tím pošleme více paketů.</desc>
+  <g aria-label="Síť routerů mezi Startem a Cílem">
+    <rect x="130" y="95" width="700" height="410" rx="14" fill="#ffffff" />
+    
+    <g stroke="#333333" stroke-width="2">
+      <line x1="255" y1="185" x2="425" y2="185" />
+      <line x1="425" y1="185" x2="610" y2="185" />
+      <line x1="610" y1="185" x2="760" y2="185" />
+      <line x1="255" y1="320" x2="425" y2="320" />
+      <line x1="425" y1="320" x2="610" y2="320" />
+      <line x1="610" y1="320" x2="760" y2="320" />
+      <line x1="255" y1="450" x2="425" y2="450" />
+      <line x1="425" y1="450" x2="610" y2="450" />
+      <line x1="610" y1="450" x2="745" y2="450" />
+      <line x1="255" y1="185" x2="255" y2="320" />
+      <line x1="255" y1="320" x2="255" y2="450" />
+      <line x1="425" y1="185" x2="425" y2="320" />
+      <line x1="425" y1="320" x2="425" y2="450" />
+      <line x1="610" y1="185" x2="610" y2="320" />
+      <line x1="610" y1="320" x2="610" y2="450" />
+      <line x1="760" y1="185" x2="760" y2="320" />
+      <line x1="760" y1="320" x2="760" y2="415" />
+      <line x1="255" y1="185" x2="425" y2="320" />
+      <line x1="610" y1="185" x2="425" y2="320" />
+      <line x1="255" y1="450" x2="425" y2="320" />
+      <line x1="425" y1="320" x2="745" y2="450" />
+      <line x1="760" y1="185" x2="425" y2="320" />
+      <line x1="185" y1="150" x2="255" y2="185" />
+    </g>
+    
+    <rect x="150" y="115" width="90" height="70" fill="#f0923e" />
+    <text x="195" y="156" font-family="sans-serif" font-size="17" fill="#ffffff" text-anchor="middle">Start</text>
+    
+    <g role="img" aria-label="Soubor rozdělený na pakety">
+      <title>Fotografie horské krajiny rozdělená na části – soubor, který se rozdělí na pakety a pošle sítí.</title>
+      <rect x="150" y="200" width="100" height="66" fill="#cfe0cf" stroke="#555555" stroke-width="2" />
+      <line x1="200" y1="200" x2="200" y2="266" stroke="#555555" stroke-width="2" />
+      <line x1="150" y1="233" x2="250" y2="233" stroke="#555555" stroke-width="2" />
+      <text x="200" y="286" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">soubor → pakety</text>
+    </g>
+    
+    <g aria-label="Osm routerů">
+      <circle cx="255" cy="185" r="34" fill="#8a8a8a" />
+      <text x="255" y="190" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 1</text>
+      <circle cx="425" cy="185" r="34" fill="#8a8a8a" />
+      <text x="425" y="190" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 2</text>
+      <circle cx="610" cy="185" r="34" fill="#8a8a8a" />
+      <text x="610" y="190" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 3</text>
+      <circle cx="255" cy="320" r="34" fill="#8a8a8a" />
+      <text x="255" y="325" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 4</text>
+      <circle cx="425" cy="320" r="34" fill="#8a8a8a" />
+      <text x="425" y="325" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 5</text>
+      <circle cx="760" cy="320" r="34" fill="#8a8a8a" />
+      <text x="760" y="325" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 6</text>
+      <circle cx="255" cy="450" r="34" fill="#8a8a8a" />
+      <text x="255" y="455" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 7</text>
+      <circle cx="610" cy="450" r="34" fill="#8a8a8a" />
+      <text x="610" y="455" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle">Router 8</text>
+    </g>
+    
+    <rect x="730" y="405" width="85" height="85" fill="#8a8a8a" />
+    <text x="772" y="453" font-family="sans-serif" font-size="17" fill="#ffffff" text-anchor="middle">Cíl</text>
+  </g>
+  </svg></div><p class="note">Pokračování série od snímku 26 — poznámky tam.
+
+Obrázek: Bílý panel se schématem sítě 3×3: oranžový čtverec „Start&quot; vlevo nahoře, šedý čtverec „Cíl&quot; vpravo dole a mezi nimi osm šedých kruhových uzlů „Router 1&quot; až „Router 8&quot; propojených černými linkami (mřížka s diagonálami přes Router 5 uprostřed). Pod Startem je fotografie horské krajiny rozdělená na části – soubor, který se rozdělí na pakety a pošle sítí. (V prezentaci na tomto slidu následuje video/animace směrování paketů.)</p></div></div>
+<div class="s"><div class="n">028</div><div><p class="t">Co musí obsahovat každý paket?</p><p class="note"><b>Pracovní list, úkol 3.</b>
+
+- Co všechno asi paket obsahuje kromě části fotky nebo videa? Využijte své myšlenky ze cvičení s dinosaurem.
+
+Obrázek v originále: Textový slide s velkým kroužkem s otazníkem uprostřed – otázka pro žáky před odhalením odpovědi.</p></div></div>
+<div class="s"><div class="n">029</div><div><p class="t">Co musí obsahovat každý paket? – řešení</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="54 56 852 368" role="img" lang="cs">
+  <title>Co musí obsahovat každý paket? – řešení</title>
+  <desc>Každý paket musí obsahovat IP adresu odesílatele, IP adresu příjemce, identifikátor zprávy, obsah a pořadí. Pět oranžových rámečků ve dvou řadách.</desc>
+  <text x="480" y="110" font-family="sans-serif" font-size="40" font-weight="bold" fill="#1a1a1a" text-anchor="middle">Co musí obsahovat každý paket?</text>
+  <g aria-label="Obsah paketu">
+    <rect x="70" y="200" width="250" height="80" rx="12" fill="#f0923e" />
+    <text x="195" y="235" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">IP adresu</text>
+    <text x="195" y="262" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">odesílatele</text>
+    <rect x="355" y="200" width="250" height="80" rx="12" fill="#f0923e" />
+    <text x="480" y="235" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">IP adresu</text>
+    <text x="480" y="262" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">příjemce</text>
+    <rect x="640" y="200" width="250" height="80" rx="12" fill="#f0923e" />
+    <text x="765" y="235" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">Identifikátor</text>
+    <text x="765" y="262" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">zprávy</text>
+    <rect x="215" y="330" width="250" height="80" rx="12" fill="#f0923e" />
+    <text x="340" y="380" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">obsah</text>
+    <rect x="500" y="330" width="250" height="80" rx="12" fill="#f0923e" />
+    <text x="625" y="380" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">pořadí</text>
+  </g>
+  </svg></div><p class="note">„Paket obsahuje IP adresu odesílatele, IP adresu příjemce, pořadové číslo, abychom dokázali obrázek zase složit, identifikátor zprávy, a samotný kousek obrázku.&quot;
+
+Text na snímku (je v obrázku): - IP adresu odesílatele - IP adresu příjemce - Identifikátor zprávy - obsah - pořadí
+
+Obrázek: Pět oranžových rámečků: v horní řadě „IP adresu odesílatele&quot;, „IP adresu příjemce&quot;, „Identifikátor zprávy&quot;; v dolní řadě „obsah&quot; a „pořadí&quot;.</p></div></div>
+<div class="act">REFLEXE: JAK VYPADÁ INTERNET Z DÁLKY? · 5 min</div>
+<div class="s"><div class="n">030</div><div><p class="t">Zakreslete část internetové sítě</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="79 58 817 422" role="img" lang="cs">
+  <title>Zakreslete část internetové sítě</title>
+  <desc>Kreslicí úloha: zakreslit část internetové sítě pro přenos videa k uživateli z YouTube serveru. Vlevo uživatel u klávesnice, vpravo rack serverů s ikonou YouTube, mezi nimi otazník – prostor pro zákres sítě.</desc>
+  <text x="480" y="96" font-family="sans-serif" font-size="24" fill="#1a1a1a" text-anchor="middle">k uživateli z YouTube <tspan font-weight="bold">serveru</tspan> tak, aby z toho pochopila</text>
+  <text x="480" y="128" font-family="sans-serif" font-size="24" fill="#1a1a1a" text-anchor="middle">i vaše babička, jak to funguje.</text>
+  <g aria-label="Uživatel">
+    <title>Kreslený muž u klávesnice ve žlutém kruhu – uživatel</title>
+    <circle cx="180" cy="340" r="85" fill="#fdeeb3" stroke="#c9a000" stroke-width="3" />
+    <circle cx="180" cy="300" r="24" fill="none" stroke="#333333" stroke-width="3" />
+    <line x1="180" y1="324" x2="180" y2="375" stroke="#333333" stroke-width="3" />
+    <line x1="180" y1="340" x2="150" y2="365" stroke="#333333" stroke-width="3" />
+    <line x1="180" y1="340" x2="210" y2="365" stroke="#333333" stroke-width="3" />
+    <rect x="140" y="370" width="80" height="14" rx="4" fill="#ffffff" stroke="#333333" stroke-width="2" />
+    <text x="180" y="460" font-family="sans-serif" font-size="22" font-weight="bold" fill="#6644cc" text-anchor="middle">uživatel</text>
+  </g>
+  <circle cx="480" cy="330" r="45" fill="#ffffff" stroke="#6644cc" stroke-width="4" />
+  <text x="480" y="348" font-family="sans-serif" font-size="48" font-weight="bold" fill="#6644cc" text-anchor="middle">?</text>
+  <g aria-label="YouTube server">
+    <title>Rack serverů s červenou ikonou YouTube – server</title>
+    <rect x="700" y="240" width="180" height="180" rx="8" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="715" y="255" width="150" height="34" rx="4" fill="#4a4a55" />
+    <rect x="715" y="296" width="150" height="34" rx="4" fill="#4a4a55" />
+    <rect x="715" y="337" width="150" height="34" rx="4" fill="#4a4a55" />
+    <rect x="715" y="378" width="150" height="34" rx="4" fill="#4a4a55" />
+    <rect x="762" y="300" width="56" height="40" rx="9" fill="#e02b2b" />
+    <path d="M 781 309 L 781 331 L 800 320 Z" fill="#ffffff" />
+    <text x="790" y="460" font-family="sans-serif" font-size="22" font-weight="bold" fill="#e05252" text-anchor="middle">server</text>
+  </g>
+  </svg></div><p class="note"><b>Pracovní list, úkol 4.</b>
+
+<b>Aktivita Jak vypadá internet z dálky?:</b>
+
+„Na základě znalostí o serverech, routerech a paketech zkuste nakreslit část internetové sítě („jak by to vypadalo z výšky&quot;), kde bude znázorněno, jak vám nějaký YouTube server posílá pakety videa, na které se chcete podívat.&quot;
+
+Obrázek: Vlevo kreslený muž u klávesnice ve žlutém kruhu s popiskem „<b>uživatel</b>&quot; (fialově), vpravo rack serverů s červenou ikonou YouTube a popiskem „<b>server</b>&quot; (červeně). Uprostřed kroužek s otazníkem – žáci mají prostor mezi nimi zakreslit síť.</p></div></div>
+<div class="s"><div class="n">031</div><div><p class="t">Řešení – jak vypadá internet z dálky</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="44 76 912 428" role="img" lang="cs">
+  <title>Řešení – zjednodušený model internetu</title>
+  <desc>Vzorové řešení kreslicí úlohy: dům s mobilem a notebookem připojenými přes Wi-Fi k domácímu routeru, kabel pod zemí k síťovému routeru, dále k YouTube serveru (rack), přes další síťový router ke druhému domu se stolním počítačem. Řetězec: koncové zařízení → domácí Wi-Fi router → síťové routery → server a zpět.</desc>
+  <rect x="60" y="400" width="840" height="90" rx="20" fill="#f2cf7a" aria-label="Podzemí s kabely" />
+  <line x1="60" y1="400" x2="900" y2="400" stroke="#3a2a80" stroke-width="3" />
+  
+  <g aria-label="Dům s mobilem, notebookem a Wi-Fi routerem">
+    <title>Dům, v němž jsou mobil a notebook připojené přes Wi-Fi k domácímu Wi-Fi routeru s anténami.</title>
+    <path d="M 80 180 L 200 90 L 320 180 L 320 400 L 80 400 Z" fill="none" stroke="#3a2a80" stroke-width="4" />
+    <rect x="105" y="150" width="42" height="72" rx="6" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="112" y="162" width="28" height="20" fill="#6644cc" />
+    <text x="126" y="245" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">mobil</text>
+    <rect x="185" y="150" width="100" height="62" rx="5" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="196" y="160" width="40" height="24" fill="#e05252" />
+    <rect x="244" y="160" width="32" height="12" fill="#f5c518" />
+    <rect x="170" y="212" width="130" height="8" rx="4" fill="#333333" />
+    <text x="235" y="245" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">notebook</text>
+    
+    <path d="M 155 300 C 165 290 180 290 190 300" fill="none" stroke="#2ea8d8" stroke-width="3" />
+    <path d="M 145 315 C 162 298 183 298 200 315" fill="none" stroke="#2ea8d8" stroke-width="3" />
+    <path d="M 135 330 C 158 306 187 306 210 330" fill="none" stroke="#2ea8d8" stroke-width="3" />
+    
+    <rect x="130" y="345" width="120" height="26" rx="5" fill="#3a3a44" />
+    <line x1="145" y1="345" x2="135" y2="315" stroke="#333333" stroke-width="3" />
+    <line x1="235" y1="345" x2="245" y2="315" stroke="#333333" stroke-width="3" />
+    <circle cx="150" cy="358" r="3" fill="#7ee07e" /><circle cx="162" cy="358" r="3" fill="#f5c518" />
+    <text x="190" y="390" font-family="sans-serif" font-size="13" font-weight="bold" fill="#3a2a80" text-anchor="middle">Wi-Fi router</text>
+  </g>
+  
+  <g aria-label="Síťový router 1">
+    <rect x="365" y="345" width="110" height="30" rx="5" fill="#4a4a55" stroke="#3a2a80" stroke-width="2" />
+    <rect x="430" y="352" width="35" height="16" fill="#2e2e38" />
+    <circle cx="378" cy="360" r="3" fill="#7ee07e" />
+    <text x="420" y="335" font-family="sans-serif" font-size="13" font-weight="bold" fill="#3a2a80" text-anchor="middle">síťový router</text>
+  </g>
+  
+  <g aria-label="YouTube server (datové centrum)">
+    <title>Stojan serverů označený ikonou YouTube – datové centrum / server.</title>
+    <rect x="530" y="185" width="130" height="190" rx="6" fill="none" stroke="#3a2a80" stroke-width="4" />
+    <rect x="542" y="200" width="106" height="24" rx="3" fill="#4a4a55" />
+    <rect x="542" y="231" width="106" height="24" rx="3" fill="#4a4a55" />
+    <rect x="542" y="262" width="106" height="24" rx="3" fill="#4a4a55" />
+    <rect x="542" y="293" width="106" height="24" rx="3" fill="#4a4a55" />
+    <rect x="542" y="324" width="106" height="24" rx="3" fill="#4a4a55" />
+    <rect x="565" y="130" width="60" height="42" rx="10" fill="#e05252" />
+    <path d="M 586 140 L 586 162 L 606 151 Z" fill="#ffffff" />
+    <text x="595" y="120" font-family="sans-serif" font-size="13" font-weight="bold" fill="#e05252" text-anchor="middle">YouTube server</text>
+  </g>
+  
+  <g aria-label="Síťový router 2">
+    <rect x="700" y="345" width="110" height="30" rx="5" fill="#4a4a55" stroke="#3a2a80" stroke-width="2" />
+    <rect x="765" y="352" width="35" height="16" fill="#2e2e38" />
+    <circle cx="713" cy="360" r="3" fill="#7ee07e" />
+    <text x="755" y="335" font-family="sans-serif" font-size="13" font-weight="bold" fill="#3a2a80" text-anchor="middle">síťový router</text>
+  </g>
+  
+  <g aria-label="Druhý dům se stolním počítačem">
+    <title>Druhý dům, kde je stolní počítač připojený kabelem přes domácí Wi-Fi router.</title>
+    <path d="M 830 220 L 900 165 L 940 195 L 940 400 L 830 400 Z" fill="none" stroke="#3a2a80" stroke-width="4" />
+    <rect x="845" y="240" width="55" height="42" rx="4" fill="none" stroke="#333333" stroke-width="3" />
+    <rect x="852" y="248" width="24" height="18" fill="#6644cc" />
+    <rect x="905" y="235" width="24" height="60" rx="3" fill="#4a4a55" />
+    <text x="885" y="305" font-family="sans-serif" font-size="12" fill="#555555" text-anchor="middle">počítač</text>
+    <rect x="845" y="345" width="80" height="24" rx="5" fill="#3a3a44" />
+    <line x1="855" y1="345" x2="848" y2="322" stroke="#333333" stroke-width="3" />
+    <line x1="915" y1="345" x2="922" y2="322" stroke="#333333" stroke-width="3" />
+    <text x="885" y="390" font-family="sans-serif" font-size="12" font-weight="bold" fill="#3a2a80" text-anchor="middle">Wi-Fi router</text>
+  </g>
+  
+  <g aria-label="Kabely pod zemí" stroke="#333333" stroke-width="4" fill="none">
+    <path d="M 190 371 L 190 440 C 190 455 210 455 230 455 L 380 455 C 400 455 405 440 405 430 L 405 375" />
+    <path d="M 440 375 L 440 430 C 440 445 460 450 480 450 L 560 450 C 580 450 590 435 590 420 L 590 375" />
+    <path d="M 620 375 L 620 420 C 620 440 640 445 660 445 L 720 445 C 740 445 745 430 745 420 L 745 375" />
+    <path d="M 780 375 L 780 425 C 780 440 800 445 820 445 L 850 445 C 870 445 875 430 875 420 L 875 369" />
+  </g>
+  </svg></div><p class="note">Tuto aktivitu lze zadat dvěma způsoby – pokud máte hodně času, lze diskutovat nad řešeními dětí. Pokud naopak máte času málo, dejte jim jen 3 minuty na kreslení a pak ukažte správné řešení. Je ale důležité, aby děti správné řešení viděly.
+
+---
+
+Obrázek: Celostránkové schéma zjednodušeného modelu internetu. Vlevo dům, v němž je mobil a notebook připojené přes Wi-Fi (modré obloučky signálu) k domácímu Wi-Fi routeru s anténami; od routeru vede kabel pod zem (žlutý pás dole). Kabel pokračuje k síťovému routeru (krabička s porty), dále k prostřednímu stojanu serverů označenému ikonou YouTube (datové centrum/server), pak přes další síťový router ke druhému domu vpravo, kde je stolní počítač připojený kabelem přes svůj domácí Wi-Fi router. Všechna zařízení jsou propojena černými kabely vedoucími pod zemí – ukazuje řetězec: koncové zařízení → domácí router → síťové routery → server a zpět.
+
+Slide bez textu – vzorové řešení kreslicí úlohy.</p></div></div>
+<div class="act">Domácí příprava</div>
+<div class="s"><div class="n">032</div><div><p class="t">📚 Domácí příprava na 2. hodinu</p><div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 520" font-family="system-ui,sans-serif" role="img" lang="cs">
+  <title>Domácí příprava na 2. hodinu</title>
+  <desc>QR kód: https://pbook-internet.vercel.app/dp1</desc>
+  <rect x="20" y="10" width="420" height="420" rx="14" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <g transform="translate(30 20) scale(13.79310)"><path d="M0 0h7v1h-7zM8 0h4v1h-4zM14 0h1v1h-1zM17 0h3v1h-3zM22 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h2v1h-2zM11 1h1v1h-1zM14 1h1v1h-1zM18 1h1v1h-1zM20 1h1v1h-1zM22 1h1v1h-1zM28 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM13 2h2v1h-2zM16 2h1v1h-1zM19 2h2v1h-2zM22 2h1v1h-1zM24 2h3v1h-3zM28 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM15 3h3v1h-3zM20 3h1v1h-1zM22 3h1v1h-1zM24 3h3v1h-3zM28 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h3v1h-3zM14 4h6v1h-6zM22 4h1v1h-1zM24 4h3v1h-3zM28 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM10 5h1v1h-1zM13 5h1v1h-1zM16 5h5v1h-5zM22 5h1v1h-1zM28 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h7v1h-7zM8 7h1v1h-1zM11 7h2v1h-2zM14 7h1v1h-1zM16 7h2v1h-2zM0 8h1v1h-1zM2 8h2v1h-2zM5 8h3v1h-3zM9 8h1v1h-1zM11 8h3v1h-3zM16 8h4v1h-4zM22 8h1v1h-1zM25 8h1v1h-1zM27 8h2v1h-2zM3 9h3v1h-3zM8 9h1v1h-1zM12 9h2v1h-2zM16 9h1v1h-1zM18 9h7v1h-7zM28 9h1v1h-1zM6 10h1v1h-1zM9 10h5v1h-5zM16 10h3v1h-3zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h2v1h-2zM4 11h2v1h-2zM12 11h1v1h-1zM15 11h1v1h-1zM18 11h1v1h-1zM20 11h2v1h-2zM23 11h2v1h-2zM28 11h1v1h-1zM2 12h1v1h-1zM4 12h1v1h-1zM6 12h1v1h-1zM8 12h2v1h-2zM14 12h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM25 12h2v1h-2zM0 13h1v1h-1zM5 13h1v1h-1zM8 13h1v1h-1zM10 13h3v1h-3zM14 13h2v1h-2zM17 13h3v1h-3zM22 13h1v1h-1zM26 13h3v1h-3zM0 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM10 14h1v1h-1zM13 14h1v1h-1zM16 14h2v1h-2zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h2v1h-2zM26 14h3v1h-3zM1 15h5v1h-5zM7 15h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM14 15h2v1h-2zM18 15h2v1h-2zM23 15h1v1h-1zM27 15h1v1h-1zM0 16h3v1h-3zM4 16h3v1h-3zM8 16h3v1h-3zM12 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM18 16h1v1h-1zM21 16h1v1h-1zM23 16h3v1h-3zM27 16h1v1h-1zM1 17h1v1h-1zM4 17h1v1h-1zM7 17h1v1h-1zM11 17h1v1h-1zM14 17h2v1h-2zM20 17h1v1h-1zM23 17h1v1h-1zM25 17h3v1h-3zM0 18h1v1h-1zM2 18h1v1h-1zM4 18h8v1h-8zM13 18h3v1h-3zM17 18h2v1h-2zM20 18h3v1h-3zM26 18h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM7 19h1v1h-1zM9 19h1v1h-1zM12 19h3v1h-3zM17 19h2v1h-2zM21 19h1v1h-1zM23 19h1v1h-1zM26 19h1v1h-1zM1 20h3v1h-3zM6 20h1v1h-1zM9 20h6v1h-6zM17 20h10v1h-10zM8 21h2v1h-2zM16 21h1v1h-1zM18 21h1v1h-1zM20 21h1v1h-1zM24 21h5v1h-5zM0 22h7v1h-7zM8 22h2v1h-2zM11 22h1v1h-1zM14 22h1v1h-1zM16 22h5v1h-5zM22 22h1v1h-1zM24 22h2v1h-2zM27 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM13 23h2v1h-2zM16 23h1v1h-1zM18 23h1v1h-1zM20 23h1v1h-1zM24 23h2v1h-2zM27 23h2v1h-2zM0 24h1v1h-1zM2 24h3v1h-3zM6 24h1v1h-1zM9 24h4v1h-4zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h5v1h-5zM26 24h1v1h-1zM0 25h1v1h-1zM2 25h3v1h-3zM6 25h1v1h-1zM8 25h4v1h-4zM13 25h1v1h-1zM15 25h2v1h-2zM20 25h2v1h-2zM23 25h3v1h-3zM28 25h1v1h-1zM0 26h1v1h-1zM2 26h3v1h-3zM6 26h1v1h-1zM8 26h2v1h-2zM11 26h2v1h-2zM14 26h1v1h-1zM16 26h1v1h-1zM18 26h1v1h-1zM23 26h1v1h-1zM26 26h1v1h-1zM28 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM11 27h2v1h-2zM16 27h1v1h-1zM18 27h3v1h-3zM22 27h1v1h-1zM24 27h2v1h-2zM27 27h1v1h-1zM0 28h7v1h-7zM8 28h1v1h-1zM12 28h1v1h-1zM14 28h2v1h-2zM19 28h2v1h-2zM22 28h2v1h-2zM25 28h1v1h-1zM27 28h1v1h-1z" fill="#1E1B4B"/></g>
+  <text x="230" y="470" text-anchor="middle" font-size="22" font-weight="700" fill="#1E1B4B">Domácí příprava na 2. hodinu</text>
+  <text x="230" y="502" text-anchor="middle" font-size="15" fill="#6B7280">pbook-internet.vercel.app/dp1</text>
+</svg></div><p class="note"><b>Domácí příprava na 2. hodinu.</b> Odkaz pošli žákům tam, kam jim posíláš úkoly (Tiny, Teams, Bakaláři…): https://pbook-internet.vercel.app/dp1
+
+Žák nepotřebuje účet. Na příští hodinu přinese <b>vstupenku</b> (obrazovka s kódem nebo výtisk) — doklad, že příprava proběhla, ne známka. Kdo ji nemá, projde záchytný pruh na začátku hodiny.
+
+Výstupy, které uvidíš: vstupenka, report badatelského úkolu, tellingy. Podrobnosti a další nástroje: https://pbook-internet.vercel.app/ucitel</p></div></div>
+<div class="act">Závěr</div>
+<div class="s"><div class="n">033</div><div><p class="t">internet4kids.mff.cuni.cz</p><p class="note">Obrázek v originále: Tmavě fialové pozadí s mapou světa a propojenými uzly (stejné jako titulní slide); uprostřed webová adresa, dole granty a loga Matfyz a Pedagogické fakulty UK.</p></div></div>
+<div class="s skip"><div class="n">034</div><div><p class="t">📄 Pracovní list č. 1T</p><p class="note">Skrytý snímek: přehled úkolů pracovního listu, aby bylo vidět, co žáci dostanou na papíře. Celý list je v metodice Internet4Kids: internet4kids.mff.cuni.cz</p></div></div>
+</div></body></html>

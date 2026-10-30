@@ -35,7 +35,7 @@ and [a reading of every slide](https://kordikp.github.io/slaidy/isd2026/commenta
 
 **[The gallery](https://kordikp.github.io/slaidy/gallery/)** shows what else the one file can
 look like: a company profile in Recombee's identity, a PechaKucha in AI dětem's, a lecture on
-recurrent networks in the bookish Paper theme. Each is a link that presents.
+recurrent networks in FIT CTU's, a school lesson in Czech in Tiny's. Each is a link that presents.
 
 ## Run it on your machine, with your own key
 
@@ -144,8 +144,9 @@ the footer. Pick one under **⋯ → Deck settings → Style → Theme**; the de
 CSS inside it, so it still opens offline and still needs nothing but itself. The words and
 the figures do not change, so the same deck can be shown in any theme.
 
-The library is [`themes/`](themes/): Recombee's corporate identity, three from AI dětem
-(the brand, the Tiny classroom, the AI kurikulum), and Paper for lectures and research talks.
+The library is [`themes/`](themes/): Recombee's corporate identity; three from AI dětem
+(the brand, the Tiny classroom, the AI kurikulum); FIT CTU's and its ML & CI Group's; the EU
+project PoliRuralPlus; and Paper for lectures and research talks.
 Each has a sample deck at `kordikp.github.io/slaidy/themes/<name>/`, and
 [the gallery](https://kordikp.github.io/slaidy/gallery/) shows them all.
 

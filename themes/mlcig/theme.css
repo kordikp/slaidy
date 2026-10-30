@@ -1,0 +1,60 @@
+/* ML & CI Group — the Machine Learning and Computational Intelligence Group at FIT CTU in Prague: a
+   cool light slide, CTU blue (#0065BD) for structure and the group's orange (#F87E51) for the spark,
+   Outfit throughout, the group's mark in the corner and its full logo on the cover and the closing.
+   Made for SlAIdy; CSS MIT, Outfit OFL. */
+@font-face{font-family:"Outfit";font-style:normal;font-weight:300 800;font-display:swap;
+ src:url(fonts/Outfit-latin-ext.woff2) format("woff2");
+ unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Outfit";font-style:normal;font-weight:300 800;font-display:swap;
+ src:url(fonts/Outfit-latin.woff2) format("woff2");
+ unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+html[data-slaidy-theme="mlcig"]{--th-paper:#F5F7FB;--th-ink:#0E1A2B;--th-text:#2A3445;--th-muted:#6B778A;
+ --th-line:#DCE2EC;--th-blue:#0065BD;--th-orange:#F87E51;--th-wash:#E8EEF7;--th-font:"Outfit",system-ui,sans-serif}
+
+/* ---------- content slides: cool paper, blue structure, an orange spark, the mark in the corner ---------- */
+html[data-slaidy-theme="mlcig"] .stage{background:var(--th-paper);color:var(--th-ink);padding:44px 72px 84px;
+ font-family:var(--th-font);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html[data-slaidy-theme="mlcig"] .stage h2{font-family:var(--th-font);font-weight:600;color:var(--th-ink);
+ letter-spacing:-.015em;line-height:1.1;margin-bottom:20px}
+html[data-slaidy-theme="mlcig"] .stage h2::after{content:"";display:block;width:44px;height:4px;margin-top:12px;
+ background:var(--th-orange);border-radius:2px}
+html[data-slaidy-theme="mlcig"] .stage .tx{font-family:var(--th-font);font-weight:350;color:var(--th-text);line-height:1.42}
+html[data-slaidy-theme="mlcig"] .stage .tx b,html[data-slaidy-theme="mlcig"] .stage .tx strong{font-weight:600;color:var(--th-ink)}
+html[data-slaidy-theme="mlcig"] .stage .tx em{font-style:normal;color:var(--th-blue);font-weight:450}
+html[data-slaidy-theme="mlcig"] .stage .tx li::marker{color:var(--th-blue)}
+html[data-slaidy-theme="mlcig"] .stage .tx .bh{font-family:var(--th-font);color:var(--th-ink)}
+html[data-slaidy-theme="mlcig"] .stage .tx h4.bh{font-weight:500;color:var(--th-blue);letter-spacing:.1em;
+ text-transform:uppercase;font-size:.72em}
+html[data-slaidy-theme="mlcig"] .stage .tx blockquote{border-left:4px solid var(--th-blue);background:none;
+ padding:.1em 0 .1em .9em;margin:.6em 0;font-weight:450;color:var(--th-ink)}
+html[data-slaidy-theme="mlcig"] .stage .tx a{color:var(--th-blue);text-decoration:underline;text-underline-offset:3px}
+html[data-slaidy-theme="mlcig"] .stage .tx code{background:var(--th-wash);color:var(--th-ink);border:0;border-radius:4px;padding:.06em .3em}
+html[data-slaidy-theme="mlcig"] .stage .tx pre{background:var(--th-wash);border:0;border-left:3px solid var(--th-orange);border-radius:0 6px 6px 0}
+html[data-slaidy-theme="mlcig"] .stage .tx pre code{background:none;padding:0}
+html[data-slaidy-theme="mlcig"] .stage .tx table{border-collapse:collapse;font-size:.9em}
+html[data-slaidy-theme="mlcig"] .stage .tx th{font-weight:500;color:var(--th-blue);text-transform:uppercase;letter-spacing:.06em;
+ font-size:.74em;border:0;border-bottom:2px solid var(--th-ink)}
+html[data-slaidy-theme="mlcig"] .stage .tx td{border:0;border-bottom:1px solid var(--th-line)}
+html[data-slaidy-theme="mlcig"] .stage .tx .rule{border-top:1px solid var(--th-line)}
+html[data-slaidy-theme="mlcig"] .stage .hdr{color:var(--th-blue);font-family:var(--th-font);font-weight:500;letter-spacing:.12em}
+html[data-slaidy-theme="mlcig"] .stage .hdr .ix,html[data-slaidy-theme="mlcig"] .stage .pos{color:var(--th-muted)}
+html[data-slaidy-theme="mlcig"] .stage::before{content:"";position:absolute;right:66px;bottom:22px;width:38px;height:38px;
+ background:url(mark.webp) no-repeat right center/contain;z-index:2}
+html[data-slaidy-theme="mlcig"] .stage::after{content:var(--slaidy-footer,"");position:absolute;left:72px;right:140px;bottom:31px;
+ font:400 14px/1.2 var(--th-font);color:var(--th-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- cover & closing: the full logo, a big title, the faculty underneath ---------- */
+html[data-slaidy-theme="mlcig"] .stage.lay-cover,html[data-slaidy-theme="mlcig"] .stage.lay-closing{padding:200px 112px 120px}
+html[data-slaidy-theme="mlcig"] .stage.lay-cover::before,html[data-slaidy-theme="mlcig"] .stage.lay-closing::before{
+ left:106px;top:62px;right:auto;bottom:auto;width:420px;height:85px;background-position:left center;background-image:url(logo.webp)}
+html[data-slaidy-theme="mlcig"] .stage.lay-cover::after,html[data-slaidy-theme="mlcig"] .stage.lay-closing::after{
+ content:"Faculty of Information Technology · Czech Technical University in Prague";left:112px;right:112px;bottom:48px;
+ padding-top:14px;border-top:1px solid var(--th-line);font-size:15px;letter-spacing:.02em}
+html[data-slaidy-theme="mlcig"] .stage.lay-cover h2,html[data-slaidy-theme="mlcig"] .stage.lay-closing h2{max-width:84%;font-weight:650;letter-spacing:-.025em}
+html[data-slaidy-theme="mlcig"] .stage.lay-cover h2.big{font-size:calc(var(--d-title)*1.55)}
+html[data-slaidy-theme="mlcig"] .stage.lay-closing h2.big{font-size:calc(var(--d-title)*1.35)}
+html[data-slaidy-theme="mlcig"] .stage.lay-cover h2::after,html[data-slaidy-theme="mlcig"] .stage.lay-closing h2::after{
+ width:88px;height:6px;margin-top:20px}
+html[data-slaidy-theme="mlcig"] .stage.lay-cover .tx p,html[data-slaidy-theme="mlcig"] .stage.lay-cover .tx ul,
+html[data-slaidy-theme="mlcig"] .stage.lay-closing .tx p,html[data-slaidy-theme="mlcig"] .stage.lay-closing .tx ul{max-width:70%}

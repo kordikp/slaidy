@@ -5,6 +5,14 @@ Dates are when the work landed, not when it was released; there are no releases 
 ## Unreleased
 
 ### Added
+- **Three more themes.** `fit-cvut` is the identity of the Czech Technical University for its Faculty
+  of Information Technology: a white slide, CTU blue, the faculty logo on every slide, and Titillium Web
+  in place of the university's own Technika, which is not free to share. `mlcig` is FIT's ML & CI Group:
+  CTU blue, the group's orange and its mark. `polirural` is the Horizon Europe project PoliRuralPlus:
+  its greens and fonts, and the EU emblem with the grant acknowledgement, placed as the EU's guide asks.
+- **The gallery:** the lecture on recurrent networks now wears `fit-cvut`, white with the faculty logo,
+  and a school lesson in Czech joins it: *Jak funguje internet* from the Internet4Kids methodology, in
+  Tiny, with its content under CC BY-NC-SA 4.0.
 - **Converting a presentation, for agents.** `docs/CONVERT.md` is the procedure an agent follows when
   someone says "convert my presentation to SlAIdy": PowerPoint, Keynote, Google Slides, Canva or PDF
   in, a deck and a one-file HTML out. Lean by default (words as markdown, diagrams and charts redrawn

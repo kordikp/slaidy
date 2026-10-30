@@ -35,7 +35,7 @@ and [a reading of every slide](https://kordikp.github.io/slaidy/isd2026/commenta
 
 **[The gallery](https://kordikp.github.io/slaidy/gallery/)** shows what else the one file can
 look like: a company profile in Recombee's identity, a PechaKucha in AI dětem's, a lecture on
-recurrent networks in FIT CTU's, a school lesson in Czech in Tiny's. Each is a link that presents.
+recurrent networks in FIT CTU's, an introduction to Tiny for partners in Tiny's. Each is a link that presents.
 
 ## Run it on your machine, with your own key
 

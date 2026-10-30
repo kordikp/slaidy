@@ -1,0 +1,69 @@
+/* PoliRuralPlus — the project's brand (WP7 templates): primary green #24973F, light #3EAC58 and dark
+   #266D38 on a pale field, League Spartan for headlines and Inter for text, as in the pilot posters and
+   roll-ups. The cover and the closing carry the project logo and the "Funded by the European Union"
+   emblem, the emblem at least as large as the logo and apart from it, as the EU guide asks; the closing
+   adds the grant acknowledgement. Made for SlAIdy; CSS MIT, fonts OFL. */
+@font-face{font-family:"League Spartan";font-style:normal;font-weight:400 800;font-display:swap;
+ src:url(fonts/LeagueSpartan-latin-ext.woff2) format("woff2");
+ unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"League Spartan";font-style:normal;font-weight:400 800;font-display:swap;
+ src:url(fonts/LeagueSpartan-latin.woff2) format("woff2");
+ unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;
+ src:url(fonts/Inter-latin-ext.woff2) format("woff2");
+ unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:swap;
+ src:url(fonts/Inter-latin.woff2) format("woff2");
+ unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+html[data-slaidy-theme="polirural"]{--th-paper:#F6F8F4;--th-ink:#10241A;--th-text:#3F3F3F;--th-muted:#666666;
+ --th-line:#DCE5DA;--th-green:#24973F;--th-light:#3EAC58;--th-dark:#266D38;--th-wash:#E9F2E8;
+ --th-head:"League Spartan","Inter",system-ui,sans-serif;--th-body:"Inter",system-ui,sans-serif}
+
+/* ---------- content slides: a pale field, a green kicker, the logo bottom right ---------- */
+html[data-slaidy-theme="polirural"] .stage{background:var(--th-paper);color:var(--th-ink);padding:44px 72px 84px;
+ font-family:var(--th-body);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html[data-slaidy-theme="polirural"] .stage h2{font-family:var(--th-head);font-weight:700;color:var(--th-ink);
+ letter-spacing:-.01em;line-height:1.08;margin-bottom:20px}
+html[data-slaidy-theme="polirural"] .stage h2::after{content:"";display:block;width:56px;height:4px;margin-top:12px;
+ background:var(--th-green);border-radius:2px}
+html[data-slaidy-theme="polirural"] .stage .tx{font-family:var(--th-body);font-weight:400;color:var(--th-text);line-height:1.45}
+html[data-slaidy-theme="polirural"] .stage .tx b,html[data-slaidy-theme="polirural"] .stage .tx strong{font-weight:650;color:var(--th-ink)}
+html[data-slaidy-theme="polirural"] .stage .tx em{font-style:normal;color:var(--th-dark);font-weight:500}
+html[data-slaidy-theme="polirural"] .stage .tx li::marker{color:var(--th-green)}
+html[data-slaidy-theme="polirural"] .stage .tx .bh{font-family:var(--th-head);color:var(--th-ink)}
+html[data-slaidy-theme="polirural"] .stage .tx h4.bh{font-family:var(--th-body);font-weight:600;color:var(--th-dark);
+ letter-spacing:.08em;text-transform:uppercase;font-size:.72em}
+html[data-slaidy-theme="polirural"] .stage .tx blockquote{border-left:4px solid var(--th-green);background:none;
+ padding:.1em 0 .1em .9em;margin:.6em 0;font-weight:500;color:var(--th-ink)}
+html[data-slaidy-theme="polirural"] .stage .tx a{color:var(--th-dark);text-decoration:underline;text-underline-offset:3px}
+html[data-slaidy-theme="polirural"] .stage .tx code{background:var(--th-wash);color:var(--th-ink);border:0;border-radius:4px;padding:.06em .3em}
+html[data-slaidy-theme="polirural"] .stage .tx pre{background:var(--th-wash);border:0;border-left:3px solid var(--th-green);border-radius:0 6px 6px 0}
+html[data-slaidy-theme="polirural"] .stage .tx pre code{background:none;padding:0}
+html[data-slaidy-theme="polirural"] .stage .tx table{border-collapse:collapse;font-size:.9em}
+html[data-slaidy-theme="polirural"] .stage .tx th{font-weight:600;color:var(--th-dark);border:0;border-bottom:2px solid var(--th-green)}
+html[data-slaidy-theme="polirural"] .stage .tx td{border:0;border-bottom:1px solid var(--th-line)}
+html[data-slaidy-theme="polirural"] .stage .tx .rule{border-top:1px solid var(--th-line)}
+html[data-slaidy-theme="polirural"] .stage .hdr{color:var(--th-dark);font-family:var(--th-body);font-weight:600;letter-spacing:.1em}
+html[data-slaidy-theme="polirural"] .stage .hdr .ix,html[data-slaidy-theme="polirural"] .stage .pos{color:var(--th-muted)}
+html[data-slaidy-theme="polirural"] .stage::before{content:"";position:absolute;right:64px;bottom:24px;width:150px;height:34px;
+ background:url(logo.svg) no-repeat right center/contain;z-index:2}
+html[data-slaidy-theme="polirural"] .stage::after{content:var(--slaidy-footer,"");position:absolute;left:72px;right:240px;bottom:31px;
+ font:400 14px/1.2 var(--th-body);color:var(--th-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- cover & closing: a green edge, the logo and the EU emblem along the foot ---------- */
+html[data-slaidy-theme="polirural"] .stage.lay-cover,html[data-slaidy-theme="polirural"] .stage.lay-closing{
+ background:linear-gradient(var(--th-green),var(--th-dark)) left top/14px 100% no-repeat,var(--th-paper);padding:96px 112px 180px}
+html[data-slaidy-theme="polirural"] .stage.lay-cover::before,html[data-slaidy-theme="polirural"] .stage.lay-closing::before{
+ left:112px;right:112px;bottom:48px;width:auto;height:58px;
+ background:url(logo.svg) left center/auto 50px no-repeat,url(eu-funded.png) right center/auto 58px no-repeat}
+html[data-slaidy-theme="polirural"] .stage.lay-cover::after{content:none}
+html[data-slaidy-theme="polirural"] .stage.lay-closing::after{content:"This project has received funding from the European Union’s Horizon Europe research and innovation programme under grant agreement No 101136910";
+ left:112px;right:112px;bottom:122px;white-space:normal;font-size:13px;line-height:1.35;color:var(--th-muted)}
+html[data-slaidy-theme="polirural"] .stage.lay-cover h2,html[data-slaidy-theme="polirural"] .stage.lay-closing h2{max-width:84%;font-weight:800;letter-spacing:-.02em}
+html[data-slaidy-theme="polirural"] .stage.lay-cover h2.big{font-size:calc(var(--d-title)*1.55)}
+html[data-slaidy-theme="polirural"] .stage.lay-closing h2.big{font-size:calc(var(--d-title)*1.35)}
+html[data-slaidy-theme="polirural"] .stage.lay-cover h2::after,html[data-slaidy-theme="polirural"] .stage.lay-closing h2::after{
+ width:96px;height:6px;margin-top:20px}
+html[data-slaidy-theme="polirural"] .stage.lay-cover .tx p,html[data-slaidy-theme="polirural"] .stage.lay-cover .tx ul,
+html[data-slaidy-theme="polirural"] .stage.lay-closing .tx p,html[data-slaidy-theme="polirural"] .stage.lay-closing .tx ul{max-width:70%}

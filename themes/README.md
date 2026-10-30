@@ -19,6 +19,9 @@ sizes below the picker start from the theme's own, and you can change them.
 | [`aidetem`](aidetem/) | strawberry red and sky, Space Grotesk and Darker Grotesque, a red cover | © AI dětem |
 | [`tiny`](tiny/) | dark violet and yellow, Inter | © AI dětem (tiny.school) |
 | [`kurikulum`](kurikulum/) | a pink-to-blue gradient cover, Darker Grotesque | © AI dětem |
+| [`fit-cvut`](fit-cvut/) | white, CTU blue and light blue, Titillium Web standing in for the university's Technika, the FIT logo on every slide | © Czech Technical University in Prague |
+| [`mlcig`](mlcig/) | cool paper, CTU blue and the group's orange, Outfit, the group's mark in the corner | © ML & CI Group, FIT CTU |
+| [`polirural`](polirural/) | the project's greens, League Spartan and Inter; the logo and the EU emblem on the cover, the grant acknowledgement on the closing | © PoliRuralPlus consortium; the EU emblem under the EU's rules |
 | [`paper`](paper/) | ivory paper, Literata titles, Lexend text, vermilion and teal, a dot-grid cover; for lectures and research talks | none, use it for anything |
 
 The CSS is MIT, like SlAIdy. The fonts are under the SIL Open Font Licence. **Logos and brands

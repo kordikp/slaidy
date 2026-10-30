@@ -34,6 +34,9 @@ py scripts/test_pictures.py || fail=1
 step "One file with the deck in it, opened from a disk"
 py scripts/test_onefile.py || fail=1
 
+step "A presentation to convert, read into an inventory"
+py scripts/test_ingest.py || fail=1
+
 step "The theme library: names, files, font licences, size"
 py scripts/themes.py --check || fail=1
 

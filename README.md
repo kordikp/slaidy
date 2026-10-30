@@ -19,6 +19,11 @@ Photographs and screenshots come in as pictures: kept once, described in words, 
 placed in a figure that can draw on top of them. [AGENTS.md](AGENTS.md) is what an
 assistant working on a deck has to respect.
 
+**Have a deck already?** Tell your coding agent to convert it. [docs/CONVERT.md](docs/CONVERT.md)
+is the procedure for PowerPoint, Keynote, Google Slides, Canva and PDF: lean by default (words as
+markdown, diagrams redrawn as SVG, tens of kB a slide), or rich when the deck is for people more
+than for machines (photographs kept, motion on top of them).
+
 A deck can also live at a URL — `?deck=<address>` opens it and saves back to it,
 which is how a class shares one storage ([docs/REMOTE.md](docs/REMOTE.md)).
 
@@ -233,7 +238,9 @@ The parts worth knowing before you change anything:
 - **`scripts/`** — `serve.py` and `window.py` are what `studio.sh` runs; `publish.py`,
   `commentary.py` and `check_links.py` are the way to the web; `build_bundle.py` turns a
   folder of markdown into a deck and `onefile.py` a deck into one HTML file that opens from a
-  disk; `assets.py` lists, adds and describes pictures without reading their bytes; `qr.py`
+  disk; `ingest.py` reads a PowerPoint or a PDF into an inventory an agent converts from
+  ([docs/CONVERT.md](docs/CONVERT.md)); `assets.py` lists, adds and describes pictures without
+  reading their bytes; `qr.py`
   makes a QR code as a figure; `shots.mjs` photographs every slide, every click if you ask.
 - **[tools/drawio/](tools/drawio/README.md)** — a Beamer lecture with draw.io figures, back to
   editable vectors: the drawings recovered from the PNGs, a series of saves merged into one
